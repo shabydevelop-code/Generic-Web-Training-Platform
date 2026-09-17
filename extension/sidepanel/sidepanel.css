@@ -17,6 +17,34 @@ body {
   padding: 24px 18px;
 }
 
+.mode-switcher {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 20px;
+  padding: 4px;
+  border: 1px solid #e4e7ec;
+  border-radius: 10px;
+  background: #ffffff;
+}
+
+.mode-switcher__button {
+  flex: 1;
+  padding: 8px 12px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: #667085;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.mode-switcher__button--active {
+  background: #2563eb;
+  color: #ffffff;
+}
+
 .panel__header {
   margin-bottom: 20px;
 }
