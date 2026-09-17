@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" dir="ltr">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -10,26 +10,33 @@
     <main class="panel">
       <header class="panel__header">
         <p class="eyebrow">Generic Web Training Platform</p>
-        <h1>Element Selection</h1>
-        <p class="description">
+        <h1 data-i18n="elementSelectionTitle">Element Selection</h1>
+        <p class="description" data-i18n="elementSelectionDescription">
           Select an element directly from the current web page or test a CSS selector manually.
         </p>
       </header>
 
       <section class="card">
-        <button id="selectButton" class="button button--primary button--full" type="button">
+        <button
+          id="selectButton"
+          class="button button--primary button--full"
+          type="button"
+          data-i18n="selectElementButton"
+        >
           Select element from page
         </button>
 
         <div id="selectedElement" class="selected-element" hidden>
-          <span class="selected-element__label">Selected element</span>
+          <span class="selected-element__label" data-i18n="selectedElementLabel">
+            Selected element
+          </span>
           <strong id="selectedTag"></strong>
           <code id="selectedSelector"></code>
         </div>
 
         <div class="divider"></div>
 
-        <label for="selectorInput">CSS selector</label>
+        <label for="selectorInput" data-i18n="cssSelectorLabel">CSS selector</label>
         <input
           id="selectorInput"
           type="text"
@@ -39,15 +46,42 @@
         />
 
         <div class="actions">
-          <button id="highlightButton" class="button" type="button">
+          <button id="highlightButton" class="button" type="button" data-i18n="highlightElementButton">
             Highlight element
           </button>
-          <button id="clearButton" class="button" type="button">
+          <button id="clearButton" class="button" type="button" data-i18n="clearButton">
             Clear
           </button>
         </div>
 
         <p id="status" class="status" aria-live="polite"></p>
+      </section>
+
+      <section id="stepEditor" class="card" hidden>
+        <h2 data-i18n="stepEditorTitle">Create Step</h2>
+
+        <label for="instructionInput" data-i18n="instructionLabel">Instruction</label>
+        <textarea
+          id="instructionInput"
+          rows="4"
+          autocomplete="off"
+          data-i18n-placeholder="instructionPlaceholder"
+          placeholder="Type the instruction for this step..."
+        ></textarea>
+
+        <button
+          id="saveStepButton"
+          class="button button--primary button--full"
+          type="button"
+          data-i18n="saveStepButton"
+        >
+          Save Step
+        </button>
+      </section>
+
+      <section id="stepsSection" class="card" hidden>
+        <h2 data-i18n="stepsTitle">Steps</h2>
+        <div id="stepsList" class="steps-list"></div>
       </section>
     </main>
 
