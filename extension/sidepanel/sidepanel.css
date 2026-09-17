@@ -185,6 +185,16 @@ textarea:focus {
   outline-offset: 2px;
 }
 
+.step-item--active {
+  border-color: #2563eb;
+  background: #eff6ff;
+  box-shadow: 0 0 0 1px #2563eb;
+}
+
+.step-item--active::after {
+  color: #2563eb;
+}
+
 .step-item:hover::after,
 .step-item:focus-visible::after {
   color: #2563eb;
