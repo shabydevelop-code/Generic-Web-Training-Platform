@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Web Training Guide</title>
+    <link rel="stylesheet" href="sidepanel.css" />
+  </head>
+  <body>
+    <main class="panel">
+      <header class="panel__header">
+        <p class="eyebrow">Generic Web Training Platform</p>
+        <h1>Element Highlighter</h1>
+        <p class="description">
+          Enter a CSS selector to prove the Side Panel → page communication flow.
+        </p>
+      </header>
+
+      <section class="card">
+        <label for="selectorInput">CSS selector</label>
+        <input
+          id="selectorInput"
+          type="text"
+          value="button"
+          placeholder="#customerId, .save-button, button"
+          autocomplete="off"
+        />
+
+        <div class="actions">
+          <button id="highlightButton" class="button button--primary" type="button">
+            Highlight element
+          </button>
+          <button id="clearButton" class="button" type="button">
+            Clear
+          </button>
+        </div>
+
+        <p id="status" class="status" aria-live="polite"></p>
+      </section>
+    </main>
+
+    <script src="sidepanel.js"></script>
+  </body>
+</html>
