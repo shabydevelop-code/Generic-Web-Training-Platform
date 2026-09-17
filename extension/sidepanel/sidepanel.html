@@ -9,87 +9,104 @@
   <body>
     <main class="panel">
       <nav class="mode-switcher" aria-label="Training mode">
-        <button class="mode-switcher__button" type="button">Learn</button>
-        <button class="mode-switcher__button mode-switcher__button--active" type="button" aria-pressed="true">
+        <button id="learnModeButton" class="mode-switcher__button" type="button" aria-pressed="false">
+          Learn
+        </button>
+        <button
+          id="createModeButton"
+          class="mode-switcher__button mode-switcher__button--active"
+          type="button"
+          aria-pressed="true"
+        >
           Create
         </button>
       </nav>
 
-      <header class="panel__header">
-        <p class="eyebrow">Generic Web Training Platform</p>
-        <h1 data-i18n="elementSelectionTitle">Element Selection</h1>
-        <p class="description" data-i18n="elementSelectionDescription">
-          Select an element directly from the current web page or test a CSS selector manually.
-        </p>
-      </header>
+      <div id="createModeView">
+        <header class="panel__header">
+          <p class="eyebrow">Generic Web Training Platform</p>
+          <h1 data-i18n="elementSelectionTitle">Element Selection</h1>
+          <p class="description" data-i18n="elementSelectionDescription">
+            Select an element directly from the current web page or test a CSS selector manually.
+          </p>
+        </header>
 
-      <section class="card">
-        <button
-          id="selectButton"
-          class="button button--primary button--full"
-          type="button"
-          data-i18n="selectElementButton"
-        >
-          Select element from page
-        </button>
-
-        <div id="selectedElement" class="selected-element" hidden>
-          <span class="selected-element__label" data-i18n="selectedElementLabel">
-            Selected element
-          </span>
-          <strong id="selectedTag"></strong>
-          <code id="selectedSelector"></code>
-        </div>
-
-        <div class="divider"></div>
-
-        <label for="selectorInput" data-i18n="cssSelectorLabel">CSS selector</label>
-        <input
-          id="selectorInput"
-          type="text"
-          value="button"
-          placeholder="#customerId, .save-button, button"
-          autocomplete="off"
-        />
-
-        <div class="actions">
-          <button id="highlightButton" class="button" type="button" data-i18n="highlightElementButton">
-            Highlight element
+        <section class="card">
+          <button
+            id="selectButton"
+            class="button button--primary button--full"
+            type="button"
+            data-i18n="selectElementButton"
+          >
+            Select element from page
           </button>
-          <button id="clearButton" class="button" type="button" data-i18n="clearButton">
-            Clear
+
+          <div id="selectedElement" class="selected-element" hidden>
+            <span class="selected-element__label" data-i18n="selectedElementLabel">
+              Selected element
+            </span>
+            <strong id="selectedTag"></strong>
+            <code id="selectedSelector"></code>
+          </div>
+
+          <div class="divider"></div>
+
+          <label for="selectorInput" data-i18n="cssSelectorLabel">CSS selector</label>
+          <input
+            id="selectorInput"
+            type="text"
+            value="button"
+            placeholder="#customerId, .save-button, button"
+            autocomplete="off"
+          />
+
+          <div class="actions">
+            <button id="highlightButton" class="button" type="button" data-i18n="highlightElementButton">
+              Highlight element
+            </button>
+            <button id="clearButton" class="button" type="button" data-i18n="clearButton">
+              Clear
+            </button>
+          </div>
+
+          <p id="status" class="status" aria-live="polite"></p>
+        </section>
+
+        <section id="stepEditor" class="card" hidden>
+          <h2 data-i18n="stepEditorTitle">Create Step</h2>
+
+          <label for="instructionInput" data-i18n="instructionLabel">Instruction</label>
+          <textarea
+            id="instructionInput"
+            rows="4"
+            autocomplete="off"
+            data-i18n-placeholder="instructionPlaceholder"
+            placeholder="Type the instruction for this step..."
+          ></textarea>
+
+          <button
+            id="saveStepButton"
+            class="button button--primary button--full"
+            type="button"
+            data-i18n="saveStepButton"
+          >
+            Save Step
           </button>
-        </div>
+        </section>
 
-        <p id="status" class="status" aria-live="polite"></p>
-      </section>
+        <section id="stepsSection" class="card" hidden>
+          <h2 data-i18n="stepsTitle">Steps</h2>
+          <div id="stepsList" class="steps-list"></div>
+        </section>
+      </div>
 
-      <section id="stepEditor" class="card" hidden>
-        <h2 data-i18n="stepEditorTitle">Create Step</h2>
-
-        <label for="instructionInput" data-i18n="instructionLabel">Instruction</label>
-        <textarea
-          id="instructionInput"
-          rows="4"
-          autocomplete="off"
-          data-i18n-placeholder="instructionPlaceholder"
-          placeholder="Type the instruction for this step..."
-        ></textarea>
-
-        <button
-          id="saveStepButton"
-          class="button button--primary button--full"
-          type="button"
-          data-i18n="saveStepButton"
-        >
-          Save Step
-        </button>
-      </section>
-
-      <section id="stepsSection" class="card" hidden>
-        <h2 data-i18n="stepsTitle">Steps</h2>
-        <div id="stepsList" class="steps-list"></div>
-      </section>
+      <div id="learnModeView" hidden>
+        <header class="panel__header">
+          <p class="eyebrow">Generic Web Training Platform</p>
+          <h1>Learn Mode</h1>
+          <p class="description">Your available training guides will appear here.</p>
+        </header>
+      </div>
     </main>
 
     <script src="../services/trainingService.js"></script>
