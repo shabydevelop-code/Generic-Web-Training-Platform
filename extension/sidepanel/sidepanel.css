@@ -51,6 +51,10 @@ h1 {
   box-shadow: 0 4px 14px rgba(16, 24, 40, 0.05);
 }
 
+.card + .card {
+  margin-top: 14px;
+}
+
 label {
   display: block;
   margin-bottom: 7px;
@@ -58,7 +62,8 @@ label {
   font-weight: 600;
 }
 
-input {
+input,
+textarea {
   width: 100%;
   padding: 10px 11px;
   border: 1px solid #d0d5dd;
@@ -67,7 +72,12 @@ input {
   outline: none;
 }
 
-input:focus {
+textarea {
+  resize: vertical;
+}
+
+input:focus,
+textarea:focus {
   border-color: #2563eb;
   box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
 }
@@ -137,6 +147,43 @@ input:focus {
 .selected-element code {
   font-size: 12px;
   color: #175cd3;
+}
+
+.steps-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.step-item {
+  padding: 12px;
+  border: 1px solid #e4e7ec;
+  border-radius: 9px;
+  background: #f9fafb;
+}
+
+.step-item strong {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 13px;
+  color: #344054;
+}
+
+.step-item p {
+  margin: 0 0 9px;
+  font-size: 13px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.step-item code {
+  display: block;
+  padding-top: 8px;
+  border-top: 1px solid #eaecf0;
+  font-size: 11px;
+  line-height: 1.4;
+  color: #667085;
+  overflow-wrap: anywhere;
 }
 
 .status {
