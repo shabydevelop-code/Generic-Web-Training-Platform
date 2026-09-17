@@ -5,7 +5,8 @@
   "description": "Generic in-browser guidance for web applications.",
   "permissions": [
     "activeTab",
-    "sidePanel"
+    "sidePanel",
+    "scripting"
   ],
   "action": {
     "default_title": "Open Web Training Guide"
