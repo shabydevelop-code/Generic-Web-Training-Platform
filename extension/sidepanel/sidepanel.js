@@ -13,10 +13,21 @@ const stepsSection = document.getElementById("stepsSection");
 const stepsList = document.getElementById("stepsList");
 
 let currentSelectedElement = null;
+let activeStepId = null;
 
 function setStatus(message, type = "info") {
   statusElement.textContent = message;
   statusElement.dataset.type = type;
+}
+
+function markActiveStep(stepId) {
+  activeStepId = stepId;
+
+  stepsList.querySelectorAll(".step-item").forEach((item) => {
+    const isActive = item.dataset.stepId === stepId;
+    item.classList.toggle("step-item--active", isActive);
+    item.setAttribute("aria-pressed", String(isActive));
+  });
 }
 
 async function runStep(step) {
@@ -25,6 +36,10 @@ async function runStep(step) {
       type: "GWTP_SHOW_TRAINING_STEP",
       step
     });
+
+    if (response?.success) {
+      markActiveStep(step.id);
+    }
 
     setStatus(
       response?.message || `Step ${step.order} started.`,
@@ -50,9 +65,15 @@ function renderSteps() {
   steps.forEach((step) => {
     const item = document.createElement("div");
     item.className = "step-item";
+    item.dataset.stepId = step.id;
     item.tabIndex = 0;
     item.setAttribute("role", "button");
     item.setAttribute("aria-label", `Run Step ${step.order}`);
+    item.setAttribute("aria-pressed", String(step.id === activeStepId));
+
+    if (step.id === activeStepId) {
+      item.classList.add("step-item--active");
+    }
 
     const title = document.createElement("strong");
     title.textContent = `Step ${step.order}`;
@@ -137,9 +158,11 @@ clearButton.addEventListener("click", async () => {
   try {
     await sendToActivePage({ type: "GWTP_CLEAR_HIGHLIGHT" });
     currentSelectedElement = null;
+    activeStepId = null;
     selectedElement.hidden = true;
     stepEditor.hidden = true;
     instructionInput.value = "";
+    renderSteps();
     setStatus("Highlight cleared.", "success");
   } catch (error) {
     setStatus("Could not clear the highlight on this page.", "error");
