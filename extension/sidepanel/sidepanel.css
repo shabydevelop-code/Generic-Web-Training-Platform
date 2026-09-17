@@ -96,6 +96,49 @@ input:focus {
   color: #ffffff;
 }
 
+.button--full {
+  width: 100%;
+}
+
+.divider {
+  height: 1px;
+  margin: 18px 0;
+  background: #e4e7ec;
+}
+
+.selected-element {
+  margin-top: 14px;
+  padding: 12px;
+  border: 1px solid #d1e9ff;
+  border-radius: 8px;
+  background: #f5faff;
+}
+
+.selected-element__label {
+  display: block;
+  margin-bottom: 5px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #475467;
+  text-transform: uppercase;
+}
+
+.selected-element strong,
+.selected-element code {
+  display: block;
+  overflow-wrap: anywhere;
+}
+
+.selected-element strong {
+  margin-bottom: 6px;
+  font-size: 13px;
+}
+
+.selected-element code {
+  font-size: 12px;
+  color: #175cd3;
+}
+
 .status {
   min-height: 20px;
   margin: 12px 0 0;
