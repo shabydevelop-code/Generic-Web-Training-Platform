@@ -139,12 +139,22 @@ async function getActiveTab() {
   return tab;
 }
 
-function wait(milliseconds) {
-  return new Promise((resolve) => setTimeout(resolve, milliseconds));
-}
-
 function isMissingReceiverError(error) {
   return error?.message?.includes("Receiving end does not exist");
+}
+
+async function restorePageConnection(tabId) {
+  await chrome.scripting.executeScript({
+    target: { tabId },
+    files: [
+      "content/dom/element-finder.js",
+      "content/dom/selector-builder.js",
+      "content/overlay/highlighter.js",
+      "content/overlay/element-picker.js",
+      "content/overlay/training-runner.js",
+      "content/content-script.js"
+    ]
+  });
 }
 
 async function sendToActivePage(message) {
@@ -154,23 +164,16 @@ async function sendToActivePage(message) {
     throw new Error("No active browser tab was found.");
   }
 
-  const maxAttempts = 3;
-
-  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
-    try {
-      return await chrome.tabs.sendMessage(tab.id, message);
-    } catch (error) {
-      const shouldRetry = isMissingReceiverError(error) && attempt < maxAttempts;
-
-      if (!shouldRetry) {
-        throw error;
-      }
-
-      await wait(250 * attempt);
+  try {
+    return await chrome.tabs.sendMessage(tab.id, message);
+  } catch (error) {
+    if (!isMissingReceiverError(error)) {
+      throw error;
     }
-  }
 
-  throw new Error("Could not connect to the current page.");
+    await restorePageConnection(tab.id);
+    return chrome.tabs.sendMessage(tab.id, message);
+  }
 }
 
 learnModeButton.addEventListener("click", () => {
