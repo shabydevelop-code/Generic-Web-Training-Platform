@@ -19,6 +19,23 @@ function setStatus(message, type = "info") {
   statusElement.dataset.type = type;
 }
 
+async function runStep(step) {
+  try {
+    const response = await sendToActivePage({
+      type: "GWTP_SHOW_TRAINING_STEP",
+      step
+    });
+
+    setStatus(
+      response?.message || `Step ${step.order} started.`,
+      response?.success ? "success" : "error"
+    );
+  } catch (error) {
+    setStatus("Could not run this step on the current page.", "error");
+    console.error(error);
+  }
+}
+
 function renderSteps() {
   const steps = window.trainingService.getSteps();
   stepsList.replaceChildren();
@@ -33,6 +50,9 @@ function renderSteps() {
   steps.forEach((step) => {
     const item = document.createElement("div");
     item.className = "step-item";
+    item.tabIndex = 0;
+    item.setAttribute("role", "button");
+    item.setAttribute("aria-label", `Run Step ${step.order}`);
 
     const title = document.createElement("strong");
     title.textContent = `Step ${step.order}`;
@@ -44,6 +64,14 @@ function renderSteps() {
     selector.textContent = step.selector;
 
     item.append(title, instruction, selector);
+    item.addEventListener("click", () => runStep(step));
+    item.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        runStep(step);
+      }
+    });
+
     stepsList.appendChild(item);
   });
 }
