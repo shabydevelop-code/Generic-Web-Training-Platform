@@ -24,6 +24,7 @@
         "content/dom/selector-builder.js",
         "content/overlay/highlighter.js",
         "content/overlay/element-picker.js",
+        "content/overlay/training-runner.js",
         "content/content-script.js"
       ],
       "run_at": "document_idle"
