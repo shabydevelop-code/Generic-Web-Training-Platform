@@ -10,13 +10,25 @@
     <main class="panel">
       <header class="panel__header">
         <p class="eyebrow">Generic Web Training Platform</p>
-        <h1>Element Highlighter</h1>
+        <h1>Element Selection</h1>
         <p class="description">
-          Enter a CSS selector to prove the Side Panel → page communication flow.
+          Select an element directly from the current web page or test a CSS selector manually.
         </p>
       </header>
 
       <section class="card">
+        <button id="selectButton" class="button button--primary button--full" type="button">
+          Select element from page
+        </button>
+
+        <div id="selectedElement" class="selected-element" hidden>
+          <span class="selected-element__label">Selected element</span>
+          <strong id="selectedTag"></strong>
+          <code id="selectedSelector"></code>
+        </div>
+
+        <div class="divider"></div>
+
         <label for="selectorInput">CSS selector</label>
         <input
           id="selectorInput"
@@ -27,7 +39,7 @@
         />
 
         <div class="actions">
-          <button id="highlightButton" class="button button--primary" type="button">
+          <button id="highlightButton" class="button" type="button">
             Highlight element
           </button>
           <button id="clearButton" class="button" type="button">
