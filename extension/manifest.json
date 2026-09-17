@@ -1,0 +1,26 @@
+{
+  "manifest_version": 3,
+  "name": "Generic Web Training Platform",
+  "version": "0.1.0",
+  "description": "Generic in-browser guidance for web applications.",
+  "permissions": [
+    "activeTab",
+    "sidePanel"
+  ],
+  "action": {
+    "default_title": "Open Web Training Guide"
+  },
+  "side_panel": {
+    "default_path": "sidepanel/sidepanel.html"
+  },
+  "background": {
+    "service_worker": "background/service-worker.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["http://*/*", "https://*/*"],
+      "js": ["content/content-script.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}
