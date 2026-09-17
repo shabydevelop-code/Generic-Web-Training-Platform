@@ -15,6 +15,8 @@ const stepsList = document.getElementById("stepsList");
 let currentSelectedElement = null;
 let activeStepId = null;
 
+const canCreateTraining = window.permissionService.canCreateTraining();
+
 function setStatus(message, type = "info") {
   statusElement.textContent = message;
   statusElement.dataset.type = type;
