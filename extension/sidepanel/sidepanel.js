@@ -6,6 +6,7 @@ const statusElement = document.getElementById("status");
 const selectedElement = document.getElementById("selectedElement");
 const selectedTag = document.getElementById("selectedTag");
 const selectedSelector = document.getElementById("selectedSelector");
+const stepEditor = document.getElementById("stepEditor");
 
 function setStatus(message, type = "info") {
   statusElement.textContent = message;
@@ -73,6 +74,7 @@ clearButton.addEventListener("click", async () => {
   try {
     await sendToActivePage({ type: "GWTP_CLEAR_HIGHLIGHT" });
     selectedElement.hidden = true;
+    stepEditor.hidden = true;
     setStatus("Highlight cleared.", "success");
   } catch (error) {
     setStatus("Could not clear the highlight on this page.", "error");
@@ -87,6 +89,7 @@ chrome.runtime.onMessage.addListener((message) => {
     selectedTag.textContent = `<${element.tagName}>${element.text ? ` — ${element.text}` : ""}`;
     selectedSelector.textContent = element.selector;
     selectedElement.hidden = false;
+    stepEditor.hidden = false;
     setStatus("Element selected successfully.", "success");
     return;
   }
