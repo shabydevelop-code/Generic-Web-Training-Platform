@@ -11,11 +11,27 @@ const instructionInput = document.getElementById("instructionInput");
 const saveStepButton = document.getElementById("saveStepButton");
 const stepsSection = document.getElementById("stepsSection");
 const stepsList = document.getElementById("stepsList");
+const learnModeButton = document.getElementById("learnModeButton");
+const createModeButton = document.getElementById("createModeButton");
+const learnModeView = document.getElementById("learnModeView");
+const createModeView = document.getElementById("createModeView");
 
 let currentSelectedElement = null;
 let activeStepId = null;
 
 const canCreateTraining = window.permissionService.canCreateTraining();
+
+function setMode(mode) {
+  const isLearnMode = mode === "learn";
+
+  learnModeView.hidden = !isLearnMode;
+  createModeView.hidden = isLearnMode;
+
+  learnModeButton.classList.toggle("mode-switcher__button--active", isLearnMode);
+  createModeButton.classList.toggle("mode-switcher__button--active", !isLearnMode);
+  learnModeButton.setAttribute("aria-pressed", String(isLearnMode));
+  createModeButton.setAttribute("aria-pressed", String(!isLearnMode));
+}
 
 function setStatus(message, type = "info") {
   statusElement.textContent = message;
@@ -113,6 +129,14 @@ async function sendToActivePage(message) {
 
   return chrome.tabs.sendMessage(tab.id, message);
 }
+
+learnModeButton.addEventListener("click", () => {
+  setMode("learn");
+});
+
+createModeButton.addEventListener("click", () => {
+  setMode("create");
+});
 
 selectButton.addEventListener("click", async () => {
   try {
@@ -222,4 +246,5 @@ chrome.runtime.onMessage.addListener((message) => {
   }
 });
 
+setMode("create");
 renderSteps();
