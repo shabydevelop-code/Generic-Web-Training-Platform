@@ -8,6 +8,10 @@
     "sidePanel",
     "scripting"
   ],
+  "host_permissions": [
+    "http://*/*",
+    "https://*/*"
+  ],
   "action": {
     "default_title": "Open Web Training Guide"
   },
