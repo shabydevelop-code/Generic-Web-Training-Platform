@@ -7,10 +7,45 @@ const selectedElement = document.getElementById("selectedElement");
 const selectedTag = document.getElementById("selectedTag");
 const selectedSelector = document.getElementById("selectedSelector");
 const stepEditor = document.getElementById("stepEditor");
+const instructionInput = document.getElementById("instructionInput");
+const saveStepButton = document.getElementById("saveStepButton");
+const stepsSection = document.getElementById("stepsSection");
+const stepsList = document.getElementById("stepsList");
+
+let currentSelectedElement = null;
 
 function setStatus(message, type = "info") {
   statusElement.textContent = message;
   statusElement.dataset.type = type;
+}
+
+function renderSteps() {
+  const steps = window.trainingService.getSteps();
+  stepsList.replaceChildren();
+
+  if (steps.length === 0) {
+    stepsSection.hidden = true;
+    return;
+  }
+
+  stepsSection.hidden = false;
+
+  steps.forEach((step) => {
+    const item = document.createElement("div");
+    item.className = "step-item";
+
+    const title = document.createElement("strong");
+    title.textContent = `Step ${step.order}`;
+
+    const instruction = document.createElement("p");
+    instruction.textContent = step.instruction;
+
+    const selector = document.createElement("code");
+    selector.textContent = step.selector;
+
+    item.append(title, instruction, selector);
+    stepsList.appendChild(item);
+  });
 }
 
 async function getActiveTab() {
@@ -73,8 +108,10 @@ highlightButton.addEventListener("click", async () => {
 clearButton.addEventListener("click", async () => {
   try {
     await sendToActivePage({ type: "GWTP_CLEAR_HIGHLIGHT" });
+    currentSelectedElement = null;
     selectedElement.hidden = true;
     stepEditor.hidden = true;
+    instructionInput.value = "";
     setStatus("Highlight cleared.", "success");
   } catch (error) {
     setStatus("Could not clear the highlight on this page.", "error");
@@ -82,14 +119,47 @@ clearButton.addEventListener("click", async () => {
   }
 });
 
+saveStepButton.addEventListener("click", () => {
+  const instruction = instructionInput.value.trim();
+  const selector = selectorInput.value.trim();
+
+  if (!currentSelectedElement) {
+    setStatus("Select an element before saving the step.", "error");
+    return;
+  }
+
+  if (!instruction) {
+    setStatus("Enter an instruction before saving the step.", "error");
+    instructionInput.focus();
+    return;
+  }
+
+  try {
+    const step = window.trainingService.createStep({
+      selector,
+      instruction,
+      element: currentSelectedElement
+    });
+
+    instructionInput.value = "";
+    renderSteps();
+    setStatus(`Step ${step.order} saved.`, "success");
+  } catch (error) {
+    setStatus(error.message || "Could not save the step.", "error");
+    console.error(error);
+  }
+});
+
 chrome.runtime.onMessage.addListener((message) => {
   if (message?.type === "GWTP_ELEMENT_SELECTED") {
     const element = message.element;
+    currentSelectedElement = element;
     selectorInput.value = element.selector;
     selectedTag.textContent = `<${element.tagName}>${element.text ? ` — ${element.text}` : ""}`;
     selectedSelector.textContent = element.selector;
     selectedElement.hidden = false;
     stepEditor.hidden = false;
+    instructionInput.focus();
     setStatus("Element selected successfully.", "success");
     return;
   }
@@ -98,3 +168,5 @@ chrome.runtime.onMessage.addListener((message) => {
     setStatus("Element selection cancelled.");
   }
 });
+
+renderSteps();
