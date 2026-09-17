@@ -139,6 +139,14 @@ async function getActiveTab() {
   return tab;
 }
 
+function wait(milliseconds) {
+  return new Promise((resolve) => setTimeout(resolve, milliseconds));
+}
+
+function isMissingReceiverError(error) {
+  return error?.message?.includes("Receiving end does not exist");
+}
+
 async function sendToActivePage(message) {
   const tab = await getActiveTab();
 
@@ -146,7 +154,23 @@ async function sendToActivePage(message) {
     throw new Error("No active browser tab was found.");
   }
 
-  return chrome.tabs.sendMessage(tab.id, message);
+  const maxAttempts = 3;
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    try {
+      return await chrome.tabs.sendMessage(tab.id, message);
+    } catch (error) {
+      const shouldRetry = isMissingReceiverError(error) && attempt < maxAttempts;
+
+      if (!shouldRetry) {
+        throw error;
+      }
+
+      await wait(250 * attempt);
+    }
+  }
+
+  throw new Error("Could not connect to the current page.");
 }
 
 learnModeButton.addEventListener("click", () => {
