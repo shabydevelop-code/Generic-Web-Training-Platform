@@ -39,8 +39,10 @@ const editUserCard = document.getElementById("editUserCard");
 const editUsername = document.getElementById("editUsername");
 const editDisplayName = document.getElementById("editDisplayName");
 const editRole = document.getElementById("editRole");
+const editRoleSection = document.getElementById("editRoleSection");
 const editNewPassword = document.getElementById("editNewPassword");
 const editIsActive = document.getElementById("editIsActive");
+const editActiveSection = document.getElementById("editActiveSection");
 const saveUserButton = document.getElementById("saveUserButton");
 const cancelEditUserButton = document.getElementById("cancelEditUserButton");
 const editUserStatus = document.getElementById("editUserStatus");
@@ -126,17 +128,16 @@ async function handleCreateUser() {
 }
 
 function openUserEditor(user) {
-  if (user.roles?.includes("admin")) {
-    return;
-  }
-
   closeCreateUser();
   editingUserId = user.id;
   editUsername.textContent = user.username;
   editDisplayName.value = user.displayName || "";
-  editRole.value = user.roles?.[0] || "learner";
+  const isAdminUser = user.roles?.includes("admin");
+  editRole.value = isAdminUser ? "editor" : (user.roles?.[0] || "learner");
+  editRoleSection.hidden = isAdminUser;
   editNewPassword.value = "";
   editIsActive.checked = user.isActive;
+  editActiveSection.hidden = isAdminUser;
   editUserStatus.textContent = "";
   editUserCard.hidden = false;
   editUserCard.scrollIntoView({ behavior: "smooth", block: "nearest" });
@@ -158,6 +159,15 @@ async function handleSaveUser() {
   if (editingUserId == null) return;
 
   const language = window.i18nService.getLanguage();
+  const displayName = editDisplayName.value.trim();
+
+  if (!displayName) {
+    editUserStatus.textContent = window.i18nService.translate("editUserDisplayNameRequired", language);
+    editUserStatus.dataset.type = "error";
+    editDisplayName.focus();
+    return;
+  }
+
   saveUserButton.disabled = true;
 
   try {
@@ -165,7 +175,7 @@ async function handleSaveUser() {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        displayName: editDisplayName.value.trim(),
+        displayName,
         role: editRole.value,
         isActive: editIsActive.checked,
         newPassword: editNewPassword.value
@@ -203,7 +213,7 @@ async function loadAdminUsers() {
       item.className = "user-item";
       const isAdminUser = Array.isArray(user.roles) && user.roles.includes("admin");
 
-      if (!isAdminUser) {
+      if (!isAdminUser || user.id === window.authService.getCurrentUser()?.id) {
         item.classList.add("user-item--editable");
         item.tabIndex = 0;
         item.setAttribute("role", "button");
