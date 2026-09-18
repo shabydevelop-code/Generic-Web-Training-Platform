@@ -308,6 +308,31 @@ adminUsers.MapPut("/{id:long}", (long id, UpdateUserRequest request, HttpContext
     return Results.Ok(new UserResponse(id, username, displayName, isActive, [role!]));
 });
 
+adminUsers.MapDelete("/{id:long}", (long id) =>
+{
+    using var connection = OpenConnection(databasePath);
+
+    using var roleCommand = connection.CreateCommand();
+    roleCommand.CommandText = """
+        SELECT COUNT(*)
+        FROM UserRoles
+        WHERE UserId = $id AND Role = 'admin';
+        """;
+    roleCommand.Parameters.AddWithValue("$id", id);
+
+    if (Convert.ToInt32(roleCommand.ExecuteScalar()) > 0)
+        return Results.Conflict(new { message = "Admin users cannot be deleted." });
+
+    using var command = connection.CreateCommand();
+    command.CommandText = "DELETE FROM Users WHERE Id = $id;";
+    command.Parameters.AddWithValue("$id", id);
+
+    if (command.ExecuteNonQuery() == 0)
+        return Results.NotFound();
+
+    return Results.NoContent();
+});
+
 adminUsers.MapGet("", () =>
 {
     using var connection = OpenConnection(databasePath);
