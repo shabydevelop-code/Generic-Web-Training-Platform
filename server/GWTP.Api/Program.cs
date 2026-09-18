@@ -164,10 +164,10 @@ adminUsers.MapPost("", (CreateUserRequest request) =>
     var displayName = request.DisplayName?.Trim();
     var role = request.Role?.Trim().ToLowerInvariant();
 
-    if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(request.Password) ||
+    if (string.IsNullOrWhiteSpace(displayName) || string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(request.Password) ||
         role is not ("editor" or "learner"))
     {
-        return Results.BadRequest(new { message = "Username, password and a valid role are required." });
+        return Results.BadRequest(new { message = "Display name, username, password and a valid role are required." });
     }
 
     using var connection = OpenConnection(databasePath);
