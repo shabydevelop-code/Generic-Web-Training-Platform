@@ -476,6 +476,39 @@ editorGuides.AddEndpointFilter(async (context, next) =>
     return await next(context);
 });
 
+editorGuides.MapGet("", () =>
+{
+    using var connection = OpenConnection(databasePath);
+    using var command = connection.CreateCommand();
+    command.CommandText = """
+        SELECT g.Id, g.TopicId, t.Name, g.Name, g.IsAvailable,
+               COUNT(gs.Id) AS StepCount
+        FROM Guides g
+        INNER JOIN Topics t ON t.Id = g.TopicId
+        LEFT JOIN GuideSteps gs ON gs.GuideId = g.Id
+        GROUP BY g.Id, g.TopicId, t.Name, g.Name, g.IsAvailable
+        ORDER BY t.Name COLLATE NOCASE, g.Name COLLATE NOCASE, g.Id;
+        """;
+
+    using var reader = command.ExecuteReader();
+    var guides = new List<object>();
+
+    while (reader.Read())
+    {
+        guides.Add(new
+        {
+            id = reader.GetInt64(0),
+            topicId = reader.GetInt64(1),
+            topicName = reader.GetString(2),
+            name = reader.GetString(3),
+            isAvailable = reader.GetInt64(4) == 1,
+            stepCount = reader.GetInt32(5)
+        });
+    }
+
+    return Results.Ok(guides);
+});
+
 editorGuides.MapPost("", (CreateGuideRequest request) =>
 {
     var name = request.Name?.Trim();
