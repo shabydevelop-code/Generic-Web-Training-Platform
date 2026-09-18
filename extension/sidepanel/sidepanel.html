@@ -132,9 +132,13 @@
         <section class="card">
           <label for="topicSelect"><span data-i18n="topicLabel">Topic</span> <span class="required-marker" aria-hidden="true">*</span></label>
           <select id="topicSelect"></select>
-          <div class="actions">
+          <button id="openCreateTopicButton" class="button button--full topic-add-button" type="button" data-i18n="openCreateTopicButton">+ Add Topic</button>
+          <div id="createTopicEditor" hidden>
             <input id="newTopicInput" type="text" autocomplete="off" data-i18n-placeholder="newTopicPlaceholder" placeholder="New topic name" />
-            <button id="createTopicButton" class="button" type="button" data-i18n="createTopicButton">Add Topic</button>
+            <div class="actions">
+              <button id="createTopicButton" class="button button--primary" type="button" data-i18n="createTopicButton">Add Topic</button>
+              <button id="cancelCreateTopicButton" class="button" type="button" data-i18n="cancelStepButton">Cancel</button>
+            </div>
           </div>
           <p id="topicStatus" class="status" aria-live="polite"></p>
 
