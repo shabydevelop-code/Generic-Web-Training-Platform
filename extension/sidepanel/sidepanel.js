@@ -65,6 +65,7 @@ const editTopicEditor = document.getElementById("editTopicEditor");
 const editTopicInput = document.getElementById("editTopicInput");
 const saveTopicButton = document.getElementById("saveTopicButton");
 const cancelEditTopicButton = document.getElementById("cancelEditTopicButton");
+const editTopicStatus = document.getElementById("editTopicStatus");
 let editingTopicId = null;
 const guideLibraryView = document.getElementById("guideLibraryView");
 const guideEditorView = document.getElementById("guideEditorView");
@@ -104,6 +105,8 @@ function openTopicEditor(topic) {
   editTopicInput.value = topic.name;
   editTopicEditor.hidden = false;
   topicStatus.textContent = "";
+  editTopicStatus.textContent = "";
+  editTopicStatus.removeAttribute("data-type");
   editTopicInput.focus();
 }
 
@@ -111,16 +114,25 @@ function closeTopicEditor() {
   editingTopicId = null;
   editTopicInput.value = "";
   editTopicEditor.hidden = true;
+  editTopicStatus.textContent = "";
+  editTopicStatus.removeAttribute("data-type");
 }
 
 async function handleSaveTopic() {
   const language = window.i18nService.getLanguage();
   const name = editTopicInput.value.trim();
+
+  editTopicStatus.textContent = "";
+  editTopicStatus.removeAttribute("data-type");
+
   if (!editingTopicId || !name) {
-    topicStatus.textContent = window.i18nService.translate("topicNameRequired", language);
-    topicStatus.dataset.type = "error";
+    editTopicStatus.textContent = window.i18nService.translate("topicNameRequired", language);
+    editTopicStatus.dataset.type = "error";
+    editTopicInput.focus();
     return;
   }
+
+  saveTopicButton.disabled = true;
 
   try {
     await window.apiService.request(`/api/topics/${editingTopicId}`, {
@@ -128,16 +140,22 @@ async function handleSaveTopic() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name })
     });
-    closeTopicEditor();
+
     await loadTopics();
+    closeTopicEditor();
     topicStatus.textContent = window.i18nService.translate("topicUpdated", language);
     topicStatus.dataset.type = "success";
   } catch (error) {
-    topicStatus.textContent = window.i18nService.translate(
-      error?.status === 409 ? "topicExists" : error?.status == null ? "serverUnavailable" : "topicUpdateError",
+    editTopicStatus.textContent = window.i18nService.translate(
+      error?.status === 409 ? "topicExists" :
+      error?.status === 401 ? "sessionExpired" :
+      error?.status == null ? "serverUnavailable" :
+      "topicUpdateError",
       language
     );
-    topicStatus.dataset.type = "error";
+    editTopicStatus.dataset.type = "error";
+  } finally {
+    saveTopicButton.disabled = false;
   }
 }
 
