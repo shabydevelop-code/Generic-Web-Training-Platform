@@ -3,7 +3,20 @@ using Microsoft.Data.Sqlite;
 
 var builder = WebApplication.CreateBuilder(args);
 
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("Extension", policy =>
+    {
+        policy
+            .SetIsOriginAllowed(origin => origin.StartsWith("chrome-extension://", StringComparison.OrdinalIgnoreCase))
+            .AllowAnyHeader()
+            .AllowAnyMethod();
+    });
+});
+
 var app = builder.Build();
+
+app.UseCors("Extension");
 
 var projectRoot = FindProjectRoot(app.Environment.ContentRootPath);
 var databaseDirectory = Path.Combine(projectRoot, "database");
