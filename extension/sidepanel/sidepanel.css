@@ -896,3 +896,10 @@ body {
 body {
   overflow-y: auto;
 }
+
+.user-item--active,
+.user-item--active:hover {
+  border-color: #2563eb;
+  background: #eff6ff;
+  box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.08);
+}
