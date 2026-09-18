@@ -94,19 +94,21 @@
             <h2 data-i18n="editUserTitle">Edit User</h2>
             <p id="editUsername" class="edit-user__username"></p>
 
-            <label for="editDisplayName" data-i18n="displayNameLabel">Display name</label>
-            <input id="editDisplayName" type="text" autocomplete="off" />
+            <label for="editDisplayName"><span data-i18n="displayNameLabel">Display name</span> <span class="required-marker" aria-hidden="true">*</span></label>
+            <input id="editDisplayName" type="text" autocomplete="off" required aria-required="true" />
 
             <label for="editNewPassword" data-i18n="newPasswordLabel">New password</label>
             <input id="editNewPassword" type="password" autocomplete="new-password" data-i18n-placeholder="newPasswordPlaceholder" placeholder="Leave empty to keep current password" />
 
+            <div id="editRoleSection">
             <label for="editRole"><span data-i18n="roleLabel">Role</span> <span class="required-marker" aria-hidden="true">*</span></label>
             <select id="editRole" required aria-required="true">
               <option value="editor" data-i18n="editorRole">Editor</option>
               <option value="learner" data-i18n="learnerRole">Learner</option>
             </select>
+            </div>
 
-            <label class="checkbox-label" for="editIsActive">
+            <label id="editActiveSection" class="checkbox-label" for="editIsActive">
               <input id="editIsActive" type="checkbox" />
               <span data-i18n="activeUserLabel">Active user</span>
             </label>
