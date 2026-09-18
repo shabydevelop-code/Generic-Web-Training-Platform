@@ -57,17 +57,17 @@
 
           <section class="card">
             <h2 data-i18n="createUserTitle">Create User</h2>
-            <label for="newDisplayName" data-i18n="displayNameLabel">Display name</label>
+            <label for="newDisplayName" data-i18n="displayNameOptionalLabel">Display name (optional)</label>
             <input id="newDisplayName" type="text" autocomplete="off" />
 
-            <label for="newUsername" data-i18n="usernameLabel">Username</label>
-            <input id="newUsername" type="text" autocomplete="off" />
+            <label for="newUsername"><span data-i18n="usernameLabel">Username</span> <span class="required-marker" aria-hidden="true">*</span></label>
+            <input id="newUsername" type="text" autocomplete="off" required aria-required="true" />
 
-            <label for="newPassword" data-i18n="passwordLabel">Password</label>
-            <input id="newPassword" type="password" autocomplete="new-password" />
+            <label for="newPassword"><span data-i18n="passwordLabel">Password</span> <span class="required-marker" aria-hidden="true">*</span></label>
+            <input id="newPassword" type="password" autocomplete="new-password" required aria-required="true" />
 
-            <label for="newRole" data-i18n="roleLabel">Role</label>
-            <select id="newRole">
+            <label for="newRole"><span data-i18n="roleLabel">Role</span> <span class="required-marker" aria-hidden="true">*</span></label>
+            <select id="newRole" required aria-required="true">
               <option value="editor" data-i18n="editorRole">Editor</option>
               <option value="learner" data-i18n="learnerRole">Learner</option>
             </select>
