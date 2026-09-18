@@ -22,6 +22,8 @@ const loginStatus = document.getElementById("loginStatus");
 const logoutButton = document.getElementById("logoutButton");
 const adminButton = document.getElementById("adminButton");
 const adminView = document.getElementById("adminView");
+const usersList = document.getElementById("usersList");
+const usersStatus = document.getElementById("usersStatus");
 
 let currentSelectedElement = null;
 let activeStepId = null;
@@ -37,6 +39,57 @@ function updateAuthenticatedView() {
   adminView.hidden = !isAdmin;
   createModeView.hidden = !isEditor;
   learnModeView.hidden = !isLearner;
+}
+
+async function loadAdminUsers() {
+  if (window.authService.getCurrentRole() !== "admin") {
+    return;
+  }
+
+  usersStatus.textContent = window.i18nService.translate("loadingUsers", window.i18nService.getLanguage());
+  usersStatus.dataset.type = "info";
+  usersList.replaceChildren();
+
+  try {
+    const users = await window.apiService.request("/api/users");
+
+    users.forEach((user) => {
+      const item = document.createElement("div");
+      item.className = "user-item";
+
+      const identity = document.createElement("div");
+      const name = document.createElement("strong");
+      name.textContent = user.displayName || user.username;
+
+      const username = document.createElement("span");
+      username.textContent = user.username;
+
+      identity.append(name, username);
+
+      const meta = document.createElement("div");
+      meta.className = "user-item__meta";
+
+      const role = document.createElement("span");
+      role.textContent = Array.isArray(user.roles) && user.roles.length ? user.roles.join(", ") : "—";
+
+      const state = document.createElement("span");
+      state.textContent = window.i18nService.translate(user.isActive ? "userActive" : "userInactive", window.i18nService.getLanguage());
+
+      meta.append(role, state);
+      item.append(identity, meta);
+      usersList.appendChild(item);
+    });
+
+    usersStatus.textContent = users.length
+      ? ""
+      : window.i18nService.translate("noUsers", window.i18nService.getLanguage());
+  } catch (error) {
+    usersStatus.textContent = window.i18nService.translate(
+      error?.status == null ? "serverUnavailable" : "usersLoadError",
+      window.i18nService.getLanguage()
+    );
+    usersStatus.dataset.type = "error";
+  }
 }
 
 function setStatus(message, type = "info") {
@@ -266,6 +319,7 @@ async function handleLogin() {
   appView.hidden = false;
   adminModeActive = false;
   updateAuthenticatedView();
+  await loadAdminUsers();
 }
 
 async function handleLogout() {
@@ -316,6 +370,7 @@ async function initializePanel() {
     appView.hidden = false;
     adminModeActive = false;
     updateAuthenticatedView();
+    await loadAdminUsers();
   } else {
     loginView.hidden = false;
     appView.hidden = true;
