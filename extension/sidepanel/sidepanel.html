@@ -56,6 +56,27 @@
           </header>
 
           <section class="card">
+            <h2 data-i18n="createUserTitle">Create User</h2>
+            <label for="newDisplayName" data-i18n="displayNameLabel">Display name</label>
+            <input id="newDisplayName" type="text" autocomplete="off" />
+
+            <label for="newUsername" data-i18n="usernameLabel">Username</label>
+            <input id="newUsername" type="text" autocomplete="off" />
+
+            <label for="newPassword" data-i18n="passwordLabel">Password</label>
+            <input id="newPassword" type="password" autocomplete="new-password" />
+
+            <label for="newRole" data-i18n="roleLabel">Role</label>
+            <select id="newRole">
+              <option value="editor" data-i18n="editorRole">Editor</option>
+              <option value="learner" data-i18n="learnerRole">Learner</option>
+            </select>
+
+            <button id="createUserButton" class="button button--primary button--full login-button" type="button" data-i18n="createUserButton">Create user</button>
+            <p id="createUserStatus" class="status" aria-live="polite"></p>
+          </section>
+
+          <section class="card">
             <h2 data-i18n="userManagementTitle">User Management</h2>
             <p class="description" data-i18n="userManagementDescription">Users registered in the platform.</p>
             <div id="usersList" class="users-list"></div>
