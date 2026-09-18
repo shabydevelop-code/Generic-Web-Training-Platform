@@ -58,10 +58,32 @@
     return steps.map((step) => ({ ...step }));
   }
 
+  function replaceSteps(newSteps) {
+    steps.length = 0;
+
+    newSteps.forEach((step, index) => {
+      steps.push({
+        id: crypto.randomUUID(),
+        order: index + 1,
+        selector: step.selector.trim(),
+        instruction: step.instruction.trim(),
+        element: null
+      });
+    });
+
+    return getSteps();
+  }
+
+  function clearSteps() {
+    steps.length = 0;
+  }
+
   window.trainingService = {
     createStep,
     updateStep,
     deleteStep,
-    getSteps
+    getSteps,
+    replaceSteps,
+    clearSteps
   };
 })();
