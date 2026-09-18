@@ -5,14 +5,16 @@
       loginDescription: "Enter your access password to continue.",
       passwordLabel: "Password",
       passwordPlaceholder: "Enter password",
-      continueButton: "Continue"
+      continueButton: "Continue",
+      invalidPassword: "Incorrect password. Please try again."
     }),
     he: Object.freeze({
       loginTitle: "כניסה",
       loginDescription: "הזן את סיסמת הגישה כדי להמשיך.",
       passwordLabel: "סיסמה",
       passwordPlaceholder: "הזן סיסמה",
-      continueButton: "המשך"
+      continueButton: "המשך",
+      invalidPassword: "סיסמה שגויה. נסה שוב."
     })
   });
 
