@@ -57,6 +57,12 @@ const editActiveSection = document.getElementById("editActiveSection");
 const saveUserButton = document.getElementById("saveUserButton");
 const cancelEditUserButton = document.getElementById("cancelEditUserButton");
 const editUserStatus = document.getElementById("editUserStatus");
+const guideLibraryView = document.getElementById("guideLibraryView");
+const guideEditorView = document.getElementById("guideEditorView");
+const guidesList = document.getElementById("guidesList");
+const guidesStatus = document.getElementById("guidesStatus");
+const openNewGuideButton = document.getElementById("openNewGuideButton");
+const backToGuidesButton = document.getElementById("backToGuidesButton");
 
 let currentSelectedElement = null;
 let activeStepId = null;
@@ -80,6 +86,51 @@ function updateAuthenticatedView() {
   adminView.hidden = !isAdmin;
   createModeView.hidden = !isEditor;
   learnModeView.hidden = !isLearner;
+}
+
+async function loadGuides() {
+  if (window.authService.getCurrentRole() !== "editor") return;
+
+  guidesList.replaceChildren();
+  guidesStatus.textContent = "Loading guides...";
+  guidesStatus.dataset.type = "info";
+
+  try {
+    const guides = await window.apiService.request("/api/guides");
+
+    guides.forEach((guide) => {
+      const item = document.createElement("div");
+      item.className = "guide-item";
+
+      const name = document.createElement("strong");
+      name.textContent = guide.name;
+
+      const meta = document.createElement("span");
+      meta.textContent = `${guide.topicName} · ${guide.stepCount} step${guide.stepCount === 1 ? "" : "s"}`;
+
+      item.append(name, meta);
+      guidesList.appendChild(item);
+    });
+
+    guidesStatus.textContent = guides.length ? "" : "No guides have been created yet.";
+  } catch (error) {
+    guidesStatus.textContent = error?.status == null
+      ? "Server unavailable."
+      : "Could not load guides.";
+    guidesStatus.dataset.type = "error";
+  }
+}
+
+function openNewGuide() {
+  guideLibraryView.hidden = true;
+  guideEditorView.hidden = false;
+}
+
+function showGuideLibrary() {
+  closeStepCreator();
+  guideEditorView.hidden = true;
+  guideLibraryView.hidden = false;
+  loadGuides();
 }
 
 function openCreateUser() {
@@ -738,6 +789,7 @@ async function handleLogin() {
   updateAuthenticatedView();
   await loadAdminUsers();
   await loadTopics();
+  await loadGuides();
 }
 
 async function handleLogout() {
@@ -755,6 +807,8 @@ async function handleLogout() {
   usernameInput.focus();
 }
 
+openNewGuideButton.addEventListener("click", openNewGuide);
+backToGuidesButton.addEventListener("click", showGuideLibrary);
 addStepButton.addEventListener("click", openStepCreator);
 cancelStepButton.addEventListener("click", closeStepCreator);
 openCreateTopicButton.addEventListener("click", openTopicCreator);
@@ -811,6 +865,7 @@ async function initializePanel() {
     updateAuthenticatedView();
     await loadAdminUsers();
     await loadTopics();
+    await loadGuides();
   } else {
     loginView.hidden = false;
     appView.hidden = true;
