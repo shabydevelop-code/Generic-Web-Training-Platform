@@ -84,11 +84,11 @@
               <option value="learner" data-i18n="learnerRole">Learner</option>
             </select>
 
+            <p id="createUserStatus" class="status" aria-live="polite"></p>
             <div class="actions">
               <button id="createUserButton" class="button button--primary" type="button" data-i18n="createUserButton">Create user</button>
               <button id="closeCreateUserButton" class="button" type="button" data-i18n="cancelButton">Close</button>
             </div>
-            <p id="createUserStatus" class="status" aria-live="polite"></p>
           </section>
 
           <section id="editUserCard" class="card" hidden>
@@ -114,6 +114,7 @@
               <span data-i18n="activeUserLabel">Active user</span>
             </label>
 
+            <p id="editUserStatus" class="status" aria-live="polite"></p>
             <div class="actions">
               <button id="saveUserButton" class="button button--primary" type="button" data-i18n="saveChangesButton">Save changes</button>
               <button id="cancelEditUserButton" class="button" type="button" data-i18n="cancelButton">Cancel</button>
@@ -121,7 +122,6 @@
             <div id="editUserDeleteSection" class="edit-user__delete-section">
               <button id="deleteEditedUserButton" class="button button--danger" type="button" data-i18n="deleteUserButton">Delete</button>
             </div>
-            <p id="editUserStatus" class="status" aria-live="polite"></p>
           </section>
         </div>
       <div id="createModeView">
@@ -166,6 +166,7 @@
             <h2 data-i18n="editTopicTitle">Edit Topic</h2>
             <label for="editTopicInput"><span data-i18n="topicNameLabel">Topic name</span> <span class="required-marker" aria-hidden="true">*</span></label>
             <input id="editTopicInput" type="text" autocomplete="off" required aria-required="true" />
+            <p id="editTopicStatus" class="status topic-editor-status" aria-live="polite"></p>
             <div class="actions">
               <button id="saveTopicButton" class="button button--primary" type="button" data-i18n="saveChangesButton">Save changes</button>
               <button id="cancelEditTopicButton" class="button" type="button" data-i18n="cancelButton">Close</button>
@@ -173,7 +174,6 @@
             <div id="editTopicDeleteSection" class="entity-edit-delete-section">
               <button id="deleteEditedTopicButton" class="button button--danger button--full" type="button" data-i18n="deleteTopicButton">Delete</button>
             </div>
-            <p id="editTopicStatus" class="status topic-editor-status" aria-live="polite"></p>
           </section>
 
           <div id="topicsList" class="topics-list"></div>
@@ -201,14 +201,14 @@
 
           <div class="guide-details-divider"></div>
 
-          <div class="actions guide-editor-actions">
+          <p id="saveGuideStatus" class="status" aria-live="polite"></p>
+            <div class="actions guide-editor-actions">
             <button id="saveGuideButton" class="button button--primary guide-save-button" type="button" data-i18n="saveGuideButton">Save Guide</button>
             <button id="backToGuidesButton" class="button" type="button" data-i18n="cancelButton">Close</button>
           </div>
           <div id="editGuideDeleteSection" class="entity-edit-delete-section" hidden>
             <button id="deleteEditedGuideButton" class="button button--danger button--full" type="button" data-i18n="deleteStepButton">Delete</button>
           </div>
-          <p id="saveGuideStatus" class="status" aria-live="polite"></p>
 
         </section>
 
@@ -233,7 +233,6 @@
           </div>
 
           <input id="selectorInput" type="hidden" value="" />
-          <p id="status" class="status" aria-live="polite"></p>
 
           <label for="instructionInput" data-i18n="instructionLabel">Instruction</label>
           <textarea
@@ -244,7 +243,8 @@
             placeholder="Type the instruction for this step..."
           ></textarea>
 
-          <div class="actions">
+          <p id="status" class="status" aria-live="polite"></p>
+            <div class="actions">
             <button
               id="saveStepButton"
               class="button button--primary"
