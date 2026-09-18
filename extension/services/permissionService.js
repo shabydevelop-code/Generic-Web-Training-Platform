@@ -5,6 +5,10 @@
   });
 
   const ROLE_PERMISSIONS = Object.freeze({
+    admin: Object.freeze([
+      PERMISSIONS.RUN_TRAINING,
+      PERMISSIONS.CREATE_TRAINING
+    ]),
     editor: Object.freeze([
       PERMISSIONS.RUN_TRAINING,
       PERMISSIONS.CREATE_TRAINING
