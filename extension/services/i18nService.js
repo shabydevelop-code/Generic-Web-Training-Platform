@@ -6,7 +6,8 @@
       passwordLabel: "Password",
       passwordPlaceholder: "Enter password",
       continueButton: "Continue",
-      invalidPassword: "Incorrect password. Please try again."
+      invalidPassword: "Incorrect password. Please try again.",
+      logoutButton: "Log out"
     }),
     he: Object.freeze({
       loginTitle: "כניסה",
@@ -14,7 +15,8 @@
       passwordLabel: "סיסמה",
       passwordPlaceholder: "הזן סיסמה",
       continueButton: "המשך",
-      invalidPassword: "סיסמה שגויה. נסה שוב."
+      invalidPassword: "סיסמה שגויה. נסה שוב.",
+      logoutButton: "יציאה"
     })
   });
 
