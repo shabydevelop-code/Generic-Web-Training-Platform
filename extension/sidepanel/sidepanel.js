@@ -484,11 +484,10 @@ async function handleSaveUser() {
 }
 
 async function loadAdminUsers() {
-  if (window.authService.getCurrentRole() !== "admin") {
-    return;
-  }
+  if (window.authService.getCurrentRole() !== "admin") return;
 
-  usersStatus.textContent = window.i18nService.translate("loadingUsers", window.i18nService.getLanguage());
+  const language = window.i18nService.getLanguage();
+  usersStatus.textContent = window.i18nService.translate("loadingUsers", language);
   usersStatus.dataset.type = "info";
   usersList.replaceChildren();
 
@@ -500,23 +499,9 @@ async function loadAdminUsers() {
       item.className = "user-item";
       const isAdminUser = Array.isArray(user.roles) && user.roles.includes("admin");
 
-      if (!isAdminUser || user.id === window.authService.getCurrentUser()?.id) {
-        item.classList.add("user-item--editable");
-        item.tabIndex = 0;
-        item.setAttribute("role", "button");
-        item.addEventListener("click", () => openUserEditor(user));
-        item.addEventListener("keydown", (event) => {
-          if (event.key === "Enter" || event.key === " ") {
-            event.preventDefault();
-            openUserEditor(user);
-          }
-        });
-      }
-
       const identity = document.createElement("div");
       const name = document.createElement("strong");
       name.textContent = user.displayName || user.username;
-
       identity.append(name);
 
       if (user.displayName) {
@@ -532,22 +517,62 @@ async function loadAdminUsers() {
       role.textContent = Array.isArray(user.roles) && user.roles.length ? user.roles.join(", ") : "—";
 
       const state = document.createElement("span");
-      state.textContent = window.i18nService.translate(user.isActive ? "userActive" : "userInactive", window.i18nService.getLanguage());
-
+      state.textContent = window.i18nService.translate(user.isActive ? "userActive" : "userInactive", language);
       meta.append(role, state);
+
+      const actions = document.createElement("div");
+      actions.className = "user-item__actions";
+
+      if (!isAdminUser || user.id === window.authService.getCurrentUser()?.id) {
+        const editButton = document.createElement("button");
+        editButton.className = "user-item__action";
+        editButton.type = "button";
+        editButton.textContent = window.i18nService.translate("editUserButton", language);
+        editButton.addEventListener("click", () => openUserEditor(user));
+        actions.appendChild(editButton);
+      }
+
+      if (!isAdminUser) {
+        const deleteButton = document.createElement("button");
+        deleteButton.className = "user-item__action user-item__action--danger";
+        deleteButton.type = "button";
+        deleteButton.textContent = window.i18nService.translate("deleteUserButton", language);
+        deleteButton.addEventListener("click", () => {
+          const message = window.i18nService.translate("confirmDeleteUser", language).replace("{name}", user.displayName || user.username);
+          requestDeleteConfirmation(message, () => handleDeleteUser(user.id));
+        });
+        actions.appendChild(deleteButton);
+      }
+
       item.append(identity, meta);
+      if (actions.childElementCount) item.appendChild(actions);
       usersList.appendChild(item);
     });
 
-    usersStatus.textContent = users.length
-      ? ""
-      : window.i18nService.translate("noUsers", window.i18nService.getLanguage());
+    usersStatus.textContent = users.length ? "" : window.i18nService.translate("noUsers", language);
   } catch (error) {
     usersStatus.textContent = window.i18nService.translate(
       error?.status == null ? "serverUnavailable" : "usersLoadError",
-      window.i18nService.getLanguage()
+      language
     );
     usersStatus.dataset.type = "error";
+  }
+}
+
+async function handleDeleteUser(userId) {
+  const language = window.i18nService.getLanguage();
+  try {
+    await window.apiService.request(`/api/users/${userId}`, { method: "DELETE" });
+    await loadAdminUsers();
+    usersStatus.textContent = window.i18nService.translate("userDeleted", language);
+    usersStatus.dataset.type = "success";
+  } catch (error) {
+    usersStatus.textContent = window.i18nService.translate(
+      error?.status === 409 ? "adminDeleteBlocked" : error?.status == null ? "serverUnavailable" : "userDeleteError",
+      language
+    );
+    usersStatus.dataset.type = "error";
+    closeDeleteConfirmation();
   }
 }
 
