@@ -621,9 +621,10 @@ editorGuides.MapPut("/{id:long}", (long id, CreateGuideRequest request) =>
 
     using var guideCommand = connection.CreateCommand();
     guideCommand.Transaction = transaction;
-    guideCommand.CommandText = "UPDATE Guides SET TopicId = $topicId, Name = $name WHERE Id = $id;";
+    guideCommand.CommandText = "UPDATE Guides SET TopicId = $topicId, Name = $name, IsAvailable = $isAvailable WHERE Id = $id;";
     guideCommand.Parameters.AddWithValue("$topicId", request.TopicId);
     guideCommand.Parameters.AddWithValue("$name", name);
+    guideCommand.Parameters.AddWithValue("$isAvailable", request.IsAvailable ? 1 : 0);
     guideCommand.Parameters.AddWithValue("$id", id);
     if (guideCommand.ExecuteNonQuery() == 0)
     {
@@ -659,7 +660,7 @@ editorGuides.MapPut("/{id:long}", (long id, CreateGuideRequest request) =>
         id,
         request.TopicId,
         name,
-        false,
+        request.IsAvailable,
         request.Steps.Select((step, index) =>
             new GuideStepResponse(index + 1, step.Selector.Trim(), step.Instruction.Trim()))
             .ToList()));
@@ -711,11 +712,12 @@ editorGuides.MapPost("", (CreateGuideRequest request) =>
     guideCommand.Transaction = transaction;
     guideCommand.CommandText = """
         INSERT INTO Guides (TopicId, Name, IsAvailable)
-        VALUES ($topicId, $name, 0);
+        VALUES ($topicId, $name, $isAvailable);
         SELECT last_insert_rowid();
         """;
     guideCommand.Parameters.AddWithValue("$topicId", request.TopicId);
     guideCommand.Parameters.AddWithValue("$name", name);
+    guideCommand.Parameters.AddWithValue("$isAvailable", request.IsAvailable ? 1 : 0);
     var guideId = Convert.ToInt64(guideCommand.ExecuteScalar());
 
     for (var index = 0; index < request.Steps.Count; index++)
@@ -742,7 +744,7 @@ editorGuides.MapPost("", (CreateGuideRequest request) =>
             guideId,
             request.TopicId,
             name,
-            false,
+            request.IsAvailable,
             request.Steps.Select((step, index) =>
                 new GuideStepResponse(index + 1, step.Selector.Trim(), step.Instruction.Trim()))
                 .ToList()));
@@ -869,6 +871,7 @@ sealed record CreateGuideStepRequest(
 sealed record CreateGuideRequest(
     long TopicId,
     string Name,
+    bool IsAvailable,
     List<CreateGuideStepRequest> Steps);
 
 sealed record GuideStepResponse(
