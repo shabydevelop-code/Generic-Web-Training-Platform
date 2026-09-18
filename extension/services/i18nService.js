@@ -11,7 +11,12 @@
       invalidPassword: "Incorrect username or password. Please try again.",
       serverUnavailable: "Cannot connect to the server. Make sure the service is running and try again.",
       serverError: "The server encountered an error. Please try again.",
-      logoutButton: "Log out"
+      logoutButton: "Log out",
+      adminButton: "Admin",
+      adminTitle: "Administration",
+      adminDescription: "Manage users and platform permissions.",
+      userManagementTitle: "User Management",
+      userManagementDescription: "User management tools will appear here."
     }),
     he: Object.freeze({
       loginTitle: "כניסה",
@@ -24,7 +29,12 @@
       invalidPassword: "שם המשתמש או הסיסמה שגויים. נסה שוב.",
       serverUnavailable: "לא ניתן להתחבר לשרת. ודא שהשירות פעיל ונסה שוב.",
       serverError: "אירעה שגיאה בשרת. נסה שוב.",
-      logoutButton: "יציאה"
+      logoutButton: "יציאה",
+      adminButton: "ניהול",
+      adminTitle: "ניהול מערכת",
+      adminDescription: "ניהול משתמשים והרשאות במערכת.",
+      userManagementTitle: "ניהול משתמשים",
+      userManagementDescription: "כלי ניהול המשתמשים יופיעו כאן."
     })
   });
 
