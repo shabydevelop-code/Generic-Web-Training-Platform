@@ -152,7 +152,10 @@
           <button id="openCreateTopicButton" class="button button--primary button--full topics-primary-action" type="button" data-i18n="openCreateTopicButton">+ Add Topic</button>
 
           <section id="createTopicEditor" class="card topic-editor-card" hidden>
-            <input id="newTopicInput" type="text" autocomplete="off" data-i18n-placeholder="newTopicPlaceholder" placeholder="New topic name" />
+            <h2 data-i18n="createTopicTitle">Add Topic</h2>
+            <label for="newTopicInput"><span data-i18n="topicNameLabel">Topic name</span> <span class="required-marker" aria-hidden="true">*</span></label>
+            <input id="newTopicInput" type="text" autocomplete="off" required aria-required="true" data-i18n-placeholder="newTopicPlaceholder" placeholder="New topic name" />
+            <p id="topicStatus" class="status topic-editor-status" aria-live="polite"></p>
             <div class="actions">
               <button id="createTopicButton" class="button button--primary" type="button" data-i18n="createTopicButton">Add Topic</button>
               <button id="cancelCreateTopicButton" class="button" type="button" data-i18n="cancelStepButton">Cancel</button>
@@ -174,7 +177,6 @@
           </section>
 
           <div id="topicsList" class="topics-list"></div>
-          <p id="topicStatus" class="status" aria-live="polite"></p>
         </div>
 
         <div id="guideEditorView" hidden>
