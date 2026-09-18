@@ -192,13 +192,20 @@ app.MapPut("/api/users/{id:long}", (long id, UpdateUserRequest request) =>
 
     using var userCommand = connection.CreateCommand();
     userCommand.Transaction = transaction;
+    var passwordHash = string.IsNullOrWhiteSpace(request.NewPassword)
+        ? null
+        : new PasswordHasher<object>().HashPassword(new object(), request.NewPassword);
+
     userCommand.CommandText = """
         UPDATE Users
-        SET DisplayName = $displayName, IsActive = $isActive
+        SET DisplayName = $displayName,
+            IsActive = $isActive,
+            PasswordHash = COALESCE($passwordHash, PasswordHash)
         WHERE Id = $id;
         """;
     userCommand.Parameters.AddWithValue("$displayName", string.IsNullOrWhiteSpace(displayName) ? DBNull.Value : displayName);
     userCommand.Parameters.AddWithValue("$isActive", request.IsActive ? 1 : 0);
+    userCommand.Parameters.AddWithValue("$passwordHash", passwordHash is null ? DBNull.Value : passwordHash);
     userCommand.Parameters.AddWithValue("$id", id);
     userCommand.ExecuteNonQuery();
 
@@ -364,7 +371,8 @@ sealed record CreateUserRequest(
 sealed record UpdateUserRequest(
     string? DisplayName,
     string Role,
-    bool IsActive);
+    bool IsActive,
+    string? NewPassword);
 
 sealed record LoginRequest(string Username, string Password);
 
