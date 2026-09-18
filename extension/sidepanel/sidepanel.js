@@ -84,6 +84,7 @@ let activeStepId = null;
 let adminModeActive = false;
 let editingUserId = null;
 let editingStepId = null;
+let editingGuideId = null;
 
 function updateAuthenticatedView() {
   const role = window.authService.getCurrentRole();
@@ -288,6 +289,7 @@ async function openExistingGuide(guideId) {
   try {
     const guide = await window.apiService.request(`/api/guides/${guideId}`);
 
+    editingGuideId = guide.id;
     topicSelect.value = String(guide.topicId);
     guideNameInput.value = guide.name;
     window.trainingService.replaceSteps(guide.steps || []);
@@ -325,6 +327,7 @@ function closeTopics() {
 }
 
 function openNewGuide() {
+  editingGuideId = null;
   topicsView.hidden = true;
   topicSelect.value = "";
   guideNameInput.value = "";
@@ -927,8 +930,11 @@ saveGuideButton.addEventListener("click", async () => {
   saveGuideStatus.textContent = "";
 
   try {
-    await window.apiService.request("/api/guides", {
-      method: "POST",
+    const guidePath = editingGuideId ? `/api/guides/${editingGuideId}` : "/api/guides";
+    const guideMethod = editingGuideId ? "PUT" : "POST";
+
+    const savedGuide = await window.apiService.request(guidePath, {
+      method: guideMethod,
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         topicId,
@@ -940,6 +946,9 @@ saveGuideButton.addEventListener("click", async () => {
       })
     });
 
+    if (!editingGuideId && savedGuide?.id) {
+      editingGuideId = savedGuide.id;
+    }
     saveGuideStatus.textContent = window.i18nService.translate("guideSaved", language);
     saveGuideStatus.dataset.type = "success";
   } catch (error) {
