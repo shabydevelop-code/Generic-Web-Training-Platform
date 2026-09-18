@@ -18,6 +18,7 @@ const appView = document.getElementById("appView");
 const passwordInput = document.getElementById("passwordInput");
 const loginButton = document.getElementById("loginButton");
 const loginStatus = document.getElementById("loginStatus");
+const logoutButton = document.getElementById("logoutButton");
 
 let currentSelectedElement = null;
 let activeStepId = null;
@@ -239,6 +240,18 @@ async function handleLogin() {
   learnModeView.hidden = window.permissionService.canCreateTraining();
 }
 
+function handleLogout() {
+  window.authService.logout();
+  appView.hidden = true;
+  createModeView.hidden = true;
+  learnModeView.hidden = true;
+  loginView.hidden = false;
+  loginStatus.textContent = "";
+  passwordInput.value = "";
+  passwordInput.focus();
+}
+
+logoutButton.addEventListener("click", handleLogout);
 loginButton.addEventListener("click", handleLogin);
 passwordInput.addEventListener("keydown", (event) => {
   if (event.key === "Enter") {
