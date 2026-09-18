@@ -762,7 +762,16 @@ function updateGuideEditorValidity() {
   return guideIdentityValid;
 }
 
+function clearPageTrainingVisuals() {
+  window.messagingService.sendToActivePage({ type: "GWTP_CLEAR_HIGHLIGHT" }).catch((error) => {
+    console.debug("Could not clear page training visuals.", error);
+  });
+  activeStepId = null;
+  markActiveStep(null);
+}
+
 function closeStepCreator() {
+  clearPageTrainingVisuals();
   editingStepId = null;
   editingStepSnapshot = null;
   saveStepButton.textContent = window.i18nService.translate("saveStepButton", window.i18nService.getLanguage());
