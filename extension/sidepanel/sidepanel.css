@@ -304,3 +304,7 @@ select:focus {
 .user-item__meta {
   text-align: end;
 }
+
+.required-marker {
+  color: #b42318;
+}
