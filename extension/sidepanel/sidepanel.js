@@ -13,6 +13,11 @@ const stepsSection = document.getElementById("stepsSection");
 const stepsList = document.getElementById("stepsList");
 const learnModeView = document.getElementById("learnModeView");
 const createModeView = document.getElementById("createModeView");
+const loginView = document.getElementById("loginView");
+const appView = document.getElementById("appView");
+const passwordInput = document.getElementById("passwordInput");
+const loginButton = document.getElementById("loginButton");
+const loginStatus = document.getElementById("loginStatus");
 
 let currentSelectedElement = null;
 let activeStepId = null;
@@ -204,6 +209,40 @@ chrome.runtime.onMessage.addListener((message) => {
 
   if (message?.type === "GWTP_ELEMENT_SELECTION_CANCELLED") {
     setStatus("Element selection cancelled.");
+  }
+});
+
+
+async function handleLogin() {
+  const password = passwordInput.value;
+
+  if (!password) {
+    loginStatus.textContent = window.i18nService.translate("invalidPassword", window.i18nService.getLanguage());
+    loginStatus.dataset.type = "error";
+    return;
+  }
+
+  const role = await window.authService.authenticate(password);
+
+  if (!role) {
+    loginStatus.textContent = window.i18nService.translate("invalidPassword", window.i18nService.getLanguage());
+    loginStatus.dataset.type = "error";
+    passwordInput.select();
+    return;
+  }
+
+  loginStatus.textContent = "";
+  passwordInput.value = "";
+  loginView.hidden = true;
+  appView.hidden = false;
+  createModeView.hidden = !window.permissionService.canCreateTraining();
+  learnModeView.hidden = window.permissionService.canCreateTraining();
+}
+
+loginButton.addEventListener("click", handleLogin);
+passwordInput.addEventListener("keydown", (event) => {
+  if (event.key === "Enter") {
+    handleLogin();
   }
 });
 
