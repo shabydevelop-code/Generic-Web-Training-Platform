@@ -52,8 +52,13 @@
     return currentRole;
   }
 
+  function logout() {
+    currentRole = null;
+  }
+
   window.authService = Object.freeze({
     authenticate,
-    getCurrentRole
+    getCurrentRole,
+    logout
   });
 })();
