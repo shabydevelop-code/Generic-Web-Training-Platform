@@ -346,6 +346,7 @@ async function handleCreateTopic() {
 
     await loadTopics();
     topicSelect.value = String(topic.id);
+    updateAddStepAvailability();
     closeTopicCreator();
     topicStatus.textContent = window.i18nService.translate("topicCreated", language);
     topicStatus.dataset.type = "success";
@@ -360,6 +361,10 @@ async function handleCreateTopic() {
   } finally {
     createTopicButton.disabled = false;
   }
+}
+
+function updateAddStepAvailability() {
+  addStepButton.disabled = !topicSelect.value || !guideNameInput.value.trim();
 }
 
 function closeStepCreator() {
@@ -571,11 +576,13 @@ saveGuideButton.addEventListener("click", async () => {
 guideNameInput.addEventListener("input", () => {
   saveGuideStatus.textContent = "";
   saveGuideStatus.removeAttribute("data-type");
+  updateAddStepAvailability();
 });
 
 topicSelect.addEventListener("change", () => {
   saveGuideStatus.textContent = "";
   saveGuideStatus.removeAttribute("data-type");
+  updateAddStepAvailability();
 });
 
 chrome.runtime.onMessage.addListener((message) => {
@@ -697,6 +704,7 @@ async function initializePanel() {
   saveGuideStatus.textContent = "";
   saveGuideStatus.removeAttribute("data-type");
   activeStepId = null;
+  updateAddStepAvailability();
   renderSteps();
 
   const restoredUser = await window.authService.restoreSession();
