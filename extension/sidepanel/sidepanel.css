@@ -23,7 +23,7 @@ body {
 
 .eyebrow {
   margin: 0 0 6px;
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -136,7 +136,7 @@ select:focus {
 .selected-element__label {
   display: block;
   margin-bottom: 5px;
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 700;
   color: #475467;
   text-transform: uppercase;
@@ -180,7 +180,7 @@ select:focus {
   top: 12px;
   right: 12px;
   color: #667085;
-  font-size: 11px;
+  font-size: 13px;
 }
 
 .step-item:hover {
@@ -227,7 +227,7 @@ select:focus {
   display: block;
   padding-top: 8px;
   border-top: 1px solid #eaecf0;
-  font-size: 11px;
+  font-size: 13px;
   line-height: 1.4;
   color: #667085;
   overflow-wrap: anywhere;
@@ -245,7 +245,7 @@ select:focus {
   background: transparent;
   color: #175cd3;
   font: inherit;
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 600;
   cursor: pointer;
 }
@@ -304,7 +304,7 @@ select:focus {
 }
 
 .current-user-identity__role {
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 500;
   color: #667085;
 }
@@ -354,7 +354,7 @@ select:focus {
 
 .user-item span {
   margin-top: 3px;
-  font-size: 11px;
+  font-size: 13px;
   color: #667085;
 }
 
@@ -494,7 +494,7 @@ select:focus {
 
 .guide-item span {
   margin-top: 4px;
-  font-size: 11px;
+  font-size: 13px;
   color: #667085;
 }
 
@@ -813,7 +813,7 @@ select:focus {
 }
 .user-item__identity span {
   margin-top: 4px;
-  font-size: 11px;
+  font-size: 13px;
   color: #667085;
 }
 .user-item__meta {
@@ -824,7 +824,7 @@ select:focus {
 }
 .user-item__meta span {
   margin-top: 0;
-  font-size: 11px;
+  font-size: 13px;
   color: #667085;
 }
 .user-item__meta span + span::before {
