@@ -348,6 +348,95 @@ adminUsers.MapGet("", () =>
 });
 
 
+var editorTopics = app.MapGroup("/api/topics");
+editorTopics.AddEndpointFilter(async (context, next) =>
+{
+    var authorization = context.HttpContext.Request.Headers.Authorization.ToString();
+
+    if (!authorization.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+    {
+        return Results.Unauthorized();
+    }
+
+    var token = authorization["Bearer ".Length..].Trim();
+    long userId;
+
+    lock (sessionLock)
+    {
+        if (!sessions.TryGetValue(token, out userId))
+        {
+            return Results.Unauthorized();
+        }
+    }
+
+    using var connection = OpenConnection(databasePath);
+    using var command = connection.CreateCommand();
+    command.CommandText = """
+        SELECT COUNT(*)
+        FROM Users u
+        INNER JOIN UserRoles r ON r.UserId = u.Id
+        WHERE u.Id = $userId AND u.IsActive = 1 AND r.Role = 'editor';
+        """;
+    command.Parameters.AddWithValue("$userId", userId);
+
+    if (Convert.ToInt32(command.ExecuteScalar()) == 0)
+    {
+        return Results.Forbid();
+    }
+
+    return await next(context);
+});
+
+editorTopics.MapGet("", () =>
+{
+    using var connection = OpenConnection(databasePath);
+    using var command = connection.CreateCommand();
+    command.CommandText = "SELECT Id, Name FROM Topics ORDER BY Name COLLATE NOCASE, Id;";
+
+    using var reader = command.ExecuteReader();
+    var topics = new List<TopicResponse>();
+
+    while (reader.Read())
+    {
+        topics.Add(new TopicResponse(reader.GetInt64(0), reader.GetString(1)));
+    }
+
+    return Results.Ok(topics);
+});
+
+editorTopics.MapPost("", (CreateTopicRequest request) =>
+{
+    var name = request.Name?.Trim();
+
+    if (string.IsNullOrWhiteSpace(name))
+    {
+        return Results.BadRequest(new { message = "Topic name is required." });
+    }
+
+    using var connection = OpenConnection(databasePath);
+
+    using var existsCommand = connection.CreateCommand();
+    existsCommand.CommandText = "SELECT COUNT(*) FROM Topics WHERE Name = $name COLLATE NOCASE;";
+    existsCommand.Parameters.AddWithValue("$name", name);
+
+    if (Convert.ToInt32(existsCommand.ExecuteScalar()) > 0)
+    {
+        return Results.Conflict(new { message = "Topic name already exists." });
+    }
+
+    using var command = connection.CreateCommand();
+    command.CommandText = """
+        INSERT INTO Topics (Name)
+        VALUES ($name);
+        SELECT last_insert_rowid();
+        """;
+    command.Parameters.AddWithValue("$name", name);
+
+    var topicId = Convert.ToInt64(command.ExecuteScalar());
+    return Results.Created($"/api/topics/{topicId}", new TopicResponse(topicId, name));
+});
+
+
 var editorGuides = app.MapGroup("/api/guides");
 editorGuides.AddEndpointFilter(async (context, next) =>
 {
@@ -564,6 +653,12 @@ sealed record UpdateUserRequest(
     string Role,
     bool IsActive,
     string? NewPassword);
+
+sealed record CreateTopicRequest(string Name);
+
+sealed record TopicResponse(
+    long Id,
+    string Name);
 
 sealed record CreateGuideStepRequest(
     string Selector,
