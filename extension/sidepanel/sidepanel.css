@@ -594,3 +594,12 @@ select:focus {
 .topic-card__action--danger {
   color: #b42318;
 }
+
+.topic-editor-status {
+  margin-top: 8px;
+  min-height: 0;
+}
+
+.topic-editor-status:empty {
+  display: none;
+}
