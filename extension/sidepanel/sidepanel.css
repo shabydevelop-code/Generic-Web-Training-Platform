@@ -603,3 +603,67 @@ select:focus {
 .topic-editor-status:empty {
   display: none;
 }
+
+.button--danger {
+  border-color: #d92d20;
+  background: #d92d20;
+  color: #ffffff;
+}
+
+.guide-item__actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid #eaecf0;
+}
+
+.guide-item__action {
+  padding: 5px 8px;
+  border: 0;
+  background: transparent;
+  color: #175cd3;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.guide-item__action--danger {
+  color: #b42318;
+}
+
+.confirm-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+  background: rgba(16, 24, 40, 0.45);
+}
+
+.confirm-overlay[hidden] {
+  display: none;
+}
+
+.confirm-dialog {
+  width: 100%;
+  max-width: 340px;
+  padding: 18px;
+  border-radius: 12px;
+  background: #ffffff;
+  box-shadow: 0 18px 40px rgba(16, 24, 40, 0.2);
+}
+
+.confirm-dialog h2 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.confirm-dialog__warning {
+  margin: 8px 0 0;
+  color: #b42318;
+  font-size: 12px;
+}
