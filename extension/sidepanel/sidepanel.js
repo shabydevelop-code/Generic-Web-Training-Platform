@@ -57,6 +57,9 @@ const editActiveSection = document.getElementById("editActiveSection");
 const saveUserButton = document.getElementById("saveUserButton");
 const cancelEditUserButton = document.getElementById("cancelEditUserButton");
 const editUserStatus = document.getElementById("editUserStatus");
+const editUserDeleteSection = document.getElementById("editUserDeleteSection");
+const deleteEditedUserButton = document.getElementById("deleteEditedUserButton");
+let editingUserSnapshot = null;
 const topicsView = document.getElementById("topicsView");
 const topicsList = document.getElementById("topicsList");
 const openTopicsButton = document.getElementById("openTopicsButton");
@@ -433,6 +436,7 @@ async function handleCreateUser() {
 function openUserEditor(user) {
   closeCreateUser();
   editingUserId = user.id;
+  editingUserSnapshot = user;
   editUsername.textContent = user.username;
   editDisplayName.value = user.displayName || "";
   const isAdminUser = user.roles?.includes("admin");
@@ -441,6 +445,7 @@ function openUserEditor(user) {
   editNewPassword.value = "";
   editIsActive.checked = user.isActive;
   editActiveSection.hidden = isAdminUser;
+  editUserDeleteSection.hidden = isAdminUser;
   editUserStatus.textContent = "";
   editUserCard.hidden = false;
   editUserCard.scrollIntoView({ behavior: "smooth", block: "nearest" });
@@ -448,6 +453,7 @@ function openUserEditor(user) {
 
 function closeUserEditor() {
   editingUserId = null;
+  editingUserSnapshot = null;
   editUserCard.hidden = true;
   editNewPassword.value = "";
   editUserStatus.textContent = "";
@@ -553,32 +559,20 @@ async function loadAdminUsers() {
       state.textContent = window.i18nService.translate(user.isActive ? "userActive" : "userInactive", language);
       meta.append(role, state);
 
-      const actions = document.createElement("div");
-      actions.className = "entity-card__actions";
-
       if (!isAdminUser || user.id === window.authService.getCurrentUser()?.id) {
-        const editButton = document.createElement("button");
-        editButton.className = "entity-card__action";
-        editButton.type = "button";
-        editButton.textContent = window.i18nService.translate("editUserButton", language);
-        editButton.addEventListener("click", () => openUserEditor(user));
-        actions.appendChild(editButton);
-      }
-
-      if (!isAdminUser) {
-        const deleteButton = document.createElement("button");
-        deleteButton.className = "entity-card__action entity-card__action--danger";
-        deleteButton.type = "button";
-        deleteButton.textContent = window.i18nService.translate("deleteUserButton", language);
-        deleteButton.addEventListener("click", () => {
-          const message = window.i18nService.translate("confirmDeleteUser", language).replace("{name}", user.displayName || user.username);
-          requestDeleteConfirmation(message, () => handleDeleteUser(user.id));
+        item.classList.add("user-item--clickable");
+        item.setAttribute("role", "button");
+        item.tabIndex = 0;
+        item.addEventListener("click", () => openUserEditor(user));
+        item.addEventListener("keydown", (event) => {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            openUserEditor(user);
+          }
         });
-        actions.appendChild(deleteButton);
       }
 
       item.append(identity, meta);
-      if (actions.childElementCount) item.appendChild(actions);
       usersList.appendChild(item);
     });
 
@@ -1148,6 +1142,16 @@ openCreateUserButton.addEventListener("click", openCreateUser);
 closeCreateUserButton.addEventListener("click", closeCreateUser);
 createUserButton.addEventListener("click", handleCreateUser);
 saveUserButton.addEventListener("click", handleSaveUser);
+deleteEditedUserButton.addEventListener("click", () => {
+  if (!editingUserSnapshot) return;
+  const language = window.i18nService.getLanguage();
+  const message = window.i18nService.translate("confirmDeleteUser", language)
+    .replace("{name}", editingUserSnapshot.displayName || editingUserSnapshot.username);
+  requestDeleteConfirmation(message, async () => {
+    await handleDeleteUser(editingUserSnapshot.id);
+    closeUserEditor();
+  });
+});
 cancelEditUserButton.addEventListener("click", closeUserEditor);
 editDisplayName.addEventListener("input", clearEditUserFeedback);
 editNewPassword.addEventListener("input", clearEditUserFeedback);
