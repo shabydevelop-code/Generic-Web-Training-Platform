@@ -390,6 +390,22 @@ select:focus {
 }
 
 
+.topic-add-button {
+  margin-top: 8px;
+}
+
+#topicStatus:empty {
+  display: none;
+}
+
+#topicStatus:not(:empty) {
+  margin-bottom: 12px;
+}
+
+#guideNameInput {
+  margin-bottom: 0;
+}
+
 .guide-save-button {
   margin-top: 16px;
 }
