@@ -1,6 +1,9 @@
 (() => {
   window.appConfig = Object.freeze({
     language: "he",
+    api: Object.freeze({
+      baseUrl: "http://localhost:5000"
+    }),
     authentication: Object.freeze({
       iterations: 100000,
       credentials: Object.freeze({
