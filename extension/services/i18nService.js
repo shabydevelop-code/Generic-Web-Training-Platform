@@ -2,6 +2,8 @@
   const translations = Object.freeze({
     en: Object.freeze({
       elementSelectionTitle: "Element Selection",
+      guideEditorTitle: "Edit Guide",
+      guideEditorDescription: "Edit the guide details and its steps.",
       topicLabel: "Topic",
       selectTopicPlaceholder: "Select a topic",
       newTopicPlaceholder: "New topic name",
@@ -131,6 +133,8 @@
     }),
     he: Object.freeze({
       elementSelectionTitle: "בחירת אלמנט",
+      guideEditorTitle: "עריכת מדריך",
+      guideEditorDescription: "עריכת פרטי המדריך והשלבים שלו.",
       topicLabel: "נושא",
       selectTopicPlaceholder: "בחר נושא",
       newTopicPlaceholder: "שם נושא חדש",
