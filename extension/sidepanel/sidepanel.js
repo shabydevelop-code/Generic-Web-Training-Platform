@@ -390,6 +390,13 @@ async function handleCreateUser() {
     return;
   }
 
+  if (password.length < 6 || password.length > 20 || /\s/.test(password)) {
+    createUserStatus.textContent = window.i18nService.translate("passwordRequirementsInvalid", language);
+    createUserStatus.dataset.type = "error";
+    newPassword.focus();
+    return;
+  }
+
   createUserButton.disabled = true;
   createUserStatus.textContent = "";
 
@@ -456,6 +463,15 @@ async function handleSaveUser() {
 
   const language = window.i18nService.getLanguage();
   const displayName = editDisplayName.value.trim();
+  const newUserPassword = editNewPassword.value;
+
+  if (newUserPassword && (newUserPassword.length < 6 || newUserPassword.length > 20 || /\s/.test(newUserPassword))) {
+    editUserStatus.textContent = window.i18nService.translate("passwordRequirementsInvalid", language);
+    editUserStatus.dataset.type = "error";
+    editNewPassword.focus();
+    return;
+  }
+
 
   if (!displayName) {
     editUserStatus.textContent = window.i18nService.translate("editUserDisplayNameRequired", language);
