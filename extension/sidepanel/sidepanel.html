@@ -157,12 +157,13 @@
           </section>
 
           <section id="editTopicEditor" class="card topic-editor-card" hidden>
-            <label for="editTopicInput" data-i18n="editTopicTitle">Edit Topic</label>
-            <input id="editTopicInput" type="text" autocomplete="off" />
+            <label for="editTopicInput"><span data-i18n="editTopicTitle">Edit Topic</span> <span class="required-marker" aria-hidden="true">*</span></label>
+            <input id="editTopicInput" type="text" autocomplete="off" required aria-required="true" />
             <div class="actions">
               <button id="saveTopicButton" class="button button--primary" type="button" data-i18n="saveChangesButton">Save changes</button>
               <button id="cancelEditTopicButton" class="button" type="button" data-i18n="cancelStepButton">Cancel</button>
             </div>
+            <p id="editTopicStatus" class="status topic-editor-status" aria-live="polite"></p>
           </section>
 
           <div id="topicsList" class="topics-list"></div>
