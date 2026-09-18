@@ -67,6 +67,8 @@
       createUserRequired: "Display name, username and password are required.",
       userCreated: "User created successfully.",
       usernameExists: "This username already exists.",
+      usernameLengthInvalid: "The username must contain 5–30 characters.",
+      usernameInvalidCharacters: "The username contains invalid characters.",
       createUserError: "Could not create the user.",
       userManagementTitle: "User Management",
       userManagementDescription: "Users registered in the platform.",
