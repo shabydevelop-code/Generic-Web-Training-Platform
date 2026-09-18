@@ -24,6 +24,12 @@ const adminButton = document.getElementById("adminButton");
 const adminView = document.getElementById("adminView");
 const usersList = document.getElementById("usersList");
 const usersStatus = document.getElementById("usersStatus");
+const newDisplayName = document.getElementById("newDisplayName");
+const newUsername = document.getElementById("newUsername");
+const newPassword = document.getElementById("newPassword");
+const newRole = document.getElementById("newRole");
+const createUserButton = document.getElementById("createUserButton");
+const createUserStatus = document.getElementById("createUserStatus");
 
 let currentSelectedElement = null;
 let activeStepId = null;
@@ -39,6 +45,51 @@ function updateAuthenticatedView() {
   adminView.hidden = !isAdmin;
   createModeView.hidden = !isEditor;
   learnModeView.hidden = !isLearner;
+}
+
+async function handleCreateUser() {
+  const username = newUsername.value.trim();
+  const displayName = newDisplayName.value.trim();
+  const password = newPassword.value;
+  const role = newRole.value;
+  const language = window.i18nService.getLanguage();
+
+  if (!username || !password) {
+    createUserStatus.textContent = window.i18nService.translate("createUserRequired", language);
+    createUserStatus.dataset.type = "error";
+    return;
+  }
+
+  createUserButton.disabled = true;
+  createUserStatus.textContent = "";
+
+  try {
+    await window.apiService.request("/api/users", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username, displayName, password, role })
+    });
+
+    newDisplayName.value = "";
+    newUsername.value = "";
+    newPassword.value = "";
+    newRole.value = "editor";
+    createUserStatus.textContent = window.i18nService.translate("userCreated", language);
+    createUserStatus.dataset.type = "success";
+    await loadAdminUsers();
+  } catch (error) {
+    const key =
+      error?.status === 409
+        ? "usernameExists"
+        : error?.status == null
+          ? "serverUnavailable"
+          : "createUserError";
+
+    createUserStatus.textContent = window.i18nService.translate(key, language);
+    createUserStatus.dataset.type = "error";
+  } finally {
+    createUserButton.disabled = false;
+  }
 }
 
 async function loadAdminUsers() {
@@ -337,6 +388,7 @@ async function handleLogout() {
   usernameInput.focus();
 }
 
+createUserButton.addEventListener("click", handleCreateUser);
 logoutButton.addEventListener("click", handleLogout);
 loginButton.addEventListener("click", handleLogin);
 usernameInput.addEventListener("keydown", (event) => {
