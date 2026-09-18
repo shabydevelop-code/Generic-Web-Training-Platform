@@ -757,3 +757,27 @@ select:focus {
 .login-card #loginStatus:not(:empty) {
   margin-bottom: 0;
 }
+
+.user-item__actions {
+  display: flex;
+  gap: 8px;
+  grid-column: 1 / -1;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid #eaecf0;
+}
+
+.user-item__action {
+  padding: 5px 8px;
+  border: 0;
+  background: transparent;
+  color: #175cd3;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.user-item__action--danger {
+  color: #b42318;
+}
