@@ -120,6 +120,7 @@ function updateAuthenticatedView() {
 
 function openTopicEditor(topic) {
   closeTopicCreator();
+  backFromTopicsButton.hidden = true;
   editingTopicId = topic.id;
   editingTopicSnapshot = topic;
   topicsList.querySelectorAll(".topic-card").forEach((card) => card.classList.toggle("entity-card--active", card.dataset.topicId === String(topic.id)));
@@ -137,6 +138,7 @@ function closeTopicEditor() {
   topicsList.querySelectorAll(".entity-card--active").forEach((card) => card.classList.remove("entity-card--active"));
   editTopicInput.value = "";
   editTopicEditor.hidden = true;
+  backFromTopicsButton.hidden = false;
   editTopicStatus.textContent = "";
   editTopicStatus.removeAttribute("data-type");
 }
@@ -687,6 +689,7 @@ async function loadTopics() {
 
 function openTopicCreator() {
   closeTopicEditor();
+  backFromTopicsButton.hidden = true;
   topicStatus.textContent = "";
   topicStatus.removeAttribute("data-type");
   createTopicEditor.hidden = false;
@@ -698,6 +701,7 @@ function closeTopicCreator() {
   newTopicInput.value = "";
   createTopicEditor.hidden = true;
   openCreateTopicButton.hidden = false;
+  backFromTopicsButton.hidden = false;
 }
 
 async function handleCreateTopic() {
