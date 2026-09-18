@@ -4,15 +4,19 @@
     CREATE_TRAINING: "training.create"
   });
 
-  // Temporary local permissions for development.
-  // In the future, these will be supplied by the backend after authentication.
-  const currentPermissions = new Set([
-    PERMISSIONS.RUN_TRAINING,
-    PERMISSIONS.CREATE_TRAINING
-  ]);
+  const ROLE_PERMISSIONS = Object.freeze({
+    editor: Object.freeze([
+      PERMISSIONS.RUN_TRAINING,
+      PERMISSIONS.CREATE_TRAINING
+    ]),
+    learner: Object.freeze([
+      PERMISSIONS.RUN_TRAINING
+    ])
+  });
 
   function hasPermission(permission) {
-    return currentPermissions.has(permission);
+    const role = window.authService?.getCurrentRole();
+    return ROLE_PERMISSIONS[role]?.includes(permission) ?? false;
   }
 
   function canRunTraining() {
