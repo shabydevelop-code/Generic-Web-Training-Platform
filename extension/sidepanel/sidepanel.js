@@ -73,6 +73,7 @@ const guidesList = document.getElementById("guidesList");
 const guidesStatus = document.getElementById("guidesStatus");
 const openNewGuideButton = document.getElementById("openNewGuideButton");
 const backToGuidesButton = document.getElementById("backToGuidesButton");
+const guideAvailableInput = document.getElementById("guideAvailableInput");
 const deleteConfirmOverlay = document.getElementById("deleteConfirmOverlay");
 const deleteConfirmMessage = document.getElementById("deleteConfirmMessage");
 const cancelDeleteButton = document.getElementById("cancelDeleteButton");
@@ -290,6 +291,7 @@ async function openExistingGuide(guideId) {
     const guide = await window.apiService.request(`/api/guides/${guideId}`);
 
     editingGuideId = guide.id;
+    guideAvailableInput.checked = Boolean(guide.isAvailable);
     topicSelect.value = String(guide.topicId);
     guideNameInput.value = guide.name;
     window.trainingService.replaceSteps(guide.steps || []);
@@ -328,6 +330,7 @@ function closeTopics() {
 
 function openNewGuide() {
   editingGuideId = null;
+  guideAvailableInput.checked = false;
   topicsView.hidden = true;
   topicSelect.value = "";
   guideNameInput.value = "";
@@ -939,6 +942,7 @@ saveGuideButton.addEventListener("click", async () => {
       body: JSON.stringify({
         topicId,
         name: guideName,
+        isAvailable: guideAvailableInput.checked,
         steps: steps.map((step) => ({
           selector: step.selector,
           instruction: step.instruction
