@@ -1,51 +1,29 @@
 (() => {
+  let currentUser = null;
   let currentRole = null;
 
-  function hexToBytes(hex) {
-    return Uint8Array.from(hex.match(/.{1,2}/g) || [], (byte) => parseInt(byte, 16));
-  }
+  async function authenticate(username, password) {
+    try {
+      const user = await window.apiService.request("/api/auth/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ username, password })
+      });
 
-  function bytesToHex(bytes) {
-    return Array.from(new Uint8Array(bytes), (byte) => byte.toString(16).padStart(2, "0")).join("");
-  }
-
-  async function hashPassword(password, salt, iterations) {
-    const keyMaterial = await crypto.subtle.importKey(
-      "raw",
-      new TextEncoder().encode(password),
-      "PBKDF2",
-      false,
-      ["deriveBits"]
-    );
-
-    const bits = await crypto.subtle.deriveBits(
-      {
-        name: "PBKDF2",
-        salt: hexToBytes(salt),
-        iterations,
-        hash: "SHA-256"
-      },
-      keyMaterial,
-      256
-    );
-
-    return bytesToHex(bits);
-  }
-
-  async function authenticate(password) {
-    const authConfig = window.appConfig.authentication;
-
-    for (const [role, credential] of Object.entries(authConfig.credentials)) {
-      const candidateHash = await hashPassword(password, credential.salt, authConfig.iterations);
-
-      if (candidateHash === credential.hash) {
-        currentRole = role;
-        return role;
-      }
+      currentUser = user;
+      currentRole = Array.isArray(user.roles) && user.roles.length > 0 ? user.roles[0] : null;
+      return user;
+    } catch (error) {
+      currentUser = null;
+      currentRole = null;
+      return null;
     }
+  }
 
-    currentRole = null;
-    return null;
+  function getCurrentUser() {
+    return currentUser;
   }
 
   function getCurrentRole() {
@@ -53,11 +31,13 @@
   }
 
   function logout() {
+    currentUser = null;
     currentRole = null;
   }
 
   window.authService = Object.freeze({
     authenticate,
+    getCurrentUser,
     getCurrentRole,
     logout
   });
