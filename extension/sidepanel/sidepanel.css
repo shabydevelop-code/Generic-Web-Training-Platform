@@ -154,7 +154,7 @@ select:focus {
 }
 
 .selected-element code {
-  font-size: 12px;
+  font-size: 13px;
   color: #175cd3;
 }
 
@@ -316,7 +316,7 @@ select:focus {
   background: #ffffff;
   color: #475467;
   font: inherit;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
   cursor: pointer;
 }
@@ -382,7 +382,7 @@ select:focus {
 
 .edit-user__username {
   margin: -4px 0 14px;
-  font-size: 12px;
+  font-size: 13px;
   color: #667085;
 }
 
@@ -414,7 +414,7 @@ select:focus {
   flex: 0 0 auto;
   width: auto;
   padding: 7px 10px;
-  font-size: 12px;
+  font-size: 13px;
 }
 
 
@@ -465,7 +465,7 @@ select:focus {
   flex: 0 0 auto;
   width: auto;
   padding: 7px 10px;
-  font-size: 12px;
+  font-size: 13px;
 }
 
 .guides-list {
@@ -505,7 +505,7 @@ select:focus {
   background: transparent;
   color: #175cd3;
   font: inherit;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
   cursor: pointer;
 }
@@ -586,7 +586,7 @@ select:focus {
   background: transparent;
   color: #175cd3;
   font: inherit;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
   cursor: pointer;
 }
@@ -624,7 +624,7 @@ select:focus {
   background: transparent;
   color: #175cd3;
   font: inherit;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
   cursor: pointer;
 }
@@ -665,7 +665,7 @@ select:focus {
 .confirm-dialog__warning {
   margin: 8px 0 0;
   color: #b42318;
-  font-size: 12px;
+  font-size: 13px;
 }
 
 .checkbox-row {
@@ -773,7 +773,7 @@ select:focus {
   background: transparent;
   color: #175cd3;
   font: inherit;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
   cursor: pointer;
 }
@@ -795,7 +795,7 @@ select:focus {
   background: transparent;
   color: #175cd3;
   font: inherit;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
   cursor: pointer;
 }
