@@ -82,6 +82,31 @@
             <div id="usersList" class="users-list"></div>
             <p id="usersStatus" class="status" aria-live="polite"></p>
           </section>
+
+          <section id="editUserCard" class="card" hidden>
+            <h2 data-i18n="editUserTitle">Edit User</h2>
+            <p id="editUsername" class="edit-user__username"></p>
+
+            <label for="editDisplayName" data-i18n="displayNameLabel">Display name</label>
+            <input id="editDisplayName" type="text" autocomplete="off" />
+
+            <label for="editRole"><span data-i18n="roleLabel">Role</span> <span class="required-marker" aria-hidden="true">*</span></label>
+            <select id="editRole" required aria-required="true">
+              <option value="editor" data-i18n="editorRole">Editor</option>
+              <option value="learner" data-i18n="learnerRole">Learner</option>
+            </select>
+
+            <label class="checkbox-label" for="editIsActive">
+              <input id="editIsActive" type="checkbox" />
+              <span data-i18n="activeUserLabel">Active user</span>
+            </label>
+
+            <div class="actions">
+              <button id="saveUserButton" class="button button--primary" type="button" data-i18n="saveChangesButton">Save changes</button>
+              <button id="cancelEditUserButton" class="button" type="button" data-i18n="cancelButton">Cancel</button>
+            </div>
+            <p id="editUserStatus" class="status" aria-live="polite"></p>
+          </section>
         </div>
       <div id="createModeView">
         <header class="panel__header">
