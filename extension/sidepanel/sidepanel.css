@@ -903,3 +903,26 @@ body {
   background: #eff6ff;
   box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.08);
 }
+
+.entity-card--clickable {
+  cursor: pointer;
+}
+.entity-card--clickable:hover {
+  border-color: #84adff;
+  background: #f5f8ff;
+}
+.entity-card--clickable:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
+}
+.entity-card--active,
+.entity-card--active:hover {
+  border-color: #2563eb;
+  background: #eff6ff;
+  box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.08);
+}
+.entity-edit-delete-section {
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid #eaecf0;
+}
