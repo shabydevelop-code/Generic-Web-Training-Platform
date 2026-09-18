@@ -30,10 +30,19 @@ const newPassword = document.getElementById("newPassword");
 const newRole = document.getElementById("newRole");
 const createUserButton = document.getElementById("createUserButton");
 const createUserStatus = document.getElementById("createUserStatus");
+const editUserCard = document.getElementById("editUserCard");
+const editUsername = document.getElementById("editUsername");
+const editDisplayName = document.getElementById("editDisplayName");
+const editRole = document.getElementById("editRole");
+const editIsActive = document.getElementById("editIsActive");
+const saveUserButton = document.getElementById("saveUserButton");
+const cancelEditUserButton = document.getElementById("cancelEditUserButton");
+const editUserStatus = document.getElementById("editUserStatus");
 
 let currentSelectedElement = null;
 let activeStepId = null;
 let adminModeActive = false;
+let editingUserId = null;
 
 function updateAuthenticatedView() {
   const role = window.authService.getCurrentRole();
@@ -92,6 +101,58 @@ async function handleCreateUser() {
   }
 }
 
+function openUserEditor(user) {
+  if (user.roles?.includes("admin")) {
+    return;
+  }
+
+  editingUserId = user.id;
+  editUsername.textContent = user.username;
+  editDisplayName.value = user.displayName || "";
+  editRole.value = user.roles?.[0] || "learner";
+  editIsActive.checked = user.isActive;
+  editUserStatus.textContent = "";
+  editUserCard.hidden = false;
+  editUserCard.scrollIntoView({ behavior: "smooth", block: "nearest" });
+}
+
+function closeUserEditor() {
+  editingUserId = null;
+  editUserCard.hidden = true;
+  editUserStatus.textContent = "";
+}
+
+async function handleSaveUser() {
+  if (editingUserId == null) return;
+
+  const language = window.i18nService.getLanguage();
+  saveUserButton.disabled = true;
+
+  try {
+    await window.apiService.request(`/api/users/${editingUserId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        displayName: editDisplayName.value.trim(),
+        role: editRole.value,
+        isActive: editIsActive.checked
+      })
+    });
+
+    editUserStatus.textContent = window.i18nService.translate("userUpdated", language);
+    editUserStatus.dataset.type = "success";
+    await loadAdminUsers();
+  } catch (error) {
+    editUserStatus.textContent = window.i18nService.translate(
+      error?.status == null ? "serverUnavailable" : "updateUserError",
+      language
+    );
+    editUserStatus.dataset.type = "error";
+  } finally {
+    saveUserButton.disabled = false;
+  }
+}
+
 async function loadAdminUsers() {
   if (window.authService.getCurrentRole() !== "admin") {
     return;
@@ -107,6 +168,20 @@ async function loadAdminUsers() {
     users.forEach((user) => {
       const item = document.createElement("div");
       item.className = "user-item";
+      const isAdminUser = Array.isArray(user.roles) && user.roles.includes("admin");
+
+      if (!isAdminUser) {
+        item.classList.add("user-item--editable");
+        item.tabIndex = 0;
+        item.setAttribute("role", "button");
+        item.addEventListener("click", () => openUserEditor(user));
+        item.addEventListener("keydown", (event) => {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            openUserEditor(user);
+          }
+        });
+      }
 
       const identity = document.createElement("div");
       const name = document.createElement("strong");
@@ -392,6 +467,8 @@ async function handleLogout() {
 }
 
 createUserButton.addEventListener("click", handleCreateUser);
+saveUserButton.addEventListener("click", handleSaveUser);
+cancelEditUserButton.addEventListener("click", closeUserEditor);
 logoutButton.addEventListener("click", handleLogout);
 loginButton.addEventListener("click", handleLogin);
 usernameInput.addEventListener("keydown", (event) => {
