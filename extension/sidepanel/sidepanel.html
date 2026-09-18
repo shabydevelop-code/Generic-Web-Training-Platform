@@ -8,20 +8,31 @@
   </head>
   <body>
     <main class="panel">
-      <nav class="mode-switcher" aria-label="Training mode">
-        <button id="learnModeButton" class="mode-switcher__button" type="button" aria-pressed="false">
-          Learn
-        </button>
-        <button
-          id="createModeButton"
-          class="mode-switcher__button mode-switcher__button--active"
-          type="button"
-          aria-pressed="true"
-        >
-          Create
-        </button>
-      </nav>
+      <div id="loginView">
+        <header class="panel__header">
+          <p class="eyebrow">Generic Web Training Platform</p>
+          <h1>Sign in</h1>
+          <p class="description">Enter your access password to continue.</p>
+        </header>
 
+        <section class="card">
+          <label for="passwordInput">Password</label>
+          <input
+            id="passwordInput"
+            type="password"
+            placeholder="Enter password"
+            autocomplete="current-password"
+          />
+
+          <button id="loginButton" class="button button--primary button--full login-button" type="button">
+            Continue
+          </button>
+
+          <p id="loginStatus" class="status" aria-live="polite"></p>
+        </section>
+      </div>
+
+      <div id="appView" hidden>
       <div id="createModeView">
         <header class="panel__header">
           <p class="eyebrow">Generic Web Training Platform</p>
@@ -106,6 +117,7 @@
           <h1>Learn Mode</h1>
           <p class="description">Your available training guides will appear here.</p>
         </header>
+      </div>
       </div>
     </main>
 
