@@ -679,6 +679,7 @@ async function loadTopics() {
 }
 
 function openTopicCreator() {
+  closeTopicEditor();
   topicStatus.textContent = "";
   topicStatus.removeAttribute("data-type");
   createTopicEditor.hidden = false;
