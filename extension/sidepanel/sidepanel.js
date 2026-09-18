@@ -112,10 +112,13 @@ async function loadAdminUsers() {
       const name = document.createElement("strong");
       name.textContent = user.displayName || user.username;
 
-      const username = document.createElement("span");
-      username.textContent = user.username;
+      identity.append(name);
 
-      identity.append(name, username);
+      if (user.displayName) {
+        const username = document.createElement("span");
+        username.textContent = user.username;
+        identity.append(username);
+      }
 
       const meta = document.createElement("div");
       meta.className = "user-item__meta";
