@@ -781,3 +781,53 @@ select:focus {
 .user-item__action--danger {
   color: #b42318;
 }
+
+.entity-card__actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid #eaecf0;
+}
+.entity-card__action {
+  padding: 5px 8px;
+  border: 0;
+  background: transparent;
+  color: #175cd3;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.entity-card__action--danger { color: #b42318; }
+.user-item {
+  display: block;
+  padding: 14px;
+  border-radius: 10px;
+  background: #ffffff;
+  box-shadow: 0 2px 8px rgba(16, 24, 40, 0.04);
+}
+.user-item__identity strong {
+  font-size: 14px;
+  color: #344054;
+}
+.user-item__identity span {
+  margin-top: 4px;
+  font-size: 11px;
+  color: #667085;
+}
+.user-item__meta {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+  text-align: start;
+}
+.user-item__meta span {
+  margin-top: 0;
+  font-size: 11px;
+  color: #667085;
+}
+.user-item__meta span + span::before {
+  content: "·";
+  margin-inline-end: 8px;
+}
