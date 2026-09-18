@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Data.Sqlite;
+using System.Security.Cryptography;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -25,6 +26,9 @@ var schemaPath = Path.Combine(databaseDirectory, "schema.sql");
 
 InitializeDatabase(databasePath, schemaPath);
 EnsureDevelopmentAdmin(databasePath);
+
+var sessions = new Dictionary<string, long>(StringComparer.Ordinal);
+var sessionLock = new object();
 
 app.MapGet("/api/health", () => Results.Ok(new
 {
@@ -105,10 +109,56 @@ app.MapPost("/api/auth/login", (LoginRequest request) =>
         roles.Add(rolesReader.GetString(0));
     }
 
-    return Results.Ok(new LoginResponse(userId, username, displayName, roles));
+    var accessToken = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
+    lock (sessionLock)
+    {
+        sessions[accessToken] = userId;
+    }
+
+    return Results.Ok(new LoginResponse(userId, username, displayName, roles, accessToken));
 });
 
-app.MapPost("/api/users", (CreateUserRequest request) =>
+var adminUsers = app.MapGroup("/api/users");
+adminUsers.AddEndpointFilter(async (context, next) =>
+{
+    var httpContext = context.HttpContext;
+    var authorization = httpContext.Request.Headers.Authorization.ToString();
+
+    if (!authorization.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+    {
+        return Results.Unauthorized();
+    }
+
+    var token = authorization["Bearer ".Length..].Trim();
+    long userId;
+
+    lock (sessionLock)
+    {
+        if (!sessions.TryGetValue(token, out userId))
+        {
+            return Results.Unauthorized();
+        }
+    }
+
+    using var connection = OpenConnection(databasePath);
+    using var command = connection.CreateCommand();
+    command.CommandText = """
+        SELECT COUNT(*)
+        FROM Users u
+        INNER JOIN UserRoles r ON r.UserId = u.Id
+        WHERE u.Id = $userId AND u.IsActive = 1 AND r.Role = 'admin';
+        """;
+    command.Parameters.AddWithValue("$userId", userId);
+
+    if (Convert.ToInt32(command.ExecuteScalar()) == 0)
+    {
+        return Results.Forbid();
+    }
+
+    return await next(context);
+});
+
+adminUsers.MapPost("", (CreateUserRequest request) =>
 {
     var username = request.Username?.Trim();
     var displayName = request.DisplayName?.Trim();
@@ -161,7 +211,7 @@ app.MapPost("/api/users", (CreateUserRequest request) =>
         new UserResponse(userId, username, displayName, true, [role]));
 });
 
-app.MapPut("/api/users/{id:long}", (long id, UpdateUserRequest request) =>
+adminUsers.MapPut("/{id:long}", (long id, UpdateUserRequest request) =>
 {
     var displayName = request.DisplayName?.Trim();
     var role = request.Role?.Trim().ToLowerInvariant();
@@ -227,7 +277,7 @@ app.MapPut("/api/users/{id:long}", (long id, UpdateUserRequest request) =>
     return Results.Ok(new UserResponse(id, username, displayName, request.IsActive, [role]));
 });
 
-app.MapGet("/api/users", () =>
+adminUsers.MapGet("", () =>
 {
     using var connection = OpenConnection(databasePath);
     using var command = connection.CreateCommand();
@@ -380,4 +430,5 @@ sealed record LoginResponse(
     long Id,
     string Username,
     string? DisplayName,
-    List<string> Roles);
+    List<string> Roles,
+    string AccessToken);
