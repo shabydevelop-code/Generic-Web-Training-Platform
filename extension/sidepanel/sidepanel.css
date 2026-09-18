@@ -704,3 +704,40 @@ select:focus {
 .guide-save-button {
   margin-top: 0;
 }
+
+.guide-details-card {
+  padding-bottom: 16px;
+}
+
+.guide-details-card #topicSelect {
+  margin-bottom: 16px;
+}
+
+.guide-details-card .guide-name-label {
+  margin-top: 0;
+}
+
+.guide-details-card #guideNameInput {
+  margin-bottom: 0;
+}
+
+.guide-details-card .checkbox-row {
+  margin-top: 20px;
+  margin-bottom: 0;
+}
+
+.guide-details-card .guide-details-divider {
+  margin: 18px 0 14px;
+}
+
+.guide-details-card .guide-save-button {
+  margin: 0;
+}
+
+.guide-details-card #saveGuideStatus:empty {
+  display: none;
+}
+
+.guide-details-card #saveGuideStatus:not(:empty) {
+  margin-bottom: 0;
+}
