@@ -2,6 +2,8 @@
   const translations = Object.freeze({
     en: Object.freeze({
       elementSelectionTitle: "Element Selection",
+      guideNameLabel: "Guide name",
+      guideNamePlaceholder: "Enter guide name",
       elementSelectionDescription: "Select an element directly from the current web page or test a CSS selector manually.",
       selectElementButton: "Select element from page",
       selectedElementLabel: "Selected element",
@@ -58,6 +60,8 @@
     }),
     he: Object.freeze({
       elementSelectionTitle: "בחירת אלמנט",
+      guideNameLabel: "שם המדריך",
+      guideNamePlaceholder: "הזן שם מדריך",
       elementSelectionDescription: "בחר אלמנט ישירות מהעמוד הנוכחי או בדוק בורר CSS באופן ידני.",
       selectElementButton: "בחר אלמנט מהעמוד",
       selectedElementLabel: "אלמנט שנבחר",
