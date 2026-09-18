@@ -1,11 +1,13 @@
 (() => {
   let currentUser = null;
   let currentRole = null;
+  let accessToken = null;
   const SESSION_KEY = "gwtp.auth.user";
 
   function applyUser(user) {
     currentUser = user;
     currentRole = Array.isArray(user?.roles) && user.roles.length > 0 ? user.roles[0] : null;
+    accessToken = user?.accessToken || null;
   }
 
   async function saveSession(user) {
@@ -56,6 +58,10 @@
     return currentRole;
   }
 
+  function getAccessToken() {
+    return accessToken;
+  }
+
   async function logout() {
     applyUser(null);
     await chrome.storage.local.remove(SESSION_KEY);
@@ -66,6 +72,7 @@
     restoreSession,
     getCurrentUser,
     getCurrentRole,
+    getAccessToken,
     logout
   });
 })();
