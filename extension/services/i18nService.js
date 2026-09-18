@@ -81,7 +81,16 @@
       cancelButton: "Close",
       userUpdated: "User updated successfully.",
       updateUserError: "Could not update the user.",
-      editUserDisplayNameRequired: "Display name is required."
+      editUserDisplayNameRequired: "Display name is required.",
+      guidesTitle: "Guides",
+      guidesDescription: "Manage existing guides or create a new guide.",
+      existingGuidesTitle: "Existing Guides",
+      newGuideButton: "+ New Guide",
+      backToGuidesButton: "← Back to guides",
+      loadingGuides: "Loading guides...",
+      noGuides: "No guides have been created yet.",
+      guidesLoadError: "Could not load guides.",
+      stepCount: "steps"
     }),
     he: Object.freeze({
       elementSelectionTitle: "בחירת אלמנט",
@@ -164,7 +173,16 @@
       cancelButton: "סגור",
       userUpdated: "המשתמש עודכן בהצלחה.",
       updateUserError: "לא ניתן לעדכן את המשתמש.",
-      editUserDisplayNameRequired: "יש להזין שם תצוגה."
+      editUserDisplayNameRequired: "יש להזין שם תצוגה.",
+      guidesTitle: "מדריכים",
+      guidesDescription: "ניהול מדריכים קיימים או יצירת מדריך חדש.",
+      existingGuidesTitle: "מדריכים קיימים",
+      newGuideButton: "+ מדריך חדש",
+      backToGuidesButton: "חזרה למדריכים →",
+      loadingGuides: "טוען מדריכים...",
+      noGuides: "עדיין לא נוצרו מדריכים.",
+      guidesLoadError: "לא ניתן לטעון את המדריכים.",
+      stepCount: "שלבים"
     })
   });
 
