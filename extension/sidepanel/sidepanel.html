@@ -56,6 +56,14 @@
           </header>
 
           <section class="card">
+            <h2 data-i18n="userManagementTitle">User Management</h2>
+            <p class="description" data-i18n="userManagementDescription">Users registered in the platform.</p>
+            <div id="usersList" class="users-list"></div>
+            <button id="openCreateUserButton" class="button button--primary button--full user-management__create" type="button" data-i18n="newUserButton">+ New user</button>
+            <p id="usersStatus" class="status" aria-live="polite"></p>
+          </section>
+
+          <section id="createUserCard" class="card" hidden>
             <h2 data-i18n="createUserTitle">Create User</h2>
             <label for="newDisplayName" data-i18n="displayNameLabel">Display name</label>
             <input id="newDisplayName" type="text" autocomplete="off" />
@@ -72,15 +80,11 @@
               <option value="learner" data-i18n="learnerRole">Learner</option>
             </select>
 
-            <button id="createUserButton" class="button button--primary button--full login-button" type="button" data-i18n="createUserButton">Create user</button>
+            <div class="actions">
+              <button id="createUserButton" class="button button--primary" type="button" data-i18n="createUserButton">Create user</button>
+              <button id="closeCreateUserButton" class="button" type="button" data-i18n="cancelButton">Close</button>
+            </div>
             <p id="createUserStatus" class="status" aria-live="polite"></p>
-          </section>
-
-          <section class="card">
-            <h2 data-i18n="userManagementTitle">User Management</h2>
-            <p class="description" data-i18n="userManagementDescription">Users registered in the platform.</p>
-            <div id="usersList" class="users-list"></div>
-            <p id="usersStatus" class="status" aria-live="polite"></p>
           </section>
 
           <section id="editUserCard" class="card" hidden>
