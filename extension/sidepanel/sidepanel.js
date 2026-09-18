@@ -3,6 +3,9 @@ const selectButton = document.getElementById("selectButton");
 const addStepButton = document.getElementById("addStepButton");
 const cancelStepButton = document.getElementById("cancelStepButton");
 const topicSelect = document.getElementById("topicSelect");
+const openCreateTopicButton = document.getElementById("openCreateTopicButton");
+const createTopicEditor = document.getElementById("createTopicEditor");
+const cancelCreateTopicButton = document.getElementById("cancelCreateTopicButton");
 const newTopicInput = document.getElementById("newTopicInput");
 const createTopicButton = document.getElementById("createTopicButton");
 const topicStatus = document.getElementById("topicStatus");
@@ -306,6 +309,20 @@ async function loadTopics() {
   }
 }
 
+function openTopicCreator() {
+  topicStatus.textContent = "";
+  topicStatus.removeAttribute("data-type");
+  createTopicEditor.hidden = false;
+  openCreateTopicButton.hidden = true;
+  newTopicInput.focus();
+}
+
+function closeTopicCreator() {
+  newTopicInput.value = "";
+  createTopicEditor.hidden = true;
+  openCreateTopicButton.hidden = false;
+}
+
 async function handleCreateTopic() {
   const name = newTopicInput.value.trim();
   const language = window.i18nService.getLanguage();
@@ -327,9 +344,9 @@ async function handleCreateTopic() {
       body: JSON.stringify({ name })
     });
 
-    newTopicInput.value = "";
     await loadTopics();
     topicSelect.value = String(topic.id);
+    closeTopicCreator();
     topicStatus.textContent = window.i18nService.translate("topicCreated", language);
     topicStatus.dataset.type = "success";
   } catch (error) {
@@ -638,6 +655,8 @@ async function handleLogout() {
 
 addStepButton.addEventListener("click", openStepCreator);
 cancelStepButton.addEventListener("click", closeStepCreator);
+openCreateTopicButton.addEventListener("click", openTopicCreator);
+cancelCreateTopicButton.addEventListener("click", closeTopicCreator);
 createTopicButton.addEventListener("click", handleCreateTopic);
 newTopicInput.addEventListener("keydown", (event) => {
   if (event.key === "Enter") handleCreateTopic();
