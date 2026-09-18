@@ -69,6 +69,9 @@ const editTopicInput = document.getElementById("editTopicInput");
 const saveTopicButton = document.getElementById("saveTopicButton");
 const cancelEditTopicButton = document.getElementById("cancelEditTopicButton");
 const editTopicStatus = document.getElementById("editTopicStatus");
+const editTopicDeleteSection = document.getElementById("editTopicDeleteSection");
+const deleteEditedTopicButton = document.getElementById("deleteEditedTopicButton");
+let editingTopicSnapshot = null;
 let editingTopicId = null;
 const guideLibraryView = document.getElementById("guideLibraryView");
 const guideEditorView = document.getElementById("guideEditorView");
@@ -77,6 +80,12 @@ const guidesStatus = document.getElementById("guidesStatus");
 const openNewGuideButton = document.getElementById("openNewGuideButton");
 const backToGuidesButton = document.getElementById("backToGuidesButton");
 const guideAvailableInput = document.getElementById("guideAvailableInput");
+const editGuideDeleteSection = document.getElementById("editGuideDeleteSection");
+const deleteEditedGuideButton = document.getElementById("deleteEditedGuideButton");
+let editingGuideSnapshot = null;
+const editStepDeleteSection = document.getElementById("editStepDeleteSection");
+const deleteEditedStepButton = document.getElementById("deleteEditedStepButton");
+let editingStepSnapshot = null;
 const deleteConfirmOverlay = document.getElementById("deleteConfirmOverlay");
 const deleteConfirmMessage = document.getElementById("deleteConfirmMessage");
 const cancelDeleteButton = document.getElementById("cancelDeleteButton");
@@ -112,6 +121,8 @@ function updateAuthenticatedView() {
 function openTopicEditor(topic) {
   closeTopicCreator();
   editingTopicId = topic.id;
+  editingTopicSnapshot = topic;
+  topicsList.querySelectorAll(".topic-card").forEach((card) => card.classList.toggle("entity-card--active", card.dataset.topicId === String(topic.id)));
   editTopicInput.value = topic.name;
   editTopicEditor.hidden = false;
   topicStatus.textContent = "";
@@ -122,6 +133,8 @@ function openTopicEditor(topic) {
 
 function closeTopicEditor() {
   editingTopicId = null;
+  editingTopicSnapshot = null;
+  topicsList.querySelectorAll(".entity-card--active").forEach((card) => card.classList.remove("entity-card--active"));
   editTopicInput.value = "";
   editTopicEditor.hidden = true;
   editTopicStatus.textContent = "";
@@ -235,26 +248,19 @@ async function loadGuides() {
       const meta = document.createElement("span");
       meta.textContent = `${guide.topicName} · ${guide.stepCount} ${window.i18nService.translate("stepCount", language)}`;
 
-      const actions = document.createElement("div");
-      actions.className = "guide-item__actions entity-card__actions";
-
-      const editButton = document.createElement("button");
-      editButton.className = "guide-item__action entity-card__action";
-      editButton.type = "button";
-      editButton.textContent = window.i18nService.translate("editStepButton", language);
-      editButton.addEventListener("click", () => openExistingGuide(guide.id));
-
-      const deleteButton = document.createElement("button");
-      deleteButton.className = "guide-item__action guide-item__action--danger entity-card__action entity-card__action--danger";
-      deleteButton.type = "button";
-      deleteButton.textContent = window.i18nService.translate("deleteStepButton", language);
-      deleteButton.addEventListener("click", () => {
-        const message = window.i18nService.translate("confirmDeleteGuide", language).replace("{name}", guide.name);
-        requestDeleteConfirmation(message, () => handleDeleteGuide(guide.id));
+      item.dataset.guideId = String(guide.id);
+      item.classList.add("entity-card--clickable");
+      item.tabIndex = 0;
+      item.setAttribute("role", "button");
+      item.addEventListener("click", () => openExistingGuide(guide.id));
+      item.addEventListener("keydown", (event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          openExistingGuide(guide.id);
+        }
       });
 
-      actions.append(editButton, deleteButton);
-      item.append(name, meta, actions);
+      item.append(name, meta);
       guidesList.appendChild(item);
     });
 
@@ -294,6 +300,8 @@ async function openExistingGuide(guideId) {
     const guide = await window.apiService.request(`/api/guides/${guideId}`);
 
     editingGuideId = guide.id;
+    editingGuideSnapshot = guide;
+    editGuideDeleteSection.hidden = false;
     guideAvailableInput.checked = Boolean(guide.isAvailable);
     topicSelect.value = String(guide.topicId);
     guideNameInput.value = guide.name;
@@ -333,6 +341,8 @@ function closeTopics() {
 
 function openNewGuide() {
   editingGuideId = null;
+  editingGuideSnapshot = null;
+  editGuideDeleteSection.hidden = true;
   guideAvailableInput.checked = false;
   topicsView.hidden = true;
   topicSelect.value = "";
@@ -636,23 +646,20 @@ async function loadTopics() {
       name.className = "topic-card__name";
       name.textContent = topic.name;
 
-      const actions = document.createElement("div");
-      actions.className = "topic-card__actions entity-card__actions";
+      card.dataset.topicId = String(topic.id);
+      card.classList.add("entity-card--clickable");
+      if (topic.id === editingTopicId) card.classList.add("entity-card--active");
+      card.tabIndex = 0;
+      card.setAttribute("role", "button");
+      card.addEventListener("click", () => openTopicEditor(topic));
+      card.addEventListener("keydown", (event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          openTopicEditor(topic);
+        }
+      });
 
-      const editButton = document.createElement("button");
-      editButton.className = "topic-card__action entity-card__action";
-      editButton.type = "button";
-      editButton.textContent = window.i18nService.translate("editTopicButton", language);
-      editButton.addEventListener("click", () => openTopicEditor(topic));
-
-      const deleteButton = document.createElement("button");
-      deleteButton.className = "topic-card__action topic-card__action--danger entity-card__action entity-card__action--danger";
-      deleteButton.type = "button";
-      deleteButton.textContent = window.i18nService.translate("deleteTopicButton", language);
-      deleteButton.addEventListener("click", () => handleDeleteTopic(topic));
-
-      actions.append(editButton, deleteButton);
-      card.append(name, actions);
+      card.append(name);
       topicsList.appendChild(card);
     });
 
@@ -737,6 +744,8 @@ function updateGuideEditorValidity() {
 
 function closeStepCreator() {
   editingStepId = null;
+  editingStepSnapshot = null;
+  editStepDeleteSection.hidden = true;
   currentSelectedElement = null;
   selectorInput.value = "";
   instructionInput.value = "";
@@ -752,6 +761,8 @@ function openStepCreator() {
   if (!updateGuideEditorValidity()) return;
 
   editingStepId = null;
+  editingStepSnapshot = null;
+  editStepDeleteSection.hidden = true;
   currentSelectedElement = null;
   selectorInput.value = "";
   instructionInput.value = "";
@@ -767,6 +778,8 @@ function openStepEditor(step) {
   if (!updateGuideEditorValidity()) return;
 
   editingStepId = step.id;
+  editingStepSnapshot = step;
+  editStepDeleteSection.hidden = false;
   currentSelectedElement = step.element || {
     tagName: "",
     text: ""
@@ -861,34 +874,11 @@ function renderSteps() {
     const selector = document.createElement("code");
     selector.textContent = step.selector;
 
-    const actions = document.createElement("div");
-    actions.className = "step-item__actions";
-
-    const editButton = document.createElement("button");
-    editButton.type = "button";
-    editButton.className = "step-action";
-    editButton.textContent = window.i18nService.translate("editStepButton", window.i18nService.getLanguage());
-    editButton.addEventListener("click", (event) => {
-      event.stopPropagation();
-      openStepEditor(step);
-    });
-
-    const deleteButton = document.createElement("button");
-    deleteButton.type = "button";
-    deleteButton.className = "step-action step-action--danger";
-    deleteButton.textContent = window.i18nService.translate("deleteStepButton", window.i18nService.getLanguage());
-    deleteButton.addEventListener("click", (event) => {
-      event.stopPropagation();
-      deleteDraftStep(step.id);
-    });
-
-    actions.append(editButton, deleteButton);
-    item.append(title, instruction, selector, actions);
-    item.addEventListener("click", () => runStep(step));
+    item.addEventListener("click", () => openStepEditor(step));
     item.addEventListener("keydown", (event) => {
       if (event.key === "Enter" || event.key === " ") {
         event.preventDefault();
-        runStep(step);
+        openStepEditor(step);
       }
     });
 
@@ -1148,6 +1138,27 @@ openCreateUserButton.addEventListener("click", openCreateUser);
 closeCreateUserButton.addEventListener("click", closeCreateUser);
 createUserButton.addEventListener("click", handleCreateUser);
 saveUserButton.addEventListener("click", handleSaveUser);
+deleteEditedTopicButton.addEventListener("click", () => {
+  if (editingTopicSnapshot) handleDeleteTopic(editingTopicSnapshot);
+});
+deleteEditedGuideButton.addEventListener("click", () => {
+  if (!editingGuideSnapshot) return;
+  const language = window.i18nService.getLanguage();
+  const message = window.i18nService.translate("confirmDeleteGuide", language).replace("{name}", editingGuideSnapshot.name);
+  requestDeleteConfirmation(message, async () => {
+    await handleDeleteGuide(editingGuideSnapshot.id);
+    showGuideLibrary();
+  });
+});
+deleteEditedStepButton.addEventListener("click", () => {
+  if (!editingStepSnapshot) return;
+  const stepId = editingStepSnapshot.id;
+  requestDeleteConfirmation(
+    window.i18nService.translate("confirmDeleteStep", window.i18nService.getLanguage()),
+    () => deleteDraftStep(stepId)
+  );
+});
+
 deleteEditedUserButton.addEventListener("click", () => {
   if (!editingUserSnapshot) return;
   const language = window.i18nService.getLanguage();
