@@ -359,3 +359,8 @@ select:focus {
   padding: 7px 10px;
   font-size: 12px;
 }
+
+
+.guide-save-button {
+  margin-top: 16px;
+}
