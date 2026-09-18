@@ -469,10 +469,18 @@ saveStepButton.addEventListener("click", () => {
   }
 });
 
-saveGuideButton.addEventListener("click", () => {
+saveGuideButton.addEventListener("click", async () => {
+  const topicId = Number(topicSelect.value);
   const guideName = guideNameInput.value.trim();
   const steps = window.trainingService.getSteps();
   const language = window.i18nService.getLanguage();
+
+  if (!topicId) {
+    saveGuideStatus.textContent = window.i18nService.translate("guideTopicRequired", language);
+    saveGuideStatus.dataset.type = "error";
+    topicSelect.focus();
+    return;
+  }
 
   if (!guideName) {
     saveGuideStatus.textContent = window.i18nService.translate("guideNameRequired", language);
@@ -487,8 +495,34 @@ saveGuideButton.addEventListener("click", () => {
     return;
   }
 
-  saveGuideStatus.textContent = window.i18nService.translate("guideReadyToSave", language);
-  saveGuideStatus.dataset.type = "info";
+  saveGuideButton.disabled = true;
+  saveGuideStatus.textContent = "";
+
+  try {
+    await window.apiService.request("/api/guides", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        topicId,
+        name: guideName,
+        steps: steps.map((step) => ({
+          selector: step.selector,
+          instruction: step.instruction
+        }))
+      })
+    });
+
+    saveGuideStatus.textContent = window.i18nService.translate("guideSaved", language);
+    saveGuideStatus.dataset.type = "success";
+  } catch (error) {
+    saveGuideStatus.textContent = window.i18nService.translate(
+      error?.status == null ? "serverUnavailable" : "guideSaveError",
+      language
+    );
+    saveGuideStatus.dataset.type = "error";
+  } finally {
+    saveGuideButton.disabled = false;
+  }
 });
 
 guideNameInput.addEventListener("input", () => {
