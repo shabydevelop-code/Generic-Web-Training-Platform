@@ -80,6 +80,8 @@ const guidesStatus = document.getElementById("guidesStatus");
 const openNewGuideButton = document.getElementById("openNewGuideButton");
 const backToGuidesButton = document.getElementById("backToGuidesButton");
 const guideAvailableInput = document.getElementById("guideAvailableInput");
+const guideEditorTitle = document.getElementById("guideEditorTitle");
+const guideEditorDescription = document.getElementById("guideEditorDescription");
 const editGuideDeleteSection = document.getElementById("editGuideDeleteSection");
 const deleteEditedGuideButton = document.getElementById("deleteEditedGuideButton");
 let editingGuideSnapshot = null;
@@ -309,6 +311,8 @@ async function openExistingGuide(guideId) {
 
     editingGuideId = guide.id;
     editingGuideSnapshot = guide;
+    guideEditorTitle.textContent = window.i18nService.translate("guideEditorTitle", language);
+    guideEditorDescription.textContent = window.i18nService.translate("guideEditorDescription", language);
     editGuideDeleteSection.hidden = false;
     guideAvailableInput.checked = Boolean(guide.isAvailable);
     topicSelect.value = String(guide.topicId);
@@ -348,8 +352,11 @@ function closeTopics() {
 }
 
 function openNewGuide() {
+  const language = window.i18nService.getLanguage();
   editingGuideId = null;
   editingGuideSnapshot = null;
+  guideEditorTitle.textContent = window.i18nService.translate("newGuideEditorTitle", language);
+  guideEditorDescription.textContent = window.i18nService.translate("newGuideEditorDescription", language);
   editGuideDeleteSection.hidden = true;
   guideAvailableInput.checked = false;
   topicsView.hidden = true;
