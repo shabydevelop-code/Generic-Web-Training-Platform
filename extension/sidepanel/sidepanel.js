@@ -21,6 +21,7 @@ const passwordInput = document.getElementById("passwordInput");
 const loginButton = document.getElementById("loginButton");
 const loginStatus = document.getElementById("loginStatus");
 const logoutButton = document.getElementById("logoutButton");
+const currentUserIdentity = document.getElementById("currentUserIdentity");
 const adminButton = document.getElementById("adminButton");
 const adminView = document.getElementById("adminView");
 const usersList = document.getElementById("usersList");
@@ -55,6 +56,11 @@ function updateAuthenticatedView() {
   const isEditor = role === "editor";
   const isLearner = role === "learner";
 
+  const currentUser = window.authService.getCurrentUser();
+  const language = window.i18nService.getLanguage();
+  const roleLabel = window.i18nService.translate(`${role}Role`, language);
+  currentUserIdentity.textContent = `${currentUser?.displayName || currentUser?.username || ""} · ${roleLabel}`;
+
   adminButton.hidden = true;
   adminView.hidden = !isAdmin;
   createModeView.hidden = !isEditor;
@@ -80,7 +86,7 @@ async function handleCreateUser() {
   const role = newRole.value;
   const language = window.i18nService.getLanguage();
 
-  if (!username || !password) {
+  if (!displayName || !username || !password) {
     createUserStatus.textContent = window.i18nService.translate("createUserRequired", language);
     createUserStatus.dataset.type = "error";
     return;
