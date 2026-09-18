@@ -243,3 +243,25 @@ textarea:focus {
 .login-button {
   margin-top: 12px;
 }
+
+.app-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 14px;
+}
+
+.logout-button {
+  padding: 6px 10px;
+  border: 1px solid #d0d5dd;
+  border-radius: 7px;
+  background: #ffffff;
+  color: #475467;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.logout-button:hover {
+  background: #f9fafb;
+}
