@@ -44,7 +44,21 @@
 
       <div id="appView" hidden>
         <div class="app-toolbar">
+          <button id="adminButton" class="toolbar-button" type="button" data-i18n="adminButton" hidden>Admin</button>
           <button id="logoutButton" class="logout-button" type="button" data-i18n="logoutButton">Log out</button>
+        </div>
+
+        <div id="adminView" hidden>
+          <header class="panel__header">
+            <p class="eyebrow">Generic Web Training Platform</p>
+            <h1 data-i18n="adminTitle">Administration</h1>
+            <p class="description" data-i18n="adminDescription">Manage users and platform permissions.</p>
+          </header>
+
+          <section class="card">
+            <h2 data-i18n="userManagementTitle">User Management</h2>
+            <p class="description" data-i18n="userManagementDescription">User management tools will appear here.</p>
+          </section>
         </div>
       <div id="createModeView">
         <header class="panel__header">
