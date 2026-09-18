@@ -437,6 +437,49 @@ editorTopics.MapPost("", (CreateTopicRequest request) =>
 });
 
 
+
+editorTopics.MapPut("/{id:long}", (long id, CreateTopicRequest request) =>
+{
+    var name = request.Name?.Trim();
+    if (string.IsNullOrWhiteSpace(name))
+        return Results.BadRequest(new { message = "Topic name is required." });
+
+    using var connection = OpenConnection(databasePath);
+
+    using var existsCommand = connection.CreateCommand();
+    existsCommand.CommandText = "SELECT COUNT(*) FROM Topics WHERE Name = $name COLLATE NOCASE AND Id <> $id;";
+    existsCommand.Parameters.AddWithValue("$name", name);
+    existsCommand.Parameters.AddWithValue("$id", id);
+    if (Convert.ToInt32(existsCommand.ExecuteScalar()) > 0)
+        return Results.Conflict(new { message = "Topic name already exists." });
+
+    using var command = connection.CreateCommand();
+    command.CommandText = "UPDATE Topics SET Name = $name WHERE Id = $id;";
+    command.Parameters.AddWithValue("$name", name);
+    command.Parameters.AddWithValue("$id", id);
+    if (command.ExecuteNonQuery() == 0) return Results.NotFound();
+
+    return Results.Ok(new TopicResponse(id, name));
+});
+
+editorTopics.MapDelete("/{id:long}", (long id) =>
+{
+    using var connection = OpenConnection(databasePath);
+
+    using var guideCommand = connection.CreateCommand();
+    guideCommand.CommandText = "SELECT COUNT(*) FROM Guides WHERE TopicId = $id;";
+    guideCommand.Parameters.AddWithValue("$id", id);
+    if (Convert.ToInt32(guideCommand.ExecuteScalar()) > 0)
+        return Results.Conflict(new { message = "Topic has assigned guides." });
+
+    using var command = connection.CreateCommand();
+    command.CommandText = "DELETE FROM Topics WHERE Id = $id;";
+    command.Parameters.AddWithValue("$id", id);
+    if (command.ExecuteNonQuery() == 0) return Results.NotFound();
+
+    return Results.NoContent();
+});
+
 var editorGuides = app.MapGroup("/api/guides");
 editorGuides.AddEndpointFilter(async (context, next) =>
 {
