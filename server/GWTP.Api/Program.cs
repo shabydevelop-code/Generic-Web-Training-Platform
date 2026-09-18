@@ -211,41 +211,69 @@ adminUsers.MapPost("", (CreateUserRequest request) =>
         new UserResponse(userId, username, displayName, true, [role]));
 });
 
-adminUsers.MapPut("/{id:long}", (long id, UpdateUserRequest request) =>
+adminUsers.MapPut("/{id:long}", (long id, UpdateUserRequest request, HttpContext httpContext) =>
 {
     var displayName = request.DisplayName?.Trim();
-    var role = request.Role?.Trim().ToLowerInvariant();
 
-    if (role is not ("editor" or "learner"))
+    if (string.IsNullOrWhiteSpace(displayName))
     {
-        return Results.BadRequest(new { message = "A valid role is required." });
+        return Results.BadRequest(new { message = "Display name is required." });
     }
 
     using var connection = OpenConnection(databasePath);
 
     using var userLookup = connection.CreateCommand();
-    userLookup.CommandText = "SELECT Username FROM Users WHERE Id = $id;";
+    userLookup.CommandText = """
+        SELECT u.Username, r.Role
+        FROM Users u
+        LEFT JOIN UserRoles r ON r.UserId = u.Id
+        WHERE u.Id = $id;
+        """;
     userLookup.Parameters.AddWithValue("$id", id);
-    var username = userLookup.ExecuteScalar() as string;
 
-    if (username is null)
+    using var userReader = userLookup.ExecuteReader();
+    if (!userReader.Read())
     {
         return Results.NotFound();
     }
 
-    if (string.Equals(username, "admin", StringComparison.OrdinalIgnoreCase))
+    var username = userReader.GetString(0);
+    var existingRole = userReader.IsDBNull(1) ? null : userReader.GetString(1);
+    userReader.Close();
+
+    var isAdminUser = string.Equals(existingRole, "admin", StringComparison.OrdinalIgnoreCase);
+
+    if (isAdminUser)
     {
-        return Results.BadRequest(new { message = "The development admin cannot be modified here." });
+        var authorization = httpContext.Request.Headers.Authorization.ToString();
+        var token = authorization["Bearer ".Length..].Trim();
+        long sessionUserId;
+
+        lock (sessionLock)
+        {
+            if (!sessions.TryGetValue(token, out sessionUserId) || sessionUserId != id)
+            {
+                return Results.Forbid();
+            }
+        }
     }
+
+    var role = isAdminUser ? "admin" : request.Role?.Trim().ToLowerInvariant();
+
+    if (!isAdminUser && role is not ("editor" or "learner"))
+    {
+        return Results.BadRequest(new { message = "A valid role is required." });
+    }
+
+    var isActive = isAdminUser ? true : request.IsActive;
+    var passwordHash = string.IsNullOrWhiteSpace(request.NewPassword)
+        ? null
+        : new PasswordHasher<object>().HashPassword(new object(), request.NewPassword);
 
     using var transaction = connection.BeginTransaction();
 
     using var userCommand = connection.CreateCommand();
     userCommand.Transaction = transaction;
-    var passwordHash = string.IsNullOrWhiteSpace(request.NewPassword)
-        ? null
-        : new PasswordHasher<object>().HashPassword(new object(), request.NewPassword);
-
     userCommand.CommandText = """
         UPDATE Users
         SET DisplayName = $displayName,
@@ -253,28 +281,31 @@ adminUsers.MapPut("/{id:long}", (long id, UpdateUserRequest request) =>
             PasswordHash = COALESCE($passwordHash, PasswordHash)
         WHERE Id = $id;
         """;
-    userCommand.Parameters.AddWithValue("$displayName", string.IsNullOrWhiteSpace(displayName) ? DBNull.Value : displayName);
-    userCommand.Parameters.AddWithValue("$isActive", request.IsActive ? 1 : 0);
+    userCommand.Parameters.AddWithValue("$displayName", displayName);
+    userCommand.Parameters.AddWithValue("$isActive", isActive ? 1 : 0);
     userCommand.Parameters.AddWithValue("$passwordHash", passwordHash is null ? DBNull.Value : passwordHash);
     userCommand.Parameters.AddWithValue("$id", id);
     userCommand.ExecuteNonQuery();
 
-    using var deleteRoles = connection.CreateCommand();
-    deleteRoles.Transaction = transaction;
-    deleteRoles.CommandText = "DELETE FROM UserRoles WHERE UserId = $id;";
-    deleteRoles.Parameters.AddWithValue("$id", id);
-    deleteRoles.ExecuteNonQuery();
+    if (!isAdminUser)
+    {
+        using var deleteRoles = connection.CreateCommand();
+        deleteRoles.Transaction = transaction;
+        deleteRoles.CommandText = "DELETE FROM UserRoles WHERE UserId = $id;";
+        deleteRoles.Parameters.AddWithValue("$id", id);
+        deleteRoles.ExecuteNonQuery();
 
-    using var roleCommand = connection.CreateCommand();
-    roleCommand.Transaction = transaction;
-    roleCommand.CommandText = "INSERT INTO UserRoles (UserId, Role) VALUES ($id, $role);";
-    roleCommand.Parameters.AddWithValue("$id", id);
-    roleCommand.Parameters.AddWithValue("$role", role);
-    roleCommand.ExecuteNonQuery();
+        using var roleCommand = connection.CreateCommand();
+        roleCommand.Transaction = transaction;
+        roleCommand.CommandText = "INSERT INTO UserRoles (UserId, Role) VALUES ($id, $role);";
+        roleCommand.Parameters.AddWithValue("$id", id);
+        roleCommand.Parameters.AddWithValue("$role", role);
+        roleCommand.ExecuteNonQuery();
+    }
 
     transaction.Commit();
 
-    return Results.Ok(new UserResponse(id, username, displayName, request.IsActive, [role]));
+    return Results.Ok(new UserResponse(id, username, displayName, isActive, [role!]));
 });
 
 adminUsers.MapGet("", () =>
