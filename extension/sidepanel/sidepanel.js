@@ -527,9 +527,8 @@ async function handleSaveUser() {
       updateAuthenticatedView();
     }
 
-    editUserStatus.textContent = window.i18nService.translate("userUpdated", language);
-    editUserStatus.dataset.type = "success";
     await loadAdminUsers();
+    closeUserEditor();
   } catch (error) {
     editUserStatus.textContent = window.i18nService.translate(
       error?.status == null ? "serverUnavailable" : "updateUserError",
@@ -1016,8 +1015,9 @@ saveGuideButton.addEventListener("click", async () => {
     if (!editingGuideId && savedGuide?.id) {
       editingGuideId = savedGuide.id;
     }
-    saveGuideStatus.textContent = window.i18nService.translate("guideSaved", language);
-    saveGuideStatus.dataset.type = "success";
+
+    await loadGuides();
+    showGuideLibrary();
   } catch (error) {
     saveGuideStatus.textContent = window.i18nService.translate(
       error?.status == null ? "serverUnavailable" : "guideSaveError",
