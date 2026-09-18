@@ -754,8 +754,10 @@ function updateGuideEditorValidity() {
   const hasGuideName = Boolean(guideNameInput.value.trim());
   const guideIdentityValid = hasTopic && hasGuideName;
 
+  // Adding a step depends on the guide identity already being defined.
+  // Saving stays clickable so validation can explain any missing required fields.
   addStepButton.disabled = !guideIdentityValid;
-  saveGuideButton.disabled = !guideIdentityValid;
+  saveGuideButton.disabled = false;
 
   return guideIdentityValid;
 }
