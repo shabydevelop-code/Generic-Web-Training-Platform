@@ -44,7 +44,10 @@
 
       <div id="appView" hidden>
         <div class="app-toolbar">
-          <div id="currentUserIdentity" class="current-user-identity"></div>
+          <div id="currentUserIdentity" class="current-user-identity">
+            <strong id="currentUserName" class="current-user-identity__name"></strong>
+            <span id="currentUserRole" class="current-user-identity__role"></span>
+          </div>
           <button id="adminButton" class="toolbar-button" type="button" data-i18n="adminButton" hidden>Admin</button>
           <button id="logoutButton" class="logout-button" type="button" data-i18n="logoutButton">Log out</button>
         </div>
