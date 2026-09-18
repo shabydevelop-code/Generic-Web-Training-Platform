@@ -752,11 +752,10 @@ async function handleCreateTopic() {
 function updateGuideEditorValidity() {
   const hasTopic = Boolean(topicSelect.value);
   const hasGuideName = Boolean(guideNameInput.value.trim());
-  const hasSteps = window.trainingService.getSteps().length > 0;
   const guideIdentityValid = hasTopic && hasGuideName;
 
   addStepButton.disabled = !guideIdentityValid;
-  saveGuideButton.disabled = !(guideIdentityValid && hasSteps);
+  saveGuideButton.disabled = !guideIdentityValid;
 
   return guideIdentityValid;
 }
@@ -996,8 +995,8 @@ saveGuideButton.addEventListener("click", async () => {
     return;
   }
 
-  if (steps.length === 0) {
-    saveGuideStatus.textContent = window.i18nService.translate("guideStepsRequired", language);
+  if (guideAvailableInput.checked && steps.length === 0) {
+    saveGuideStatus.textContent = window.i18nService.translate("availableGuideRequiresStep", language);
     saveGuideStatus.dataset.type = "error";
     return;
   }
