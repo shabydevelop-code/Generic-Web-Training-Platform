@@ -62,6 +62,7 @@ let currentSelectedElement = null;
 let activeStepId = null;
 let adminModeActive = false;
 let editingUserId = null;
+let editingStepId = null;
 
 function updateAuthenticatedView() {
   const role = window.authService.getCurrentRole();
@@ -376,6 +377,7 @@ function updateGuideEditorValidity() {
 }
 
 function closeStepCreator() {
+  editingStepId = null;
   currentSelectedElement = null;
   selectorInput.value = "";
   instructionInput.value = "";
@@ -390,6 +392,7 @@ function closeStepCreator() {
 function openStepCreator() {
   if (!updateGuideEditorValidity()) return;
 
+  editingStepId = null;
   currentSelectedElement = null;
   selectorInput.value = "";
   instructionInput.value = "";
@@ -399,6 +402,35 @@ function openStepCreator() {
   addStepButton.hidden = true;
   statusElement.textContent = "";
   statusElement.removeAttribute("data-type");
+}
+
+function openStepEditor(step) {
+  if (!updateGuideEditorValidity()) return;
+
+  editingStepId = step.id;
+  currentSelectedElement = step.element || {
+    tagName: "",
+    text: ""
+  };
+  selectorInput.value = step.selector;
+  instructionInput.value = step.instruction;
+  selectedTag.textContent = step.element?.tagName ? `<${step.element.tagName}>${step.element.text ? ` — ${step.element.text}` : ""}` : "";
+  selectedSelector.textContent = step.selector;
+  selectedElement.hidden = false;
+  stepEditor.hidden = false;
+  selectButton.hidden = false;
+  addStepButton.hidden = true;
+  statusElement.textContent = "";
+  statusElement.removeAttribute("data-type");
+  instructionInput.focus();
+}
+
+function deleteDraftStep(stepId) {
+  window.trainingService.deleteStep(stepId);
+  if (activeStepId === stepId) activeStepId = null;
+  if (editingStepId === stepId) closeStepCreator();
+  renderSteps();
+  updateGuideEditorValidity();
 }
 
 function setStatus(message, type = "info") {
@@ -470,7 +502,29 @@ function renderSteps() {
     const selector = document.createElement("code");
     selector.textContent = step.selector;
 
-    item.append(title, instruction, selector);
+    const actions = document.createElement("div");
+    actions.className = "step-item__actions";
+
+    const editButton = document.createElement("button");
+    editButton.type = "button";
+    editButton.className = "step-action";
+    editButton.textContent = window.i18nService.translate("editStepButton", window.i18nService.getLanguage());
+    editButton.addEventListener("click", (event) => {
+      event.stopPropagation();
+      openStepEditor(step);
+    });
+
+    const deleteButton = document.createElement("button");
+    deleteButton.type = "button";
+    deleteButton.className = "step-action step-action--danger";
+    deleteButton.textContent = window.i18nService.translate("deleteStepButton", window.i18nService.getLanguage());
+    deleteButton.addEventListener("click", (event) => {
+      event.stopPropagation();
+      deleteDraftStep(step.id);
+    });
+
+    actions.append(editButton, deleteButton);
+    item.append(title, instruction, selector, actions);
     item.addEventListener("click", () => runStep(step));
     item.addEventListener("keydown", (event) => {
       if (event.key === "Enter" || event.key === " ") {
@@ -526,11 +580,17 @@ saveStepButton.addEventListener("click", () => {
   }
 
   try {
-    const step = window.trainingService.createStep({
-      selector,
-      instruction,
-      element: currentSelectedElement
-    });
+    const step = editingStepId
+      ? window.trainingService.updateStep(editingStepId, {
+          selector,
+          instruction,
+          element: currentSelectedElement
+        })
+      : window.trainingService.createStep({
+          selector,
+          instruction,
+          element: currentSelectedElement
+        });
 
     renderSteps();
     updateGuideEditorValidity();
