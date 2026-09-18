@@ -22,6 +22,8 @@ const loginButton = document.getElementById("loginButton");
 const loginStatus = document.getElementById("loginStatus");
 const logoutButton = document.getElementById("logoutButton");
 const currentUserIdentity = document.getElementById("currentUserIdentity");
+const currentUserName = document.getElementById("currentUserName");
+const currentUserRole = document.getElementById("currentUserRole");
 const adminButton = document.getElementById("adminButton");
 const adminView = document.getElementById("adminView");
 const usersList = document.getElementById("usersList");
@@ -61,7 +63,8 @@ function updateAuthenticatedView() {
   const currentUser = window.authService.getCurrentUser();
   const language = window.i18nService.getLanguage();
   const roleLabel = window.i18nService.translate(`${role}Role`, language);
-  currentUserIdentity.textContent = `${currentUser?.displayName || currentUser?.username || ""} · ${roleLabel}`;
+  currentUserName.textContent = currentUser?.displayName || currentUser?.username || "";
+  currentUserRole.textContent = roleLabel;
 
   adminButton.hidden = true;
   adminView.hidden = !isAdmin;
