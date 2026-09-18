@@ -897,11 +897,15 @@ function renderSteps() {
 
     item.append(title, instruction, selector);
 
-    item.addEventListener("click", () => openStepEditor(step));
-    item.addEventListener("keydown", (event) => {
+    item.addEventListener("click", async () => {
+      openStepEditor(step);
+      await runStep(step);
+    });
+    item.addEventListener("keydown", async (event) => {
       if (event.key === "Enter" || event.key === " ") {
         event.preventDefault();
         openStepEditor(step);
+        await runStep(step);
       }
     });
 
