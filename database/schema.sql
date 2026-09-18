@@ -1,0 +1,69 @@
+PRAGMA foreign_keys = ON;
+
+CREATE TABLE IF NOT EXISTS Users (
+    Id INTEGER PRIMARY KEY AUTOINCREMENT,
+    Username TEXT NOT NULL UNIQUE,
+    DisplayName TEXT,
+    Role TEXT NOT NULL CHECK (Role IN ('editor', 'learner')),
+    IsActive INTEGER NOT NULL DEFAULT 1 CHECK (IsActive IN (0, 1)),
+    CreatedAt TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS Topics (
+    Id INTEGER PRIMARY KEY AUTOINCREMENT,
+    NameHe TEXT NOT NULL,
+    NameEn TEXT NOT NULL,
+    IsActive INTEGER NOT NULL DEFAULT 1 CHECK (IsActive IN (0, 1)),
+    CreatedAt TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UpdatedAt TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS Guides (
+    Id INTEGER PRIMARY KEY AUTOINCREMENT,
+    TopicId INTEGER NOT NULL,
+    NameHe TEXT NOT NULL,
+    NameEn TEXT NOT NULL,
+    IsActive INTEGER NOT NULL DEFAULT 1 CHECK (IsActive IN (0, 1)),
+    HasPublishedContent INTEGER NOT NULL DEFAULT 0 CHECK (HasPublishedContent IN (0, 1)),
+    CreatedAt TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UpdatedAt TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (TopicId) REFERENCES Topics(Id)
+);
+
+CREATE TABLE IF NOT EXISTS GuideSteps (
+    Id INTEGER PRIMARY KEY AUTOINCREMENT,
+    GuideId INTEGER NOT NULL,
+    ContentState TEXT NOT NULL CHECK (ContentState IN ('draft', 'published')),
+    StepOrder INTEGER NOT NULL CHECK (StepOrder > 0),
+    Selector TEXT NOT NULL,
+    InstructionHe TEXT NOT NULL,
+    InstructionEn TEXT NOT NULL,
+    ElementTagName TEXT,
+    ElementText TEXT,
+    CreatedAt TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UpdatedAt TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (GuideId) REFERENCES Guides(Id) ON DELETE CASCADE,
+    UNIQUE (GuideId, ContentState, StepOrder)
+);
+
+CREATE TABLE IF NOT EXISTS UserProgress (
+    UserId INTEGER NOT NULL,
+    GuideId INTEGER NOT NULL,
+    CurrentStepOrder INTEGER NOT NULL DEFAULT 1 CHECK (CurrentStepOrder > 0),
+    IsCompleted INTEGER NOT NULL DEFAULT 0 CHECK (IsCompleted IN (0, 1)),
+    StartedAt TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    LastActivityAt TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CompletedAt TEXT,
+    PRIMARY KEY (UserId, GuideId),
+    FOREIGN KEY (UserId) REFERENCES Users(Id) ON DELETE CASCADE,
+    FOREIGN KEY (GuideId) REFERENCES Guides(Id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS IX_Guides_TopicId
+    ON Guides(TopicId);
+
+CREATE INDEX IF NOT EXISTS IX_GuideSteps_GuideId_ContentState
+    ON GuideSteps(GuideId, ContentState);
+
+CREATE INDEX IF NOT EXISTS IX_UserProgress_GuideId
+    ON UserProgress(GuideId);
