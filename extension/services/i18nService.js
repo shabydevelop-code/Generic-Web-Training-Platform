@@ -49,7 +49,7 @@
       editUserTitle: "Edit User",
       activeUserLabel: "Active user",
       saveChangesButton: "Save changes",
-      cancelButton: "Cancel",
+      cancelButton: "Close",
       userUpdated: "User updated successfully.",
       updateUserError: "Could not update the user."
     }),
@@ -102,7 +102,7 @@
       editUserTitle: "עריכת משתמש",
       activeUserLabel: "משתמש פעיל",
       saveChangesButton: "שמור שינויים",
-      cancelButton: "ביטול",
+      cancelButton: "סגור",
       userUpdated: "המשתמש עודכן בהצלחה.",
       updateUserError: "לא ניתן לעדכן את המשתמש."
     })
