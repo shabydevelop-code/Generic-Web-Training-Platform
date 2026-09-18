@@ -45,7 +45,13 @@
       userActive: "Active",
       userInactive: "Inactive",
       noUsers: "No users found.",
-      usersLoadError: "Could not load users."
+      usersLoadError: "Could not load users.",
+      editUserTitle: "Edit User",
+      activeUserLabel: "Active user",
+      saveChangesButton: "Save changes",
+      cancelButton: "Cancel",
+      userUpdated: "User updated successfully.",
+      updateUserError: "Could not update the user."
     }),
     he: Object.freeze({
       elementSelectionTitle: "בחירת אלמנט",
@@ -92,7 +98,13 @@
       userActive: "פעיל",
       userInactive: "לא פעיל",
       noUsers: "לא נמצאו משתמשים.",
-      usersLoadError: "לא ניתן לטעון את המשתמשים."
+      usersLoadError: "לא ניתן לטעון את המשתמשים.",
+      editUserTitle: "עריכת משתמש",
+      activeUserLabel: "משתמש פעיל",
+      saveChangesButton: "שמור שינויים",
+      cancelButton: "ביטול",
+      userUpdated: "המשתמש עודכן בהצלחה.",
+      updateUserError: "לא ניתן לעדכן את המשתמש."
     })
   });
 
