@@ -96,7 +96,16 @@
       manageTopicsButton: "Manage Topics",
       topicsTitle: "Topics",
       topicsDescription: "Manage topics used to organize guides.",
-      noTopics: "No topics have been created yet."
+      noTopics: "No topics have been created yet.",
+      editTopicTitle: "Edit Topic",
+      editTopicButton: "Edit",
+      deleteTopicButton: "Delete",
+      topicUpdated: "Topic updated successfully.",
+      topicUpdateError: "Could not update the topic.",
+      confirmDeleteTopic: "Delete topic \"{name}\"?",
+      topicDeleted: "Topic deleted successfully.",
+      topicHasGuides: "This topic cannot be deleted because guides are assigned to it.",
+      topicDeleteError: "Could not delete the topic."
     }),
     he: Object.freeze({
       elementSelectionTitle: "בחירת אלמנט",
@@ -194,7 +203,16 @@
       manageTopicsButton: "ניהול נושאים",
       topicsTitle: "נושאים",
       topicsDescription: "ניהול הנושאים המשמשים לארגון המדריכים.",
-      noTopics: "עדיין לא נוצרו נושאים."
+      noTopics: "עדיין לא נוצרו נושאים.",
+      editTopicTitle: "עריכת נושא",
+      editTopicButton: "עריכה",
+      deleteTopicButton: "מחיקה",
+      topicUpdated: "הנושא עודכן בהצלחה.",
+      topicUpdateError: "לא ניתן לעדכן את הנושא.",
+      confirmDeleteTopic: "למחוק את הנושא \"{name}\"?",
+      topicDeleted: "הנושא נמחק בהצלחה.",
+      topicHasGuides: "לא ניתן למחוק את הנושא מכיוון שמשויכים אליו מדריכים.",
+      topicDeleteError: "לא ניתן למחוק את הנושא."
     })
   });
 
