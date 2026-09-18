@@ -754,6 +754,7 @@ function updateGuideEditorValidity() {
 function closeStepCreator() {
   editingStepId = null;
   editingStepSnapshot = null;
+  saveStepButton.textContent = window.i18nService.translate("saveStepButton", window.i18nService.getLanguage());
   editStepDeleteSection.hidden = true;
   currentSelectedElement = null;
   selectorInput.value = "";
@@ -788,6 +789,7 @@ function openStepEditor(step) {
 
   editingStepId = step.id;
   editingStepSnapshot = step;
+  saveStepButton.textContent = window.i18nService.translate("updateStepButton", window.i18nService.getLanguage());
   editStepDeleteSection.hidden = false;
   currentSelectedElement = step.element || {
     tagName: "",
@@ -954,7 +956,10 @@ saveStepButton.addEventListener("click", () => {
     renderSteps();
     updateGuideEditorValidity();
     closeStepCreator();
-    setStatus(`Step ${step.order} saved.`, "success");
+    setStatus(
+      window.i18nService.translate(editingStepId ? "updateStepButton" : "saveStepButton", language),
+      "success"
+    );
   } catch (error) {
     setStatus(error.message || "Could not save the step.", "error");
     console.error(error);
