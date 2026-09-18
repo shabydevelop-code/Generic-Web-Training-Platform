@@ -92,7 +92,8 @@ async function loadGuides() {
   if (window.authService.getCurrentRole() !== "editor") return;
 
   guidesList.replaceChildren();
-  guidesStatus.textContent = "Loading guides...";
+  const language = window.i18nService.getLanguage();
+  guidesStatus.textContent = window.i18nService.translate("loadingGuides", language);
   guidesStatus.dataset.type = "info";
 
   try {
@@ -106,17 +107,18 @@ async function loadGuides() {
       name.textContent = guide.name;
 
       const meta = document.createElement("span");
-      meta.textContent = `${guide.topicName} · ${guide.stepCount} step${guide.stepCount === 1 ? "" : "s"}`;
+      meta.textContent = `${guide.topicName} · ${guide.stepCount} ${window.i18nService.translate("stepCount", language)}`;
 
       item.append(name, meta);
       guidesList.appendChild(item);
     });
 
-    guidesStatus.textContent = guides.length ? "" : "No guides have been created yet.";
+    guidesStatus.textContent = guides.length ? "" : window.i18nService.translate("noGuides", language);
   } catch (error) {
-    guidesStatus.textContent = error?.status == null
-      ? "Server unavailable."
-      : "Could not load guides.";
+    guidesStatus.textContent = window.i18nService.translate(
+      error?.status == null ? "serverUnavailable" : "guidesLoadError",
+      language
+    );
     guidesStatus.dataset.type = "error";
   }
 }
