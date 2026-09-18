@@ -17,8 +17,8 @@
   });
 
   function getLanguage() {
-    const browserLanguage = chrome.i18n?.getUILanguage?.() || navigator.language || "en";
-    return browserLanguage.toLowerCase().startsWith("he") ? "he" : "en";
+    const configuredLanguage = window.appConfig?.language;
+    return configuredLanguage === "he" ? "he" : "en";
   }
 
   function translate(key, language) {
