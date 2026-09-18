@@ -874,6 +874,8 @@ function renderSteps() {
     const selector = document.createElement("code");
     selector.textContent = step.selector;
 
+    item.append(title, instruction, selector);
+
     item.addEventListener("click", () => openStepEditor(step));
     item.addEventListener("keydown", (event) => {
       if (event.key === "Enter" || event.key === " ") {
