@@ -11,7 +11,8 @@
   "permissions": [
     "activeTab",
     "sidePanel",
-    "scripting"
+    "scripting",
+    "storage"
   ],
   "host_permissions": [
     "http://*/*",
@@ -33,7 +34,10 @@
   },
   "content_scripts": [
     {
-      "matches": ["http://*/*", "https://*/*"],
+      "matches": [
+        "http://*/*",
+        "https://*/*"
+      ],
       "js": [
         "content/dom/element-finder.js",
         "content/dom/selector-builder.js",
