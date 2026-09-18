@@ -16,6 +16,7 @@ function clearTrainingStep() {
 
 function showTrainingStep(step) {
   clearTrainingStep();
+  clearHighlight();
 
   if (!step?.selector) {
     return { success: false, message: "Step selector is missing." };
