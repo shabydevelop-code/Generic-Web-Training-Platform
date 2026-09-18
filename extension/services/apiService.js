@@ -10,9 +10,15 @@
   async function request(path, options = {}) {
     const baseUrl = window.appConfig.api.baseUrl.replace(/\/$/, "");
     let response;
+    const headers = new Headers(options.headers || {});
+    const accessToken = window.authService?.getAccessToken?.();
+
+    if (accessToken && !headers.has("Authorization")) {
+      headers.set("Authorization", `Bearer ${accessToken}`);
+    }
 
     try {
-      response = await fetch(baseUrl + path, options);
+      response = await fetch(baseUrl + path, { ...options, headers });
     } catch (error) {
       throw new ApiError("GWTP API is unavailable.");
     }
