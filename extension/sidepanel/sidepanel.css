@@ -248,8 +248,20 @@ select:focus {
 
 .app-toolbar {
   display: flex;
-  justify-content: flex-end;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
   margin-bottom: 14px;
+}
+
+.current-user-identity {
+  min-width: 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: #475467;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .logout-button {
