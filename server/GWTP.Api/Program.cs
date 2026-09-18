@@ -180,6 +180,11 @@ adminUsers.MapPost("", (CreateUserRequest request) =>
         return Results.BadRequest(new { code = "USERNAME_INVALID_CHARACTERS", message = "Username contains invalid characters." });
     }
 
+    if (request.Password.Length is < 6 or > 20 || request.Password.Any(char.IsWhiteSpace))
+    {
+        return Results.BadRequest(new { code = "PASSWORD_REQUIREMENTS", message = "Password does not meet the requirements." });
+    }
+
     using var connection = OpenConnection(databasePath);
 
     using var existsCommand = connection.CreateCommand();
@@ -276,6 +281,12 @@ adminUsers.MapPut("/{id:long}", (long id, UpdateUserRequest request, HttpContext
     }
 
     var isActive = isAdminUser ? true : request.IsActive;
+    if (!string.IsNullOrEmpty(request.NewPassword) &&
+        (request.NewPassword.Length is < 6 or > 20 || request.NewPassword.Any(char.IsWhiteSpace)))
+    {
+        return Results.BadRequest(new { code = "PASSWORD_REQUIREMENTS", message = "Password does not meet the requirements." });
+    }
+
     var passwordHash = string.IsNullOrWhiteSpace(request.NewPassword)
         ? null
         : new PasswordHasher<object>().HashPassword(new object(), request.NewPassword);
