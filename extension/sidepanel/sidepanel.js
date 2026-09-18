@@ -1,5 +1,9 @@
 const selectorInput = document.getElementById("selectorInput");
 const selectButton = document.getElementById("selectButton");
+const topicSelect = document.getElementById("topicSelect");
+const newTopicInput = document.getElementById("newTopicInput");
+const createTopicButton = document.getElementById("createTopicButton");
+const topicStatus = document.getElementById("topicStatus");
 const guideNameInput = document.getElementById("guideNameInput");
 const saveGuideButton = document.getElementById("saveGuideButton");
 const saveGuideStatus = document.getElementById("saveGuideStatus");
@@ -272,6 +276,73 @@ async function loadAdminUsers() {
   }
 }
 
+async function loadTopics() {
+  if (window.authService.getCurrentRole() !== "editor") return;
+
+  const language = window.i18nService.getLanguage();
+  topicSelect.replaceChildren();
+
+  try {
+    const topics = await window.apiService.request("/api/topics");
+    const placeholder = document.createElement("option");
+    placeholder.value = "";
+    placeholder.textContent = window.i18nService.translate("selectTopicPlaceholder", language);
+    topicSelect.appendChild(placeholder);
+
+    topics.forEach((topic) => {
+      const option = document.createElement("option");
+      option.value = String(topic.id);
+      option.textContent = topic.name;
+      topicSelect.appendChild(option);
+    });
+  } catch (error) {
+    topicStatus.textContent = window.i18nService.translate(
+      error?.status == null ? "serverUnavailable" : "topicsLoadError",
+      language
+    );
+    topicStatus.dataset.type = "error";
+  }
+}
+
+async function handleCreateTopic() {
+  const name = newTopicInput.value.trim();
+  const language = window.i18nService.getLanguage();
+
+  if (!name) {
+    topicStatus.textContent = window.i18nService.translate("topicNameRequired", language);
+    topicStatus.dataset.type = "error";
+    newTopicInput.focus();
+    return;
+  }
+
+  createTopicButton.disabled = true;
+  topicStatus.textContent = "";
+
+  try {
+    const topic = await window.apiService.request("/api/topics", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name })
+    });
+
+    newTopicInput.value = "";
+    await loadTopics();
+    topicSelect.value = String(topic.id);
+    topicStatus.textContent = window.i18nService.translate("topicCreated", language);
+    topicStatus.dataset.type = "success";
+  } catch (error) {
+    const key = error?.status === 409
+      ? "topicExists"
+      : error?.status == null
+        ? "serverUnavailable"
+        : "topicCreateError";
+    topicStatus.textContent = window.i18nService.translate(key, language);
+    topicStatus.dataset.type = "error";
+  } finally {
+    createTopicButton.disabled = false;
+  }
+}
+
 function setStatus(message, type = "info") {
   statusElement.textContent = message;
   statusElement.dataset.type = type;
@@ -482,6 +553,7 @@ async function handleLogin() {
   adminModeActive = false;
   updateAuthenticatedView();
   await loadAdminUsers();
+  await loadTopics();
 }
 
 async function handleLogout() {
@@ -499,6 +571,10 @@ async function handleLogout() {
   usernameInput.focus();
 }
 
+createTopicButton.addEventListener("click", handleCreateTopic);
+newTopicInput.addEventListener("keydown", (event) => {
+  if (event.key === "Enter") handleCreateTopic();
+});
 openCreateUserButton.addEventListener("click", openCreateUser);
 closeCreateUserButton.addEventListener("click", closeCreateUser);
 createUserButton.addEventListener("click", handleCreateUser);
@@ -542,6 +618,7 @@ async function initializePanel() {
     adminModeActive = false;
     updateAuthenticatedView();
     await loadAdminUsers();
+    await loadTopics();
   } else {
     loginView.hidden = false;
     appView.hidden = true;
