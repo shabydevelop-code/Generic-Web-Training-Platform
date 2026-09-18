@@ -253,8 +253,8 @@ async function handleLogin() {
   learnModeView.hidden = window.permissionService.canCreateTraining();
 }
 
-function handleLogout() {
-  window.authService.logout();
+async function handleLogout() {
+  await window.authService.logout();
   appView.hidden = true;
   createModeView.hidden = true;
   learnModeView.hidden = true;
@@ -287,6 +287,24 @@ async function verifyApiConnection() {
   }
 }
 
-window.i18nService.initialize();
-renderSteps();
-verifyApiConnection();
+async function initializePanel() {
+  window.i18nService.initialize();
+  renderSteps();
+
+  const restoredUser = await window.authService.restoreSession();
+
+  if (restoredUser) {
+    loginView.hidden = true;
+    appView.hidden = false;
+    createModeView.hidden = !window.permissionService.canCreateTraining();
+    learnModeView.hidden = window.permissionService.canCreateTraining();
+  } else {
+    loginView.hidden = false;
+    appView.hidden = true;
+    usernameInput.focus();
+  }
+
+  verifyApiConnection();
+}
+
+initializePanel();
