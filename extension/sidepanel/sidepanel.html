@@ -130,6 +130,14 @@
         </header>
 
         <section class="card">
+          <label for="topicSelect"><span data-i18n="topicLabel">Topic</span> <span class="required-marker" aria-hidden="true">*</span></label>
+          <select id="topicSelect"></select>
+          <div class="actions">
+            <input id="newTopicInput" type="text" autocomplete="off" data-i18n-placeholder="newTopicPlaceholder" placeholder="New topic name" />
+            <button id="createTopicButton" class="button" type="button" data-i18n="createTopicButton">Add Topic</button>
+          </div>
+          <p id="topicStatus" class="status" aria-live="polite"></p>
+
           <label for="guideNameInput"><span data-i18n="guideNameLabel">Guide name</span> <span class="required-marker" aria-hidden="true">*</span></label>
           <input id="guideNameInput" type="text" autocomplete="off" data-i18n-placeholder="guideNamePlaceholder" placeholder="Enter guide name" />
 
