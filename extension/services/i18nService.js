@@ -1,6 +1,18 @@
 (() => {
   const translations = Object.freeze({
     en: Object.freeze({
+      elementSelectionTitle: "Element Selection",
+      elementSelectionDescription: "Select an element directly from the current web page or test a CSS selector manually.",
+      selectElementButton: "Select element from page",
+      selectedElementLabel: "Selected element",
+      cssSelectorLabel: "CSS selector",
+      highlightElementButton: "Highlight element",
+      clearButton: "Clear",
+      stepEditorTitle: "Create Step",
+      instructionLabel: "Instruction",
+      instructionPlaceholder: "Type the instruction for this step...",
+      saveStepButton: "Save Step",
+      stepsTitle: "Steps",
       loginTitle: "Sign in",
       loginDescription: "Enter your username and password to continue.",
       usernameLabel: "Username",
@@ -20,6 +32,18 @@
       userManagementDescription: "User management tools will appear here."
     }),
     he: Object.freeze({
+      elementSelectionTitle: "בחירת אלמנט",
+      elementSelectionDescription: "בחר אלמנט ישירות מהעמוד הנוכחי או בדוק בורר CSS באופן ידני.",
+      selectElementButton: "בחר אלמנט מהעמוד",
+      selectedElementLabel: "אלמנט שנבחר",
+      cssSelectorLabel: "בורר CSS",
+      highlightElementButton: "הדגש אלמנט",
+      clearButton: "נקה",
+      stepEditorTitle: "יצירת שלב",
+      instructionLabel: "הנחיה",
+      instructionPlaceholder: "הזן את ההנחיה לשלב...",
+      saveStepButton: "שמור שלב",
+      stepsTitle: "שלבים",
       loginTitle: "כניסה",
       loginDescription: "הזן שם משתמש וסיסמה כדי להמשיך.",
       usernameLabel: "שם משתמש",
