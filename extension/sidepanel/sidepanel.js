@@ -376,6 +376,20 @@ async function handleCreateUser() {
     return;
   }
 
+  if (username.length < 5 || username.length > 30) {
+    createUserStatus.textContent = window.i18nService.translate("usernameLengthInvalid", language);
+    createUserStatus.dataset.type = "error";
+    newUsername.focus();
+    return;
+  }
+
+  if (!/^[a-zA-Z0-9._]+$/.test(username)) {
+    createUserStatus.textContent = window.i18nService.translate("usernameInvalidCharacters", language);
+    createUserStatus.dataset.type = "error";
+    newUsername.focus();
+    return;
+  }
+
   createUserButton.disabled = true;
   createUserStatus.textContent = "";
 
@@ -383,7 +397,7 @@ async function handleCreateUser() {
     await window.apiService.request("/api/users", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username, displayName, password, role })
+      body: JSON.stringify({ username: username.toLowerCase(), displayName, password, role })
     });
 
     newDisplayName.value = "";
