@@ -92,7 +92,11 @@
       guidesLoadError: "Could not load guides.",
       stepCount: "steps",
       loadingGuide: "Loading guide...",
-      guideLoadError: "Could not load the guide."
+      guideLoadError: "Could not load the guide.",
+      manageTopicsButton: "Manage Topics",
+      topicsTitle: "Topics",
+      topicsDescription: "Manage topics used to organize guides.",
+      noTopics: "No topics have been created yet."
     }),
     he: Object.freeze({
       elementSelectionTitle: "בחירת אלמנט",
@@ -186,7 +190,11 @@
       guidesLoadError: "לא ניתן לטעון את המדריכים.",
       stepCount: "שלבים",
       loadingGuide: "טוען מדריך...",
-      guideLoadError: "לא ניתן לטעון את המדריך."
+      guideLoadError: "לא ניתן לטעון את המדריך.",
+      manageTopicsButton: "ניהול נושאים",
+      topicsTitle: "נושאים",
+      topicsDescription: "ניהול הנושאים המשמשים לארגון המדריכים.",
+      noTopics: "עדיין לא נוצרו נושאים."
     })
   });
 
