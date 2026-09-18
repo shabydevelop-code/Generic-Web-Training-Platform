@@ -174,7 +174,7 @@ async function handleSaveUser() {
   saveUserButton.disabled = true;
 
   try {
-    await window.apiService.request(`/api/users/${editingUserId}`, {
+    const updatedUser = await window.apiService.request(`/api/users/${editingUserId}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -184,6 +184,11 @@ async function handleSaveUser() {
         newPassword: editNewPassword.value
       })
     });
+
+    if (editingUserId === window.authService.getCurrentUser()?.id) {
+      await window.authService.updateCurrentUser(updatedUser);
+      updateAuthenticatedView();
+    }
 
     editUserStatus.textContent = window.i18nService.translate("userUpdated", language);
     editUserStatus.dataset.type = "success";
