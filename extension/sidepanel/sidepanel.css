@@ -831,3 +831,8 @@ select:focus {
   content: "·";
   margin-inline-end: 8px;
 }
+
+.user-item__identity span,
+.user-item__meta span {
+  font-size: 13px;
+}
