@@ -599,6 +599,72 @@ editorGuides.MapGet("/{id:long}", (long id) =>
     return Results.Ok(new GuideResponse(guideId, topicId, name, isAvailable, steps));
 });
 
+editorGuides.MapPut("/{id:long}", (long id, CreateGuideRequest request) =>
+{
+    var name = request.Name?.Trim();
+
+    if (string.IsNullOrWhiteSpace(name) || request.TopicId <= 0 || request.Steps is null || request.Steps.Count == 0)
+        return Results.BadRequest(new { message = "Topic, guide name and at least one step are required." });
+
+    if (request.Steps.Any(step => string.IsNullOrWhiteSpace(step.Selector) || string.IsNullOrWhiteSpace(step.Instruction)))
+        return Results.BadRequest(new { message = "Every step requires a selector and instruction." });
+
+    using var connection = OpenConnection(databasePath);
+
+    using var topicCommand = connection.CreateCommand();
+    topicCommand.CommandText = "SELECT COUNT(*) FROM Topics WHERE Id = $topicId;";
+    topicCommand.Parameters.AddWithValue("$topicId", request.TopicId);
+    if (Convert.ToInt32(topicCommand.ExecuteScalar()) == 0)
+        return Results.BadRequest(new { message = "The selected topic does not exist." });
+
+    using var transaction = connection.BeginTransaction();
+
+    using var guideCommand = connection.CreateCommand();
+    guideCommand.Transaction = transaction;
+    guideCommand.CommandText = "UPDATE Guides SET TopicId = $topicId, Name = $name WHERE Id = $id;";
+    guideCommand.Parameters.AddWithValue("$topicId", request.TopicId);
+    guideCommand.Parameters.AddWithValue("$name", name);
+    guideCommand.Parameters.AddWithValue("$id", id);
+    if (guideCommand.ExecuteNonQuery() == 0)
+    {
+        transaction.Rollback();
+        return Results.NotFound();
+    }
+
+    using var deleteStepsCommand = connection.CreateCommand();
+    deleteStepsCommand.Transaction = transaction;
+    deleteStepsCommand.CommandText = "DELETE FROM GuideSteps WHERE GuideId = $guideId;";
+    deleteStepsCommand.Parameters.AddWithValue("$guideId", id);
+    deleteStepsCommand.ExecuteNonQuery();
+
+    for (var index = 0; index < request.Steps.Count; index++)
+    {
+        var step = request.Steps[index];
+        using var stepCommand = connection.CreateCommand();
+        stepCommand.Transaction = transaction;
+        stepCommand.CommandText = """
+            INSERT INTO GuideSteps (GuideId, StepOrder, Selector, Instruction)
+            VALUES ($guideId, $stepOrder, $selector, $instruction);
+            """;
+        stepCommand.Parameters.AddWithValue("$guideId", id);
+        stepCommand.Parameters.AddWithValue("$stepOrder", index + 1);
+        stepCommand.Parameters.AddWithValue("$selector", step.Selector.Trim());
+        stepCommand.Parameters.AddWithValue("$instruction", step.Instruction.Trim());
+        stepCommand.ExecuteNonQuery();
+    }
+
+    transaction.Commit();
+
+    return Results.Ok(new GuideResponse(
+        id,
+        request.TopicId,
+        name,
+        false,
+        request.Steps.Select((step, index) =>
+            new GuideStepResponse(index + 1, step.Selector.Trim(), step.Instruction.Trim()))
+            .ToList()));
+});
+
 editorGuides.MapDelete("/{id:long}", (long id) =>
 {
     using var connection = OpenConnection(databasePath);
