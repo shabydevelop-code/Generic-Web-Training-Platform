@@ -509,6 +509,53 @@ editorGuides.MapGet("", () =>
     return Results.Ok(guides);
 });
 
+editorGuides.MapGet("/{id:long}", (long id) =>
+{
+    using var connection = OpenConnection(databasePath);
+
+    using var guideCommand = connection.CreateCommand();
+    guideCommand.CommandText = """
+        SELECT Id, TopicId, Name, IsAvailable
+        FROM Guides
+        WHERE Id = $id;
+        """;
+    guideCommand.Parameters.AddWithValue("$id", id);
+
+    using var guideReader = guideCommand.ExecuteReader();
+    if (!guideReader.Read())
+    {
+        return Results.NotFound();
+    }
+
+    var guideId = guideReader.GetInt64(0);
+    var topicId = guideReader.GetInt64(1);
+    var name = guideReader.GetString(2);
+    var isAvailable = guideReader.GetInt64(3) == 1;
+    guideReader.Close();
+
+    using var stepsCommand = connection.CreateCommand();
+    stepsCommand.CommandText = """
+        SELECT StepOrder, Selector, Instruction
+        FROM GuideSteps
+        WHERE GuideId = $guideId
+        ORDER BY StepOrder;
+        """;
+    stepsCommand.Parameters.AddWithValue("$guideId", guideId);
+
+    using var stepsReader = stepsCommand.ExecuteReader();
+    var steps = new List<GuideStepResponse>();
+
+    while (stepsReader.Read())
+    {
+        steps.Add(new GuideStepResponse(
+            stepsReader.GetInt32(0),
+            stepsReader.GetString(1),
+            stepsReader.GetString(2)));
+    }
+
+    return Results.Ok(new GuideResponse(guideId, topicId, name, isAvailable, steps));
+});
+
 editorGuides.MapPost("", (CreateGuideRequest request) =>
 {
     var name = request.Name?.Trim();
