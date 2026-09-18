@@ -342,6 +342,20 @@ select:focus {
   margin: 0;
 }
 
+.user-management__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.user-management__header h2 {
+  margin: 0;
+}
+
 .user-management__create {
-  margin-top: 14px;
+  flex: 0 0 auto;
+  width: auto;
+  padding: 7px 10px;
+  font-size: 12px;
 }
