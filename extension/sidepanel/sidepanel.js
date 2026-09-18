@@ -569,12 +569,12 @@ saveStepButton.addEventListener("click", () => {
   const selector = selectorInput.value.trim();
 
   if (!currentSelectedElement) {
-    setStatus("Select an element before saving the step.", "error");
+    setStatus(window.i18nService.translate("stepElementRequired", language), "error");
     return;
   }
 
   if (!instruction) {
-    setStatus("Enter an instruction before saving the step.", "error");
+    setStatus(window.i18nService.translate("stepInstructionRequired", language), "error");
     instructionInput.focus();
     return;
   }
