@@ -253,7 +253,7 @@
       sessionExpired: "פג תוקף ההתחברות. יש להתחבר מחדש.",
       confirmDeleteTopic: "למחוק את הנושא \"{name}\"?",
       topicDeleted: "הנושא נמחק בהצלחה.",
-      topicHasGuides: "לא ניתן למחוק את הנושא מכיוון שמשויכים אליו מדריכים.",
+      topicHasGuides: "לא ניתן למחוק נושא המשויך למדריכים.",
       topicDeleteError: "לא ניתן למחוק את הנושא."
     })
   });
