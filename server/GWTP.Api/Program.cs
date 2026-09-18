@@ -316,6 +316,116 @@ adminUsers.MapGet("", () =>
     return Results.Ok(users.Values);
 });
 
+
+var editorGuides = app.MapGroup("/api/guides");
+editorGuides.AddEndpointFilter(async (context, next) =>
+{
+    var authorization = context.HttpContext.Request.Headers.Authorization.ToString();
+
+    if (!authorization.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+    {
+        return Results.Unauthorized();
+    }
+
+    var token = authorization["Bearer ".Length..].Trim();
+    long userId;
+
+    lock (sessionLock)
+    {
+        if (!sessions.TryGetValue(token, out userId))
+        {
+            return Results.Unauthorized();
+        }
+    }
+
+    using var connection = OpenConnection(databasePath);
+    using var command = connection.CreateCommand();
+    command.CommandText = """
+        SELECT COUNT(*)
+        FROM Users u
+        INNER JOIN UserRoles r ON r.UserId = u.Id
+        WHERE u.Id = $userId AND u.IsActive = 1 AND r.Role = 'editor';
+        """;
+    command.Parameters.AddWithValue("$userId", userId);
+
+    if (Convert.ToInt32(command.ExecuteScalar()) == 0)
+    {
+        return Results.Forbid();
+    }
+
+    return await next(context);
+});
+
+editorGuides.MapPost("", (CreateGuideRequest request) =>
+{
+    var name = request.Name?.Trim();
+
+    if (string.IsNullOrWhiteSpace(name) || request.TopicId <= 0 || request.Steps is null || request.Steps.Count == 0)
+    {
+        return Results.BadRequest(new { message = "Topic, guide name and at least one step are required." });
+    }
+
+    if (request.Steps.Any(step =>
+        string.IsNullOrWhiteSpace(step.Selector) ||
+        string.IsNullOrWhiteSpace(step.Instruction)))
+    {
+        return Results.BadRequest(new { message = "Every step requires a selector and instruction." });
+    }
+
+    using var connection = OpenConnection(databasePath);
+
+    using var topicCommand = connection.CreateCommand();
+    topicCommand.CommandText = "SELECT COUNT(*) FROM Topics WHERE Id = $topicId;";
+    topicCommand.Parameters.AddWithValue("$topicId", request.TopicId);
+
+    if (Convert.ToInt32(topicCommand.ExecuteScalar()) == 0)
+    {
+        return Results.BadRequest(new { message = "The selected topic does not exist." });
+    }
+
+    using var transaction = connection.BeginTransaction();
+
+    using var guideCommand = connection.CreateCommand();
+    guideCommand.Transaction = transaction;
+    guideCommand.CommandText = """
+        INSERT INTO Guides (TopicId, Name, IsAvailable)
+        VALUES ($topicId, $name, 0);
+        SELECT last_insert_rowid();
+        """;
+    guideCommand.Parameters.AddWithValue("$topicId", request.TopicId);
+    guideCommand.Parameters.AddWithValue("$name", name);
+    var guideId = Convert.ToInt64(guideCommand.ExecuteScalar());
+
+    for (var index = 0; index < request.Steps.Count; index++)
+    {
+        var step = request.Steps[index];
+
+        using var stepCommand = connection.CreateCommand();
+        stepCommand.Transaction = transaction;
+        stepCommand.CommandText = """
+            INSERT INTO GuideSteps (GuideId, StepOrder, Selector, Instruction)
+            VALUES ($guideId, $stepOrder, $selector, $instruction);
+            """;
+        stepCommand.Parameters.AddWithValue("$guideId", guideId);
+        stepCommand.Parameters.AddWithValue("$stepOrder", index + 1);
+        stepCommand.Parameters.AddWithValue("$selector", step.Selector.Trim());
+        stepCommand.Parameters.AddWithValue("$instruction", step.Instruction.Trim());
+        stepCommand.ExecuteNonQuery();
+    }
+
+    transaction.Commit();
+
+    return Results.Created($"/api/guides/{guideId}",
+        new GuideResponse(
+            guideId,
+            request.TopicId,
+            name,
+            false,
+            request.Steps.Select((step, index) =>
+                new GuideStepResponse(index + 1, step.Selector.Trim(), step.Instruction.Trim()))
+                .ToList()));
+});
+
 app.Run();
 
 static void InitializeDatabase(string databasePath, string schemaPath)
@@ -423,6 +533,27 @@ sealed record UpdateUserRequest(
     string Role,
     bool IsActive,
     string? NewPassword);
+
+sealed record CreateGuideStepRequest(
+    string Selector,
+    string Instruction);
+
+sealed record CreateGuideRequest(
+    long TopicId,
+    string Name,
+    List<CreateGuideStepRequest> Steps);
+
+sealed record GuideStepResponse(
+    int StepOrder,
+    string Selector,
+    string Instruction);
+
+sealed record GuideResponse(
+    long Id,
+    long TopicId,
+    string Name,
+    bool IsAvailable,
+    List<GuideStepResponse> Steps);
 
 sealed record LoginRequest(string Username, string Password);
 
