@@ -1,6 +1,7 @@
 {
   "manifest_version": 3,
-  "name": "Generic Web Training Platform",
+  "name": "__MSG_extensionName__",
+  "default_locale": "en",
   "version": "0.1.0",
   "description": "Generic in-browser guidance for web applications.",
   "icons": {
@@ -19,7 +20,7 @@
     "https://*/*"
   ],
   "action": {
-    "default_title": "Open Web Training Guide",
+    "default_title": "__MSG_actionTitle__",
     "default_icon": {
       "16": "icons/icon16.png",
       "48": "icons/icon48.png",
