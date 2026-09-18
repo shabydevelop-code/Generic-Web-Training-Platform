@@ -352,6 +352,8 @@ function openNewGuide() {
   editingStepId = null;
   renderSteps();
   updateGuideEditorValidity();
+  saveGuideStatus.textContent = "";
+  saveGuideStatus.removeAttribute("data-type");
   guideLibraryView.hidden = true;
   guideEditorView.hidden = false;
 }
@@ -738,7 +740,7 @@ function updateGuideEditorValidity() {
   const guideIdentityValid = hasTopic && hasGuideName;
 
   addStepButton.disabled = !guideIdentityValid;
-  saveGuideButton.disabled = hasSteps && !guideIdentityValid;
+  saveGuideButton.disabled = !(guideIdentityValid && hasSteps);
 
   return guideIdentityValid;
 }
@@ -846,12 +848,11 @@ function renderSteps() {
   const steps = window.trainingService.getSteps();
   stepsList.replaceChildren();
 
+  stepsSection.hidden = false;
+
   if (steps.length === 0) {
-    stepsSection.hidden = true;
     return;
   }
-
-  stepsSection.hidden = false;
 
   steps.forEach((step) => {
     const item = document.createElement("div");
