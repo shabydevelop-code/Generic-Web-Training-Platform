@@ -108,6 +108,59 @@ app.MapPost("/api/auth/login", (LoginRequest request) =>
     return Results.Ok(new LoginResponse(userId, username, displayName, roles));
 });
 
+app.MapPost("/api/users", (CreateUserRequest request) =>
+{
+    var username = request.Username?.Trim();
+    var displayName = request.DisplayName?.Trim();
+    var role = request.Role?.Trim().ToLowerInvariant();
+
+    if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(request.Password) ||
+        role is not ("editor" or "learner"))
+    {
+        return Results.BadRequest(new { message = "Username, password and a valid role are required." });
+    }
+
+    using var connection = OpenConnection(databasePath);
+
+    using var existsCommand = connection.CreateCommand();
+    existsCommand.CommandText = "SELECT COUNT(*) FROM Users WHERE Username = $username COLLATE NOCASE;";
+    existsCommand.Parameters.AddWithValue("$username", username);
+
+    if (Convert.ToInt32(existsCommand.ExecuteScalar()) > 0)
+    {
+        return Results.Conflict(new { message = "Username already exists." });
+    }
+
+    var passwordHasher = new PasswordHasher<object>();
+    var passwordHash = passwordHasher.HashPassword(new object(), request.Password);
+
+    using var transaction = connection.BeginTransaction();
+
+    using var userCommand = connection.CreateCommand();
+    userCommand.Transaction = transaction;
+    userCommand.CommandText = """
+        INSERT INTO Users (Username, DisplayName, PasswordHash, IsActive)
+        VALUES ($username, $displayName, $passwordHash, 1);
+        SELECT last_insert_rowid();
+        """;
+    userCommand.Parameters.AddWithValue("$username", username);
+    userCommand.Parameters.AddWithValue("$displayName", string.IsNullOrWhiteSpace(displayName) ? DBNull.Value : displayName);
+    userCommand.Parameters.AddWithValue("$passwordHash", passwordHash);
+    var userId = Convert.ToInt64(userCommand.ExecuteScalar());
+
+    using var roleCommand = connection.CreateCommand();
+    roleCommand.Transaction = transaction;
+    roleCommand.CommandText = "INSERT INTO UserRoles (UserId, Role) VALUES ($userId, $role);";
+    roleCommand.Parameters.AddWithValue("$userId", userId);
+    roleCommand.Parameters.AddWithValue("$role", role);
+    roleCommand.ExecuteNonQuery();
+
+    transaction.Commit();
+
+    return Results.Created($"/api/users/{userId}",
+        new UserResponse(userId, username, displayName, true, [role]));
+});
+
 app.MapGet("/api/users", () =>
 {
     using var connection = OpenConnection(databasePath);
@@ -242,6 +295,12 @@ sealed record UserResponse(
     string? DisplayName,
     bool IsActive,
     List<string> Roles);
+
+sealed record CreateUserRequest(
+    string Username,
+    string? DisplayName,
+    string Password,
+    string Role);
 
 sealed record LoginRequest(string Username, string Password);
 
