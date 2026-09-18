@@ -61,6 +61,11 @@ const topicsView = document.getElementById("topicsView");
 const topicsList = document.getElementById("topicsList");
 const openTopicsButton = document.getElementById("openTopicsButton");
 const backFromTopicsButton = document.getElementById("backFromTopicsButton");
+const editTopicEditor = document.getElementById("editTopicEditor");
+const editTopicInput = document.getElementById("editTopicInput");
+const saveTopicButton = document.getElementById("saveTopicButton");
+const cancelEditTopicButton = document.getElementById("cancelEditTopicButton");
+let editingTopicId = null;
 const guideLibraryView = document.getElementById("guideLibraryView");
 const guideEditorView = document.getElementById("guideEditorView");
 const guidesList = document.getElementById("guidesList");
@@ -90,6 +95,68 @@ function updateAuthenticatedView() {
   adminView.hidden = !isAdmin;
   createModeView.hidden = !isEditor;
   learnModeView.hidden = !isLearner;
+}
+
+
+function openTopicEditor(topic) {
+  closeTopicCreator();
+  editingTopicId = topic.id;
+  editTopicInput.value = topic.name;
+  editTopicEditor.hidden = false;
+  topicStatus.textContent = "";
+  editTopicInput.focus();
+}
+
+function closeTopicEditor() {
+  editingTopicId = null;
+  editTopicInput.value = "";
+  editTopicEditor.hidden = true;
+}
+
+async function handleSaveTopic() {
+  const language = window.i18nService.getLanguage();
+  const name = editTopicInput.value.trim();
+  if (!editingTopicId || !name) {
+    topicStatus.textContent = window.i18nService.translate("topicNameRequired", language);
+    topicStatus.dataset.type = "error";
+    return;
+  }
+
+  try {
+    await window.apiService.request(`/api/topics/${editingTopicId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name })
+    });
+    closeTopicEditor();
+    await loadTopics();
+    topicStatus.textContent = window.i18nService.translate("topicUpdated", language);
+    topicStatus.dataset.type = "success";
+  } catch (error) {
+    topicStatus.textContent = window.i18nService.translate(
+      error?.status === 409 ? "topicExists" : error?.status == null ? "serverUnavailable" : "topicUpdateError",
+      language
+    );
+    topicStatus.dataset.type = "error";
+  }
+}
+
+async function handleDeleteTopic(topic) {
+  const language = window.i18nService.getLanguage();
+  if (!confirm(window.i18nService.translate("confirmDeleteTopic", language).replace("{name}", topic.name))) return;
+
+  try {
+    await window.apiService.request(`/api/topics/${topic.id}`, { method: "DELETE" });
+    await loadTopics();
+    topicStatus.textContent = window.i18nService.translate("topicDeleted", language);
+    topicStatus.dataset.type = "success";
+  } catch (error) {
+    topicStatus.textContent = window.i18nService.translate(
+      error?.status === 409 ? "topicHasGuides" : error?.status == null ? "serverUnavailable" : "topicDeleteError",
+      language
+    );
+    topicStatus.dataset.type = "error";
+  }
 }
 
 async function loadGuides() {
@@ -421,10 +488,31 @@ async function loadTopics() {
       option.textContent = topic.name;
       topicSelect.appendChild(option);
 
-      const item = document.createElement("div");
-      item.className = "topic-item";
-      item.textContent = topic.name;
-      topicsList.appendChild(item);
+      const card = document.createElement("div");
+      card.className = "topic-card";
+
+      const name = document.createElement("strong");
+      name.className = "topic-card__name";
+      name.textContent = topic.name;
+
+      const actions = document.createElement("div");
+      actions.className = "topic-card__actions";
+
+      const editButton = document.createElement("button");
+      editButton.className = "topic-card__action";
+      editButton.type = "button";
+      editButton.textContent = window.i18nService.translate("editTopicButton", language);
+      editButton.addEventListener("click", () => openTopicEditor(topic));
+
+      const deleteButton = document.createElement("button");
+      deleteButton.className = "topic-card__action topic-card__action--danger";
+      deleteButton.type = "button";
+      deleteButton.textContent = window.i18nService.translate("deleteTopicButton", language);
+      deleteButton.addEventListener("click", () => handleDeleteTopic(topic));
+
+      actions.append(editButton, deleteButton);
+      card.append(name, actions);
+      topicsList.appendChild(card);
     });
 
     if (topics.length === 0) {
@@ -893,6 +981,11 @@ backToGuidesButton.addEventListener("click", showGuideLibrary);
 addStepButton.addEventListener("click", openStepCreator);
 cancelStepButton.addEventListener("click", closeStepCreator);
 openCreateTopicButton.addEventListener("click", openTopicCreator);
+saveTopicButton.addEventListener("click", handleSaveTopic);
+cancelEditTopicButton.addEventListener("click", closeTopicEditor);
+editTopicInput.addEventListener("keydown", (event) => {
+  if (event.key === "Enter") handleSaveTopic();
+});
 cancelCreateTopicButton.addEventListener("click", closeTopicCreator);
 createTopicButton.addEventListener("click", handleCreateTopic);
 newTopicInput.addEventListener("keydown", (event) => {
