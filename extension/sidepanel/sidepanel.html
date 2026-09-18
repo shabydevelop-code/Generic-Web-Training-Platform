@@ -180,7 +180,6 @@
         </div>
 
         <div id="guideEditorView" hidden>
-          <button id="backToGuidesButton" class="guide-back-button" type="button" data-i18n="backToGuidesButton">← Back to guides</button>
         <header class="panel__header">
           <h1 data-i18n="guideEditorTitle">Edit Guide</h1>
           <p class="description" data-i18n="guideEditorDescription">
@@ -202,7 +201,10 @@
 
           <div class="guide-details-divider"></div>
 
-          <button id="saveGuideButton" class="button button--primary button--full guide-save-button" type="button" data-i18n="saveGuideButton">Save Guide</button>
+          <div class="actions guide-editor-actions">
+            <button id="saveGuideButton" class="button button--primary guide-save-button" type="button" data-i18n="saveGuideButton">Save Guide</button>
+            <button id="backToGuidesButton" class="button" type="button" data-i18n="cancelButton">Close</button>
+          </div>
           <div id="editGuideDeleteSection" class="entity-edit-delete-section" hidden>
             <button id="deleteEditedGuideButton" class="button button--danger button--full" type="button" data-i18n="deleteStepButton">Delete</button>
           </div>
