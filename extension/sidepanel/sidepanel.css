@@ -539,3 +539,7 @@ select:focus {
 .guide-library__title {
   margin: 0 0 14px;
 }
+
+.current-user-identity__role {
+  font-size: 14px;
+}
