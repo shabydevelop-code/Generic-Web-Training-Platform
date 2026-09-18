@@ -101,7 +101,9 @@ async function loadGuides() {
 
     guides.forEach((guide) => {
       const item = document.createElement("div");
-      item.className = "guide-item";
+      item.className = "guide-item guide-item--clickable";
+      item.tabIndex = 0;
+      item.setAttribute("role", "button");
 
       const name = document.createElement("strong");
       name.textContent = guide.name;
@@ -110,6 +112,13 @@ async function loadGuides() {
       meta.textContent = `${guide.topicName} · ${guide.stepCount} ${window.i18nService.translate("stepCount", language)}`;
 
       item.append(name, meta);
+      item.addEventListener("click", () => openExistingGuide(guide.id));
+      item.addEventListener("keydown", (event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          openExistingGuide(guide.id);
+        }
+      });
       guidesList.appendChild(item);
     });
 
@@ -123,7 +132,42 @@ async function loadGuides() {
   }
 }
 
+async function openExistingGuide(guideId) {
+  const language = window.i18nService.getLanguage();
+  guidesStatus.textContent = window.i18nService.translate("loadingGuide", language);
+  guidesStatus.dataset.type = "info";
+
+  try {
+    const guide = await window.apiService.request(`/api/guides/${guideId}`);
+
+    topicSelect.value = String(guide.topicId);
+    guideNameInput.value = guide.name;
+    window.trainingService.replaceSteps(guide.steps || []);
+    activeStepId = null;
+    editingStepId = null;
+
+    renderSteps();
+    updateGuideEditorValidity();
+    guidesStatus.textContent = "";
+    guideLibraryView.hidden = true;
+    guideEditorView.hidden = false;
+  } catch (error) {
+    guidesStatus.textContent = window.i18nService.translate(
+      error?.status == null ? "serverUnavailable" : "guideLoadError",
+      language
+    );
+    guidesStatus.dataset.type = "error";
+  }
+}
+
 function openNewGuide() {
+  topicSelect.value = "";
+  guideNameInput.value = "";
+  window.trainingService.clearSteps();
+  activeStepId = null;
+  editingStepId = null;
+  renderSteps();
+  updateGuideEditorValidity();
   guideLibraryView.hidden = true;
   guideEditorView.hidden = false;
 }
