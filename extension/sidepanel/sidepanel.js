@@ -530,6 +530,11 @@ guideNameInput.addEventListener("input", () => {
   saveGuideStatus.removeAttribute("data-type");
 });
 
+topicSelect.addEventListener("change", () => {
+  saveGuideStatus.textContent = "";
+  saveGuideStatus.removeAttribute("data-type");
+});
+
 chrome.runtime.onMessage.addListener((message) => {
   if (message?.type === "GWTP_ELEMENT_SELECTED") {
     const element = message.element;
@@ -642,6 +647,9 @@ async function verifyApiConnection() {
 
 async function initializePanel() {
   window.i18nService.initialize();
+  saveGuideStatus.textContent = "";
+  saveGuideStatus.removeAttribute("data-type");
+  activeStepId = null;
   renderSteps();
 
   const restoredUser = await window.authService.restoreSession();
