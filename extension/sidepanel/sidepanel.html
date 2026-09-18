@@ -149,26 +149,7 @@
             <code id="selectedSelector"></code>
           </div>
 
-          <div class="divider"></div>
-
-          <label for="selectorInput" data-i18n="cssSelectorLabel">CSS selector</label>
-          <input
-            id="selectorInput"
-            type="text"
-            value="button"
-            placeholder="#customerId, .save-button, button"
-            autocomplete="off"
-          />
-
-          <div class="actions">
-            <button id="highlightButton" class="button" type="button" data-i18n="highlightElementButton">
-              Highlight element
-            </button>
-            <button id="clearButton" class="button" type="button" data-i18n="clearButton">
-              Clear
-            </button>
-          </div>
-
+          <input id="selectorInput" type="hidden" value="" />
           <p id="status" class="status" aria-live="polite"></p>
         </section>
 
@@ -197,6 +178,8 @@
         <section id="stepsSection" class="card" hidden>
           <h2 data-i18n="stepsTitle">Steps</h2>
           <div id="stepsList" class="steps-list"></div>
+          <button id="saveGuideButton" class="button button--primary button--full guide-save-button" type="button" data-i18n="saveGuideButton">Save Guide</button>
+          <p id="saveGuideStatus" class="status" aria-live="polite"></p>
         </section>
       </div>
 
