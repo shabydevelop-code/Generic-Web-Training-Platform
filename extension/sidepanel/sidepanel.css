@@ -836,3 +836,20 @@ select:focus {
 .user-item__meta span {
   font-size: 13px;
 }
+
+.create-user-card h2 {
+  margin-bottom: 18px;
+}
+.create-user-card input,
+.create-user-card select {
+  margin-bottom: 16px;
+}
+.create-user-card .actions {
+  margin-top: 2px;
+}
+.create-user-card #createUserStatus:empty {
+  display: none;
+}
+.create-user-card #createUserStatus:not(:empty) {
+  margin-bottom: 0;
+}
