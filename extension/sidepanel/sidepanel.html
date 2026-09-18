@@ -127,14 +127,13 @@
             <h1 data-i18n="guidesTitle">Guides</h1>
             <p class="description" data-i18n="guidesDescription">Manage existing guides or create a new guide.</p>
           </header>
+          <div class="guide-primary-actions">
+            <button id="openNewGuideButton" class="button button--primary" type="button" data-i18n="newGuideButton">+ New Guide</button>
+            <button id="openTopicsButton" class="button" type="button" data-i18n="manageTopicsButton">Manage Topics</button>
+          </div>
+
           <section class="card">
-            <div class="guide-library__header">
-              <h2 data-i18n="existingGuidesTitle">Existing Guides</h2>
-              <div class="guide-library__actions">
-                <button id="openTopicsButton" class="button guide-library__create" type="button" data-i18n="manageTopicsButton">Manage Topics</button>
-                <button id="openNewGuideButton" class="button button--primary guide-library__create" type="button" data-i18n="newGuideButton">+ New Guide</button>
-              </div>
-            </div>
+            <h2 class="guide-library__title" data-i18n="existingGuidesTitle">Existing Guides</h2>
             <div id="guidesList" class="guides-list"></div>
             <p id="guidesStatus" class="status" aria-live="polite"></p>
           </section>
