@@ -60,7 +60,8 @@
       saveChangesButton: "Save changes",
       cancelButton: "Close",
       userUpdated: "User updated successfully.",
-      updateUserError: "Could not update the user."
+      updateUserError: "Could not update the user.",
+      editUserDisplayNameRequired: "Display name is required."
     }),
     he: Object.freeze({
       elementSelectionTitle: "בחירת אלמנט",
@@ -122,7 +123,8 @@
       saveChangesButton: "שמור שינויים",
       cancelButton: "סגור",
       userUpdated: "המשתמש עודכן בהצלחה.",
-      updateUserError: "לא ניתן לעדכן את המשתמש."
+      updateUserError: "לא ניתן לעדכן את המשתמש.",
+      editUserDisplayNameRequired: "יש להזין שם תצוגה."
     })
   });
 
