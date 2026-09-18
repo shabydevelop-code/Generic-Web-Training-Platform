@@ -149,8 +149,7 @@ clearButton.addEventListener("click", async () => {
     selectedElement.hidden = true;
     stepEditor.hidden = true;
     instructionInput.value = "";
-    window.i18nService.initialize();
-renderSteps();
+    renderSteps();
     setStatus("Highlight cleared.", "success");
   } catch (error) {
     setStatus("Could not clear the highlight on this page.", "error");
@@ -208,4 +207,5 @@ chrome.runtime.onMessage.addListener((message) => {
   }
 });
 
+window.i18nService.initialize();
 renderSteps();
