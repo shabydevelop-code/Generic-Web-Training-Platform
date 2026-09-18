@@ -108,6 +108,13 @@ select:focus {
   color: #ffffff;
 }
 
+.button:disabled {
+  border-color: #d0d5dd;
+  background: #eaecf0;
+  color: #98a2b3;
+  cursor: not-allowed;
+}
+
 .button--full {
   width: 100%;
 }
