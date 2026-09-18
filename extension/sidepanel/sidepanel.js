@@ -69,7 +69,7 @@ function markActiveStep(stepId) {
 
 async function runStep(step) {
   try {
-    const response = await sendToActivePage({
+    const response = await window.messagingService.sendToActivePage({
       type: "GWTP_SHOW_TRAINING_STEP",
       step
     });
@@ -134,48 +134,6 @@ function renderSteps() {
   });
 }
 
-async function getActiveTab() {
-  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-  return tab;
-}
-
-function isMissingReceiverError(error) {
-  return error?.message?.includes("Receiving end does not exist");
-}
-
-async function restorePageConnection(tabId) {
-  await chrome.scripting.executeScript({
-    target: { tabId },
-    files: [
-      "content/dom/element-finder.js",
-      "content/dom/selector-builder.js",
-      "content/overlay/highlighter.js",
-      "content/overlay/element-picker.js",
-      "content/overlay/training-runner.js",
-      "content/content-script.js"
-    ]
-  });
-}
-
-async function sendToActivePage(message) {
-  const tab = await getActiveTab();
-
-  if (!tab?.id) {
-    throw new Error("No active browser tab was found.");
-  }
-
-  try {
-    return await chrome.tabs.sendMessage(tab.id, message);
-  } catch (error) {
-    if (!isMissingReceiverError(error)) {
-      throw error;
-    }
-
-    await restorePageConnection(tab.id);
-    return chrome.tabs.sendMessage(tab.id, message);
-  }
-}
-
 learnModeButton.addEventListener("click", () => {
   if (canRunTraining) {
     setMode("learn");
@@ -190,7 +148,7 @@ createModeButton.addEventListener("click", () => {
 
 selectButton.addEventListener("click", async () => {
   try {
-    const response = await sendToActivePage({ type: "GWTP_START_ELEMENT_PICKER" });
+    const response = await window.messagingService.sendToActivePage({ type: "GWTP_START_ELEMENT_PICKER" });
     setStatus(response?.message || "Selection mode active.");
   } catch (error) {
     setStatus(
@@ -212,7 +170,7 @@ highlightButton.addEventListener("click", async () => {
   setStatus("Looking for the element...");
 
   try {
-    const response = await sendToActivePage({
+    const response = await window.messagingService.sendToActivePage({
       type: "GWTP_HIGHLIGHT_ELEMENT",
       selector
     });
@@ -232,7 +190,7 @@ highlightButton.addEventListener("click", async () => {
 
 clearButton.addEventListener("click", async () => {
   try {
-    await sendToActivePage({ type: "GWTP_CLEAR_HIGHLIGHT" });
+    await window.messagingService.sendToActivePage({ type: "GWTP_CLEAR_HIGHLIGHT" });
     currentSelectedElement = null;
     activeStepId = null;
     selectedElement.hidden = true;
