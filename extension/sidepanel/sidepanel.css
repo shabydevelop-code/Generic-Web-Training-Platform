@@ -395,6 +395,11 @@ select:focus {
   margin-bottom: 16px;
 }
 
+#createTopicEditor {
+  margin-top: 8px;
+  margin-bottom: 16px;
+}
+
 #topicStatus:empty {
   display: none;
 }
