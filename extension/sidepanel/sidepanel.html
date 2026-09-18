@@ -156,12 +156,16 @@
             + Add Step
           </button>
 
+        </section>
+
+        <section id="stepEditor" class="card" hidden>
+          <h2 data-i18n="stepEditorTitle">Create Step</h2>
+
           <button
             id="selectButton"
             class="button button--primary button--full"
             type="button"
             data-i18n="selectElementButton"
-            hidden
           >
             Select element from page
           </button>
@@ -176,10 +180,6 @@
 
           <input id="selectorInput" type="hidden" value="" />
           <p id="status" class="status" aria-live="polite"></p>
-        </section>
-
-        <section id="stepEditor" class="card" hidden>
-          <h2 data-i18n="stepEditorTitle">Create Step</h2>
 
           <label for="instructionInput" data-i18n="instructionLabel">Instruction</label>
           <textarea
