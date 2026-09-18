@@ -599,6 +599,19 @@ editorGuides.MapGet("/{id:long}", (long id) =>
     return Results.Ok(new GuideResponse(guideId, topicId, name, isAvailable, steps));
 });
 
+editorGuides.MapDelete("/{id:long}", (long id) =>
+{
+    using var connection = OpenConnection(databasePath);
+    using var command = connection.CreateCommand();
+    command.CommandText = "DELETE FROM Guides WHERE Id = $id;";
+    command.Parameters.AddWithValue("$id", id);
+
+    if (command.ExecuteNonQuery() == 0)
+        return Results.NotFound();
+
+    return Results.NoContent();
+});
+
 editorGuides.MapPost("", (CreateGuideRequest request) =>
 {
     var name = request.Name?.Trim();
