@@ -56,10 +56,12 @@
           </header>
 
           <section class="card">
-            <h2 data-i18n="userManagementTitle">User Management</h2>
+            <div class="user-management__header">
+              <h2 data-i18n="userManagementTitle">User Management</h2>
+              <button id="openCreateUserButton" class="button button--primary user-management__create" type="button" data-i18n="newUserButton">+ New user</button>
+            </div>
             <p class="description" data-i18n="userManagementDescription">Users registered in the platform.</p>
             <div id="usersList" class="users-list"></div>
-            <button id="openCreateUserButton" class="button button--primary button--full user-management__create" type="button" data-i18n="newUserButton">+ New user</button>
             <p id="usersStatus" class="status" aria-live="polite"></p>
           </section>
 
