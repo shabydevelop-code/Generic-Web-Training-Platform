@@ -392,6 +392,7 @@ select:focus {
 
 .topic-add-button {
   margin-top: 8px;
+  margin-bottom: 16px;
 }
 
 #topicStatus:empty {
