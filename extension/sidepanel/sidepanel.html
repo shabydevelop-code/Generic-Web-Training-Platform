@@ -122,6 +122,23 @@
           </section>
         </div>
       <div id="createModeView">
+        <div id="guideLibraryView">
+          <header class="panel__header">
+            <h1>Guides</h1>
+            <p class="description">Manage existing guides or create a new guide.</p>
+          </header>
+          <section class="card">
+            <div class="guide-library__header">
+              <h2>Existing Guides</h2>
+              <button id="openNewGuideButton" class="button button--primary guide-library__create" type="button">+ New Guide</button>
+            </div>
+            <div id="guidesList" class="guides-list"></div>
+            <p id="guidesStatus" class="status" aria-live="polite"></p>
+          </section>
+        </div>
+
+        <div id="guideEditorView" hidden>
+          <button id="backToGuidesButton" class="guide-back-button" type="button">← Back to guides</button>
         <header class="panel__header">
           <h1 data-i18n="elementSelectionTitle">Element Selection</h1>
           <p class="description" data-i18n="elementSelectionDescription">
@@ -216,6 +233,7 @@
           <button id="saveGuideButton" class="button button--primary button--full guide-save-button" type="button" data-i18n="saveGuideButton">Save Guide</button>
           <p id="saveGuideStatus" class="status" aria-live="polite"></p>
         </section>
+        </div>
       </div>
 
       <div id="learnModeView" hidden>
