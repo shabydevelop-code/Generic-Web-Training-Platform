@@ -11,46 +11,11 @@ const instructionInput = document.getElementById("instructionInput");
 const saveStepButton = document.getElementById("saveStepButton");
 const stepsSection = document.getElementById("stepsSection");
 const stepsList = document.getElementById("stepsList");
-const learnModeButton = document.getElementById("learnModeButton");
-const createModeButton = document.getElementById("createModeButton");
 const learnModeView = document.getElementById("learnModeView");
 const createModeView = document.getElementById("createModeView");
 
 let currentSelectedElement = null;
 let activeStepId = null;
-
-const canRunTraining = window.permissionService.canRunTraining();
-const canCreateTraining = window.permissionService.canCreateTraining();
-
-function setMode(mode) {
-  const isLearnMode = mode === "learn";
-
-  learnModeView.hidden = !isLearnMode;
-  createModeView.hidden = isLearnMode;
-
-  learnModeButton.classList.toggle("mode-switcher__button--active", isLearnMode);
-  createModeButton.classList.toggle("mode-switcher__button--active", !isLearnMode);
-  learnModeButton.setAttribute("aria-pressed", String(isLearnMode));
-  createModeButton.setAttribute("aria-pressed", String(!isLearnMode));
-}
-
-function initializeAvailableModes() {
-  learnModeButton.hidden = !canRunTraining;
-  createModeButton.hidden = !canCreateTraining;
-
-  if (canCreateTraining) {
-    setMode("create");
-    return;
-  }
-
-  if (canRunTraining) {
-    setMode("learn");
-    return;
-  }
-
-  learnModeView.hidden = true;
-  createModeView.hidden = true;
-}
 
 function setStatus(message, type = "info") {
   statusElement.textContent = message;
@@ -133,18 +98,6 @@ function renderSteps() {
     stepsList.appendChild(item);
   });
 }
-
-learnModeButton.addEventListener("click", () => {
-  if (canRunTraining) {
-    setMode("learn");
-  }
-});
-
-createModeButton.addEventListener("click", () => {
-  if (canCreateTraining) {
-    setMode("create");
-  }
-});
 
 selectButton.addEventListener("click", async () => {
   try {
@@ -254,5 +207,4 @@ chrome.runtime.onMessage.addListener((message) => {
   }
 });
 
-initializeAvailableModes();
 renderSteps();
