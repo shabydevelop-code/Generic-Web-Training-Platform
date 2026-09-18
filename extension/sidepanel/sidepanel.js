@@ -142,6 +142,11 @@ function closeUserEditor() {
   editUserStatus.textContent = "";
 }
 
+function clearEditUserFeedback() {
+  editUserStatus.textContent = "";
+  editUserStatus.removeAttribute("data-type");
+}
+
 async function handleSaveUser() {
   if (editingUserId == null) return;
 
@@ -492,6 +497,10 @@ closeCreateUserButton.addEventListener("click", closeCreateUser);
 createUserButton.addEventListener("click", handleCreateUser);
 saveUserButton.addEventListener("click", handleSaveUser);
 cancelEditUserButton.addEventListener("click", closeUserEditor);
+editDisplayName.addEventListener("input", clearEditUserFeedback);
+editNewPassword.addEventListener("input", clearEditUserFeedback);
+editRole.addEventListener("change", clearEditUserFeedback);
+editIsActive.addEventListener("change", clearEditUserFeedback);
 logoutButton.addEventListener("click", handleLogout);
 loginButton.addEventListener("click", handleLogin);
 usernameInput.addEventListener("keydown", (event) => {
