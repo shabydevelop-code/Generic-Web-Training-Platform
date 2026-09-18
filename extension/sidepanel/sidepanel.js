@@ -197,11 +197,12 @@ function handleDeleteTopic(topic) {
       topicStatus.textContent = window.i18nService.translate("topicDeleted", language);
       topicStatus.dataset.type = "success";
     } catch (error) {
-      topicStatus.textContent = window.i18nService.translate(
+      const errorMessage = window.i18nService.translate(
         error?.status === 409 ? "topicHasGuides" : error?.status == null ? "serverUnavailable" : "topicDeleteError",
         language
       );
-      topicStatus.dataset.type = "error";
+      editTopicStatus.textContent = errorMessage;
+      editTopicStatus.dataset.type = "error";
       closeDeleteConfirmation();
     }
   });
