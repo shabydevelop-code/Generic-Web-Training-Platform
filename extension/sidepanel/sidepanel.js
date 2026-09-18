@@ -73,6 +73,11 @@ const guidesList = document.getElementById("guidesList");
 const guidesStatus = document.getElementById("guidesStatus");
 const openNewGuideButton = document.getElementById("openNewGuideButton");
 const backToGuidesButton = document.getElementById("backToGuidesButton");
+const deleteConfirmOverlay = document.getElementById("deleteConfirmOverlay");
+const deleteConfirmMessage = document.getElementById("deleteConfirmMessage");
+const cancelDeleteButton = document.getElementById("cancelDeleteButton");
+const confirmDeleteButton = document.getElementById("confirmDeleteButton");
+let pendingDeleteAction = null;
 
 let currentSelectedElement = null;
 let activeStepId = null;
@@ -159,21 +164,48 @@ async function handleSaveTopic() {
   }
 }
 
-async function handleDeleteTopic(topic) {
+function handleDeleteTopic(topic) {
   const language = window.i18nService.getLanguage();
-  if (!confirm(window.i18nService.translate("confirmDeleteTopic", language).replace("{name}", topic.name))) return;
+  const message = window.i18nService.translate("confirmDeleteTopic", language).replace("{name}", topic.name);
+  requestDeleteConfirmation(message, async () => {
+    try {
+      await window.apiService.request(`/api/topics/${topic.id}`, { method: "DELETE" });
+      await loadTopics();
+      topicStatus.textContent = window.i18nService.translate("topicDeleted", language);
+      topicStatus.dataset.type = "success";
+    } catch (error) {
+      topicStatus.textContent = window.i18nService.translate(
+        error?.status === 409 ? "topicHasGuides" : error?.status == null ? "serverUnavailable" : "topicDeleteError",
+        language
+      );
+      topicStatus.dataset.type = "error";
+      closeDeleteConfirmation();
+    }
+  });
+}
+
+function requestDeleteConfirmation(message, action) {
+  deleteConfirmMessage.textContent = message;
+  pendingDeleteAction = action;
+  deleteConfirmOverlay.hidden = false;
+  confirmDeleteButton.focus();
+}
+
+function closeDeleteConfirmation() {
+  deleteConfirmOverlay.hidden = true;
+  pendingDeleteAction = null;
+}
+
+async function confirmPendingDelete() {
+  if (!pendingDeleteAction) return;
+  const action = pendingDeleteAction;
+  confirmDeleteButton.disabled = true;
 
   try {
-    await window.apiService.request(`/api/topics/${topic.id}`, { method: "DELETE" });
-    await loadTopics();
-    topicStatus.textContent = window.i18nService.translate("topicDeleted", language);
-    topicStatus.dataset.type = "success";
-  } catch (error) {
-    topicStatus.textContent = window.i18nService.translate(
-      error?.status === 409 ? "topicHasGuides" : error?.status == null ? "serverUnavailable" : "topicDeleteError",
-      language
-    );
-    topicStatus.dataset.type = "error";
+    await action();
+    closeDeleteConfirmation();
+  } finally {
+    confirmDeleteButton.disabled = false;
   }
 }
 
@@ -190,9 +222,7 @@ async function loadGuides() {
 
     guides.forEach((guide) => {
       const item = document.createElement("div");
-      item.className = "guide-item guide-item--clickable";
-      item.tabIndex = 0;
-      item.setAttribute("role", "button");
+      item.className = "guide-item";
 
       const name = document.createElement("strong");
       name.textContent = guide.name;
@@ -200,14 +230,26 @@ async function loadGuides() {
       const meta = document.createElement("span");
       meta.textContent = `${guide.topicName} · ${guide.stepCount} ${window.i18nService.translate("stepCount", language)}`;
 
-      item.append(name, meta);
-      item.addEventListener("click", () => openExistingGuide(guide.id));
-      item.addEventListener("keydown", (event) => {
-        if (event.key === "Enter" || event.key === " ") {
-          event.preventDefault();
-          openExistingGuide(guide.id);
-        }
+      const actions = document.createElement("div");
+      actions.className = "guide-item__actions";
+
+      const editButton = document.createElement("button");
+      editButton.className = "guide-item__action";
+      editButton.type = "button";
+      editButton.textContent = window.i18nService.translate("editStepButton", language);
+      editButton.addEventListener("click", () => openExistingGuide(guide.id));
+
+      const deleteButton = document.createElement("button");
+      deleteButton.className = "guide-item__action guide-item__action--danger";
+      deleteButton.type = "button";
+      deleteButton.textContent = window.i18nService.translate("deleteStepButton", language);
+      deleteButton.addEventListener("click", () => {
+        const message = window.i18nService.translate("confirmDeleteGuide", language).replace("{name}", guide.name);
+        requestDeleteConfirmation(message, () => handleDeleteGuide(guide.id));
       });
+
+      actions.append(editButton, deleteButton);
+      item.append(name, meta, actions);
       guidesList.appendChild(item);
     });
 
@@ -218,6 +260,23 @@ async function loadGuides() {
       language
     );
     guidesStatus.dataset.type = "error";
+  }
+}
+
+async function handleDeleteGuide(guideId) {
+  const language = window.i18nService.getLanguage();
+  try {
+    await window.apiService.request(`/api/guides/${guideId}`, { method: "DELETE" });
+    await loadGuides();
+    guidesStatus.textContent = window.i18nService.translate("guideDeleted", language);
+    guidesStatus.dataset.type = "success";
+  } catch (error) {
+    guidesStatus.textContent = window.i18nService.translate(
+      error?.status == null ? "serverUnavailable" : "guideDeleteError",
+      language
+    );
+    guidesStatus.dataset.type = "error";
+    closeDeleteConfirmation();
   }
 }
 
@@ -994,6 +1053,11 @@ async function handleLogout() {
 
 openTopicsButton.addEventListener("click", openTopics);
 backFromTopicsButton.addEventListener("click", closeTopics);
+cancelDeleteButton.addEventListener("click", closeDeleteConfirmation);
+confirmDeleteButton.addEventListener("click", confirmPendingDelete);
+deleteConfirmOverlay.addEventListener("click", (event) => {
+  if (event.target === deleteConfirmOverlay) closeDeleteConfirmation();
+});
 openNewGuideButton.addEventListener("click", openNewGuide);
 backToGuidesButton.addEventListener("click", showGuideLibrary);
 addStepButton.addEventListener("click", openStepCreator);
