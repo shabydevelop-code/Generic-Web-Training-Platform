@@ -57,6 +57,10 @@ const editActiveSection = document.getElementById("editActiveSection");
 const saveUserButton = document.getElementById("saveUserButton");
 const cancelEditUserButton = document.getElementById("cancelEditUserButton");
 const editUserStatus = document.getElementById("editUserStatus");
+const topicsView = document.getElementById("topicsView");
+const topicsList = document.getElementById("topicsList");
+const openTopicsButton = document.getElementById("openTopicsButton");
+const backFromTopicsButton = document.getElementById("backFromTopicsButton");
 const guideLibraryView = document.getElementById("guideLibraryView");
 const guideEditorView = document.getElementById("guideEditorView");
 const guidesList = document.getElementById("guidesList");
@@ -160,7 +164,24 @@ async function openExistingGuide(guideId) {
   }
 }
 
+function openTopics() {
+  guideLibraryView.hidden = true;
+  guideEditorView.hidden = true;
+  topicsView.hidden = false;
+  topicStatus.textContent = "";
+  topicStatus.removeAttribute("data-type");
+  loadTopics();
+}
+
+function closeTopics() {
+  closeTopicCreator();
+  topicsView.hidden = true;
+  guideLibraryView.hidden = false;
+  loadGuides();
+}
+
 function openNewGuide() {
+  topicsView.hidden = true;
   topicSelect.value = "";
   guideNameInput.value = "";
   window.trainingService.clearSteps();
@@ -174,6 +195,7 @@ function openNewGuide() {
 
 function showGuideLibrary() {
   closeStepCreator();
+  topicsView.hidden = true;
   guideEditorView.hidden = true;
   guideLibraryView.hidden = false;
   loadGuides();
@@ -384,6 +406,7 @@ async function loadTopics() {
 
   const language = window.i18nService.getLanguage();
   topicSelect.replaceChildren();
+  topicsList.replaceChildren();
 
   try {
     const topics = await window.apiService.request("/api/topics");
@@ -397,7 +420,19 @@ async function loadTopics() {
       option.value = String(topic.id);
       option.textContent = topic.name;
       topicSelect.appendChild(option);
+
+      const item = document.createElement("div");
+      item.className = "topic-item";
+      item.textContent = topic.name;
+      topicsList.appendChild(item);
     });
+
+    if (topics.length === 0) {
+      const empty = document.createElement("p");
+      empty.className = "description";
+      empty.textContent = window.i18nService.translate("noTopics", language);
+      topicsList.appendChild(empty);
+    }
   } catch (error) {
     topicStatus.textContent = window.i18nService.translate(
       error?.status == null ? "serverUnavailable" : "topicsLoadError",
@@ -443,8 +478,6 @@ async function handleCreateTopic() {
     });
 
     await loadTopics();
-    topicSelect.value = String(topic.id);
-    updateGuideEditorValidity();
     closeTopicCreator();
     topicStatus.textContent = window.i18nService.translate("topicCreated", language);
     topicStatus.dataset.type = "success";
@@ -853,6 +886,8 @@ async function handleLogout() {
   usernameInput.focus();
 }
 
+openTopicsButton.addEventListener("click", openTopics);
+backFromTopicsButton.addEventListener("click", closeTopics);
 openNewGuideButton.addEventListener("click", openNewGuide);
 backToGuidesButton.addEventListener("click", showGuideLibrary);
 addStepButton.addEventListener("click", openStepCreator);
