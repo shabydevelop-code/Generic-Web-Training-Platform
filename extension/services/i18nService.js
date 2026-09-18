@@ -29,7 +29,12 @@
       adminTitle: "Administration",
       adminDescription: "Manage users and platform permissions.",
       userManagementTitle: "User Management",
-      userManagementDescription: "User management tools will appear here."
+      userManagementDescription: "Users registered in the platform.",
+      loadingUsers: "Loading users...",
+      userActive: "Active",
+      userInactive: "Inactive",
+      noUsers: "No users found.",
+      usersLoadError: "Could not load users."
     }),
     he: Object.freeze({
       elementSelectionTitle: "בחירת אלמנט",
@@ -60,7 +65,12 @@
       adminTitle: "ניהול מערכת",
       adminDescription: "ניהול משתמשים והרשאות במערכת.",
       userManagementTitle: "ניהול משתמשים",
-      userManagementDescription: "כלי ניהול המשתמשים יופיעו כאן."
+      userManagementDescription: "משתמשים הרשומים במערכת.",
+      loadingUsers: "טוען משתמשים...",
+      userActive: "פעיל",
+      userInactive: "לא פעיל",
+      noUsers: "לא נמצאו משתמשים.",
+      usersLoadError: "לא ניתן לטעון את המשתמשים."
     })
   });
 
