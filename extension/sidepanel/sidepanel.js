@@ -233,16 +233,16 @@ async function loadGuides() {
       meta.textContent = `${guide.topicName} · ${guide.stepCount} ${window.i18nService.translate("stepCount", language)}`;
 
       const actions = document.createElement("div");
-      actions.className = "guide-item__actions";
+      actions.className = "guide-item__actions entity-card__actions";
 
       const editButton = document.createElement("button");
-      editButton.className = "guide-item__action";
+      editButton.className = "guide-item__action entity-card__action";
       editButton.type = "button";
       editButton.textContent = window.i18nService.translate("editStepButton", language);
       editButton.addEventListener("click", () => openExistingGuide(guide.id));
 
       const deleteButton = document.createElement("button");
-      deleteButton.className = "guide-item__action guide-item__action--danger";
+      deleteButton.className = "guide-item__action guide-item__action--danger entity-card__action entity-card__action--danger";
       deleteButton.type = "button";
       deleteButton.textContent = window.i18nService.translate("deleteStepButton", language);
       deleteButton.addEventListener("click", () => {
@@ -500,6 +500,7 @@ async function loadAdminUsers() {
       const isAdminUser = Array.isArray(user.roles) && user.roles.includes("admin");
 
       const identity = document.createElement("div");
+      identity.className = "user-item__identity";
       const name = document.createElement("strong");
       name.textContent = user.displayName || user.username;
       identity.append(name);
@@ -521,11 +522,11 @@ async function loadAdminUsers() {
       meta.append(role, state);
 
       const actions = document.createElement("div");
-      actions.className = "user-item__actions";
+      actions.className = "entity-card__actions";
 
       if (!isAdminUser || user.id === window.authService.getCurrentUser()?.id) {
         const editButton = document.createElement("button");
-        editButton.className = "user-item__action";
+        editButton.className = "entity-card__action";
         editButton.type = "button";
         editButton.textContent = window.i18nService.translate("editUserButton", language);
         editButton.addEventListener("click", () => openUserEditor(user));
@@ -534,7 +535,7 @@ async function loadAdminUsers() {
 
       if (!isAdminUser) {
         const deleteButton = document.createElement("button");
-        deleteButton.className = "user-item__action user-item__action--danger";
+        deleteButton.className = "entity-card__action entity-card__action--danger";
         deleteButton.type = "button";
         deleteButton.textContent = window.i18nService.translate("deleteUserButton", language);
         deleteButton.addEventListener("click", () => {
@@ -604,16 +605,16 @@ async function loadTopics() {
       name.textContent = topic.name;
 
       const actions = document.createElement("div");
-      actions.className = "topic-card__actions";
+      actions.className = "topic-card__actions entity-card__actions";
 
       const editButton = document.createElement("button");
-      editButton.className = "topic-card__action";
+      editButton.className = "topic-card__action entity-card__action";
       editButton.type = "button";
       editButton.textContent = window.i18nService.translate("editTopicButton", language);
       editButton.addEventListener("click", () => openTopicEditor(topic));
 
       const deleteButton = document.createElement("button");
-      deleteButton.className = "topic-card__action topic-card__action--danger";
+      deleteButton.className = "topic-card__action topic-card__action--danger entity-card__action entity-card__action--danger";
       deleteButton.type = "button";
       deleteButton.textContent = window.i18nService.translate("deleteTopicButton", language);
       deleteButton.addEventListener("click", () => handleDeleteTopic(topic));
