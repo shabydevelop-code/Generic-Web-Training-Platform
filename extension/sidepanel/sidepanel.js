@@ -37,6 +37,7 @@ const editUserCard = document.getElementById("editUserCard");
 const editUsername = document.getElementById("editUsername");
 const editDisplayName = document.getElementById("editDisplayName");
 const editRole = document.getElementById("editRole");
+const editNewPassword = document.getElementById("editNewPassword");
 const editIsActive = document.getElementById("editIsActive");
 const saveUserButton = document.getElementById("saveUserButton");
 const cancelEditUserButton = document.getElementById("cancelEditUserButton");
@@ -127,6 +128,7 @@ function openUserEditor(user) {
   editUsername.textContent = user.username;
   editDisplayName.value = user.displayName || "";
   editRole.value = user.roles?.[0] || "learner";
+  editNewPassword.value = "";
   editIsActive.checked = user.isActive;
   editUserStatus.textContent = "";
   editUserCard.hidden = false;
@@ -136,6 +138,7 @@ function openUserEditor(user) {
 function closeUserEditor() {
   editingUserId = null;
   editUserCard.hidden = true;
+  editNewPassword.value = "";
   editUserStatus.textContent = "";
 }
 
@@ -152,7 +155,8 @@ async function handleSaveUser() {
       body: JSON.stringify({
         displayName: editDisplayName.value.trim(),
         role: editRole.value,
-        isActive: editIsActive.checked
+        isActive: editIsActive.checked,
+        newPassword: editNewPassword.value
       })
     });
 
