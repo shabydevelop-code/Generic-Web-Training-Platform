@@ -1,0 +1,10 @@
+{
+  "extensionName": {
+    "message": "Web Training Platform",
+    "description": "Extension name shown by the browser"
+  },
+  "actionTitle": {
+    "message": "Open Web Training Platform",
+    "description": "Extension toolbar action title"
+  }
+}
