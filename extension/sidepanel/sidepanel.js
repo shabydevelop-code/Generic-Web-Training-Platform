@@ -437,6 +437,9 @@ function openUserEditor(user) {
   closeCreateUser();
   editingUserId = user.id;
   editingUserSnapshot = user;
+  usersList.querySelectorAll(".user-item").forEach((card) => {
+    card.classList.toggle("user-item--active", card.dataset.userId === String(user.id));
+  });
   editUsername.textContent = user.username;
   editDisplayName.value = user.displayName || "";
   const isAdminUser = user.roles?.includes("admin");
@@ -454,6 +457,7 @@ function openUserEditor(user) {
 function closeUserEditor() {
   editingUserId = null;
   editingUserSnapshot = null;
+  usersList.querySelectorAll(".user-item--active").forEach((card) => card.classList.remove("user-item--active"));
   editUserCard.hidden = true;
   editNewPassword.value = "";
   editUserStatus.textContent = "";
@@ -533,6 +537,8 @@ async function loadAdminUsers() {
     users.forEach((user) => {
       const item = document.createElement("div");
       item.className = "user-item";
+      item.dataset.userId = String(user.id);
+      if (user.id === editingUserId) item.classList.add("user-item--active");
       const isAdminUser = Array.isArray(user.roles) && user.roles.includes("admin");
 
       const identity = document.createElement("div");
