@@ -161,6 +161,65 @@ app.MapPost("/api/users", (CreateUserRequest request) =>
         new UserResponse(userId, username, displayName, true, [role]));
 });
 
+app.MapPut("/api/users/{id:long}", (long id, UpdateUserRequest request) =>
+{
+    var displayName = request.DisplayName?.Trim();
+    var role = request.Role?.Trim().ToLowerInvariant();
+
+    if (role is not ("editor" or "learner"))
+    {
+        return Results.BadRequest(new { message = "A valid role is required." });
+    }
+
+    using var connection = OpenConnection(databasePath);
+
+    using var userLookup = connection.CreateCommand();
+    userLookup.CommandText = "SELECT Username FROM Users WHERE Id = $id;";
+    userLookup.Parameters.AddWithValue("$id", id);
+    var username = userLookup.ExecuteScalar() as string;
+
+    if (username is null)
+    {
+        return Results.NotFound();
+    }
+
+    if (string.Equals(username, "admin", StringComparison.OrdinalIgnoreCase))
+    {
+        return Results.BadRequest(new { message = "The development admin cannot be modified here." });
+    }
+
+    using var transaction = connection.BeginTransaction();
+
+    using var userCommand = connection.CreateCommand();
+    userCommand.Transaction = transaction;
+    userCommand.CommandText = """
+        UPDATE Users
+        SET DisplayName = $displayName, IsActive = $isActive
+        WHERE Id = $id;
+        """;
+    userCommand.Parameters.AddWithValue("$displayName", string.IsNullOrWhiteSpace(displayName) ? DBNull.Value : displayName);
+    userCommand.Parameters.AddWithValue("$isActive", request.IsActive ? 1 : 0);
+    userCommand.Parameters.AddWithValue("$id", id);
+    userCommand.ExecuteNonQuery();
+
+    using var deleteRoles = connection.CreateCommand();
+    deleteRoles.Transaction = transaction;
+    deleteRoles.CommandText = "DELETE FROM UserRoles WHERE UserId = $id;";
+    deleteRoles.Parameters.AddWithValue("$id", id);
+    deleteRoles.ExecuteNonQuery();
+
+    using var roleCommand = connection.CreateCommand();
+    roleCommand.Transaction = transaction;
+    roleCommand.CommandText = "INSERT INTO UserRoles (UserId, Role) VALUES ($id, $role);";
+    roleCommand.Parameters.AddWithValue("$id", id);
+    roleCommand.Parameters.AddWithValue("$role", role);
+    roleCommand.ExecuteNonQuery();
+
+    transaction.Commit();
+
+    return Results.Ok(new UserResponse(id, username, displayName, request.IsActive, [role]));
+});
+
 app.MapGet("/api/users", () =>
 {
     using var connection = OpenConnection(databasePath);
@@ -301,6 +360,11 @@ sealed record CreateUserRequest(
     string? DisplayName,
     string Password,
     string Role);
+
+sealed record UpdateUserRequest(
+    string? DisplayName,
+    string Role,
+    bool IsActive);
 
 sealed record LoginRequest(string Username, string Password);
 
