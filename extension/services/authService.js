@@ -1,6 +1,23 @@
 (() => {
   let currentUser = null;
   let currentRole = null;
+  const SESSION_KEY = "gwtp.auth.user";
+
+  function applyUser(user) {
+    currentUser = user;
+    currentRole = Array.isArray(user?.roles) && user.roles.length > 0 ? user.roles[0] : null;
+  }
+
+  async function saveSession(user) {
+    await chrome.storage.local.set({ [SESSION_KEY]: user });
+  }
+
+  async function restoreSession() {
+    const stored = await chrome.storage.local.get(SESSION_KEY);
+    const user = stored[SESSION_KEY] || null;
+    applyUser(user);
+    return user;
+  }
 
   async function authenticate(username, password) {
     try {
@@ -12,8 +29,8 @@
         body: JSON.stringify({ username, password })
       });
 
-      currentUser = user;
-      currentRole = Array.isArray(user.roles) && user.roles.length > 0 ? user.roles[0] : null;
+      applyUser(user);
+      await saveSession(user);
       return { success: true, user };
     } catch (error) {
       currentUser = null;
@@ -39,13 +56,14 @@
     return currentRole;
   }
 
-  function logout() {
-    currentUser = null;
-    currentRole = null;
+  async function logout() {
+    applyUser(null);
+    await chrome.storage.local.remove(SESSION_KEY);
   }
 
   window.authService = Object.freeze({
     authenticate,
+    restoreSession,
     getCurrentUser,
     getCurrentRole,
     logout
