@@ -69,6 +69,7 @@
       usernameExists: "This username already exists.",
       usernameLengthInvalid: "The username must contain 5–30 characters.",
       usernameInvalidCharacters: "The username contains invalid characters.",
+      passwordRequirementsInvalid: "The password does not meet the requirements.",
       createUserError: "Could not create the user.",
       userManagementTitle: "User Management",
       userManagementDescription: "Users registered in the platform.",
