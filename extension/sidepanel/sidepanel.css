@@ -873,3 +873,26 @@ select:focus {
 .edit-user__delete-section .button {
   width: 100%;
 }
+
+/* Keep the user editor fully reachable in the Side Panel. */
+#editUserCard {
+  margin-bottom: 24px;
+}
+
+#editUserCard .edit-user__delete-section {
+  margin-top: 20px;
+  padding-top: 16px;
+}
+
+#editUserCard #editUserStatus:empty {
+  display: none;
+}
+
+html,
+body {
+  min-height: 100%;
+}
+
+body {
+  overflow-y: auto;
+}
