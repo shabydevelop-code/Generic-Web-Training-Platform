@@ -376,3 +376,8 @@ select:focus {
 .guide-save-button {
   margin-top: 16px;
 }
+
+
+[hidden] {
+  display: none !important;
+}
