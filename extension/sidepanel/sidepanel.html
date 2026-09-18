@@ -11,20 +11,21 @@
       <div id="loginView">
         <header class="panel__header">
           <p class="eyebrow">Generic Web Training Platform</p>
-          <h1>Sign in</h1>
-          <p class="description">Enter your access password to continue.</p>
+          <h1 data-i18n="loginTitle">Sign in</h1>
+          <p class="description" data-i18n="loginDescription">Enter your access password to continue.</p>
         </header>
 
         <section class="card">
-          <label for="passwordInput">Password</label>
+          <label for="passwordInput" data-i18n="passwordLabel">Password</label>
           <input
             id="passwordInput"
             type="password"
+            data-i18n-placeholder="passwordPlaceholder"
             placeholder="Enter password"
             autocomplete="current-password"
           />
 
-          <button id="loginButton" class="button button--primary button--full login-button" type="button">
+          <button id="loginButton" class="button button--primary button--full login-button" type="button" data-i18n="continueButton">
             Continue
           </button>
 
@@ -121,6 +122,7 @@
       </div>
     </main>
 
+    <script src="../services/i18nService.js"></script>
     <script src="../services/trainingService.js"></script>
     <script src="../services/permissionService.js"></script>
     <script src="../services/messagingService.js"></script>
