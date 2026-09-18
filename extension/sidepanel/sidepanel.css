@@ -341,3 +341,7 @@ select:focus {
   width: auto;
   margin: 0;
 }
+
+.user-management__create {
+  margin-top: 14px;
+}
