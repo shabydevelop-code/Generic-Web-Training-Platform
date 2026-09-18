@@ -160,7 +160,7 @@ adminUsers.AddEndpointFilter(async (context, next) =>
 
 adminUsers.MapPost("", (CreateUserRequest request) =>
 {
-    var username = request.Username?.Trim();
+    var username = request.Username?.Trim().ToLowerInvariant();
     var displayName = request.DisplayName?.Trim();
     var role = request.Role?.Trim().ToLowerInvariant();
 
@@ -168,6 +168,16 @@ adminUsers.MapPost("", (CreateUserRequest request) =>
         role is not ("editor" or "learner"))
     {
         return Results.BadRequest(new { message = "Display name, username, password and a valid role are required." });
+    }
+
+    if (username.Length is < 5 or > 30)
+    {
+        return Results.BadRequest(new { code = "USERNAME_LENGTH", message = "Username must contain 5-30 characters." });
+    }
+
+    if (!System.Text.RegularExpressions.Regex.IsMatch(username, @"^[a-z0-9._]+$"))
+    {
+        return Results.BadRequest(new { code = "USERNAME_INVALID_CHARACTERS", message = "Username contains invalid characters." });
     }
 
     using var connection = OpenConnection(databasePath);
