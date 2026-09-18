@@ -260,6 +260,18 @@
         </div>
       </div>
 
+      <div id="deleteConfirmOverlay" class="confirm-overlay" hidden>
+        <div class="confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="deleteConfirmTitle">
+          <h2 id="deleteConfirmTitle" data-i18n="deleteConfirmTitle">Confirm deletion</h2>
+          <p id="deleteConfirmMessage" class="description"></p>
+          <p class="confirm-dialog__warning" data-i18n="deleteConfirmWarning">This action cannot be undone.</p>
+          <div class="actions">
+            <button id="cancelDeleteButton" class="button" type="button" data-i18n="cancelStepButton">Cancel</button>
+            <button id="confirmDeleteButton" class="button button--danger" type="button" data-i18n="confirmDeleteButton">Delete</button>
+          </div>
+        </div>
+      </div>
+
       <div id="learnModeView" hidden>
         <header class="panel__header">
           <h1>Learn Mode</h1>
