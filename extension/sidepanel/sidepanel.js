@@ -188,6 +188,11 @@ function handleDeleteTopic(topic) {
   requestDeleteConfirmation(message, async () => {
     try {
       await window.apiService.request(`/api/topics/${topic.id}`, { method: "DELETE" });
+
+      if (editingTopicId === topic.id) {
+        closeTopicEditor();
+      }
+
       await loadTopics();
       topicStatus.textContent = window.i18nService.translate("topicDeleted", language);
       topicStatus.dataset.type = "success";
