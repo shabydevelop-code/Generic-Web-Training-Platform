@@ -36,6 +36,65 @@ app.MapGet("/api/health/database", () =>
     });
 });
 
+app.MapPost("/api/auth/login", (LoginRequest request) =>
+{
+    if (string.IsNullOrWhiteSpace(request.Username) || string.IsNullOrEmpty(request.Password))
+    {
+        return Results.BadRequest(new { message = "Username and password are required." });
+    }
+
+    using var connection = OpenConnection(databasePath);
+    using var command = connection.CreateCommand();
+    command.CommandText = """
+        SELECT Id, Username, DisplayName, PasswordHash, IsActive
+        FROM Users
+        WHERE Username = $username COLLATE NOCASE;
+        """;
+    command.Parameters.AddWithValue("$username", request.Username.Trim());
+
+    using var reader = command.ExecuteReader();
+
+    if (!reader.Read())
+    {
+        return Results.Unauthorized();
+    }
+
+    var userId = reader.GetInt64(0);
+    var username = reader.GetString(1);
+    var displayName = reader.IsDBNull(2) ? null : reader.GetString(2);
+    var passwordHash = reader.GetString(3);
+    var isActive = reader.GetInt64(4) == 1;
+
+    if (!isActive)
+    {
+        return Results.Unauthorized();
+    }
+
+    var passwordHasher = new PasswordHasher<object>();
+    var verification = passwordHasher.VerifyHashedPassword(new object(), passwordHash, request.Password);
+
+    if (verification == PasswordVerificationResult.Failed)
+    {
+        return Results.Unauthorized();
+    }
+
+    reader.Close();
+
+    using var rolesCommand = connection.CreateCommand();
+    rolesCommand.CommandText = "SELECT Role FROM UserRoles WHERE UserId = $userId ORDER BY Role;";
+    rolesCommand.Parameters.AddWithValue("$userId", userId);
+
+    using var rolesReader = rolesCommand.ExecuteReader();
+    var roles = new List<string>();
+
+    while (rolesReader.Read())
+    {
+        roles.Add(rolesReader.GetString(0));
+    }
+
+    return Results.Ok(new LoginResponse(userId, username, displayName, roles));
+});
+
 app.MapGet("/api/users", () =>
 {
     using var connection = OpenConnection(databasePath);
@@ -169,4 +228,12 @@ sealed record UserResponse(
     string Username,
     string? DisplayName,
     bool IsActive,
+    List<string> Roles);
+
+sealed record LoginRequest(string Username, string Password);
+
+sealed record LoginResponse(
+    long Id,
+    string Username,
+    string? DisplayName,
     List<string> Roles);
