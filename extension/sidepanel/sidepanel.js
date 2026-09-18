@@ -28,18 +28,16 @@ let activeStepId = null;
 let adminModeActive = false;
 
 function updateAuthenticatedView() {
-  const isAdmin = window.authService.getCurrentRole() === "admin";
-  adminButton.hidden = !isAdmin;
-  adminView.hidden = !isAdmin || !adminModeActive;
-  createModeView.hidden = adminModeActive || !window.permissionService.canCreateTraining();
-  learnModeView.hidden = adminModeActive || window.permissionService.canCreateTraining();
-  adminButton.textContent = window.i18nService.translate(adminModeActive ? "backButton" : "adminButton", window.i18nService.getLanguage());
-}
+  const role = window.authService.getCurrentRole();
+  const isAdmin = role === "admin";
+  const isEditor = role === "editor";
+  const isLearner = role === "learner";
 
-adminButton.addEventListener("click", () => {
-  adminModeActive = !adminModeActive;
-  updateAuthenticatedView();
-});
+  adminButton.hidden = true;
+  adminView.hidden = !isAdmin;
+  createModeView.hidden = !isEditor;
+  learnModeView.hidden = !isLearner;
+}
 
 function setStatus(message, type = "info") {
   statusElement.textContent = message;
