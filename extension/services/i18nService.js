@@ -90,7 +90,9 @@
       loadingGuides: "Loading guides...",
       noGuides: "No guides have been created yet.",
       guidesLoadError: "Could not load guides.",
-      stepCount: "steps"
+      stepCount: "steps",
+      loadingGuide: "Loading guide...",
+      guideLoadError: "Could not load the guide."
     }),
     he: Object.freeze({
       elementSelectionTitle: "בחירת אלמנט",
@@ -182,7 +184,9 @@
       loadingGuides: "טוען מדריכים...",
       noGuides: "עדיין לא נוצרו מדריכים.",
       guidesLoadError: "לא ניתן לטעון את המדריכים.",
-      stepCount: "שלבים"
+      stepCount: "שלבים",
+      loadingGuide: "טוען מדריך...",
+      guideLoadError: "לא ניתן לטעון את המדריך."
     })
   });
 
