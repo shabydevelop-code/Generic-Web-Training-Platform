@@ -741,3 +741,19 @@ select:focus {
 .guide-details-card #saveGuideStatus:not(:empty) {
   margin-bottom: 0;
 }
+
+.login-card #usernameInput {
+  margin-bottom: 16px;
+}
+
+.login-card .login-button {
+  margin-top: 16px;
+}
+
+.login-card #loginStatus:empty {
+  display: none;
+}
+
+.login-card #loginStatus:not(:empty) {
+  margin-bottom: 0;
+}
