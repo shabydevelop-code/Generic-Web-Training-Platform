@@ -20,9 +20,26 @@ const passwordInput = document.getElementById("passwordInput");
 const loginButton = document.getElementById("loginButton");
 const loginStatus = document.getElementById("loginStatus");
 const logoutButton = document.getElementById("logoutButton");
+const adminButton = document.getElementById("adminButton");
+const adminView = document.getElementById("adminView");
 
 let currentSelectedElement = null;
 let activeStepId = null;
+let adminModeActive = false;
+
+function updateAuthenticatedView() {
+  const isAdmin = window.authService.getCurrentRole() === "admin";
+  adminButton.hidden = !isAdmin;
+  adminView.hidden = !isAdmin || !adminModeActive;
+  createModeView.hidden = adminModeActive || !window.permissionService.canCreateTraining();
+  learnModeView.hidden = adminModeActive || window.permissionService.canCreateTraining();
+  adminButton.textContent = window.i18nService.translate(adminModeActive ? "backButton" : "adminButton", window.i18nService.getLanguage());
+}
+
+adminButton.addEventListener("click", () => {
+  adminModeActive = !adminModeActive;
+  updateAuthenticatedView();
+});
 
 function setStatus(message, type = "info") {
   statusElement.textContent = message;
@@ -249,13 +266,16 @@ async function handleLogin() {
   passwordInput.value = "";
   loginView.hidden = true;
   appView.hidden = false;
-  createModeView.hidden = !window.permissionService.canCreateTraining();
-  learnModeView.hidden = window.permissionService.canCreateTraining();
+  adminModeActive = false;
+  updateAuthenticatedView();
 }
 
 async function handleLogout() {
   await window.authService.logout();
   appView.hidden = true;
+  adminModeActive = false;
+  adminButton.hidden = true;
+  adminView.hidden = true;
   createModeView.hidden = true;
   learnModeView.hidden = true;
   loginView.hidden = false;
@@ -296,8 +316,8 @@ async function initializePanel() {
   if (restoredUser) {
     loginView.hidden = true;
     appView.hidden = false;
-    createModeView.hidden = !window.permissionService.canCreateTraining();
-    learnModeView.hidden = window.permissionService.canCreateTraining();
+    adminModeActive = false;
+    updateAuthenticatedView();
   } else {
     loginView.hidden = false;
     appView.hidden = true;
