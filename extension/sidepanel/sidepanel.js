@@ -346,7 +346,7 @@ async function handleCreateTopic() {
 
     await loadTopics();
     topicSelect.value = String(topic.id);
-    updateAddStepAvailability();
+    updateGuideEditorValidity();
     closeTopicCreator();
     topicStatus.textContent = window.i18nService.translate("topicCreated", language);
     topicStatus.dataset.type = "success";
@@ -363,8 +363,16 @@ async function handleCreateTopic() {
   }
 }
 
-function updateAddStepAvailability() {
-  addStepButton.disabled = !topicSelect.value || !guideNameInput.value.trim();
+function updateGuideEditorValidity() {
+  const hasTopic = Boolean(topicSelect.value);
+  const hasGuideName = Boolean(guideNameInput.value.trim());
+  const hasSteps = window.trainingService.getSteps().length > 0;
+  const guideIdentityValid = hasTopic && hasGuideName;
+
+  addStepButton.disabled = !guideIdentityValid;
+  saveGuideButton.disabled = hasSteps && !guideIdentityValid;
+
+  return guideIdentityValid;
 }
 
 function closeStepCreator() {
@@ -380,6 +388,8 @@ function closeStepCreator() {
 }
 
 function openStepCreator() {
+  if (!updateGuideEditorValidity()) return;
+
   currentSelectedElement = null;
   selectorInput.value = "";
   instructionInput.value = "";
@@ -487,6 +497,20 @@ selectButton.addEventListener("click", async () => {
 });
 
 saveStepButton.addEventListener("click", () => {
+  const language = window.i18nService.getLanguage();
+
+  if (!topicSelect.value) {
+    setStatus(window.i18nService.translate("guideTopicRequired", language), "error");
+    topicSelect.focus();
+    return;
+  }
+
+  if (!guideNameInput.value.trim()) {
+    setStatus(window.i18nService.translate("guideNameRequired", language), "error");
+    guideNameInput.focus();
+    return;
+  }
+
   const instruction = instructionInput.value.trim();
   const selector = selectorInput.value.trim();
 
@@ -509,6 +533,7 @@ saveStepButton.addEventListener("click", () => {
     });
 
     renderSteps();
+    updateGuideEditorValidity();
     closeStepCreator();
     setStatus(`Step ${step.order} saved.`, "success");
   } catch (error) {
@@ -576,13 +601,23 @@ saveGuideButton.addEventListener("click", async () => {
 guideNameInput.addEventListener("input", () => {
   saveGuideStatus.textContent = "";
   saveGuideStatus.removeAttribute("data-type");
-  updateAddStepAvailability();
+  updateGuideEditorValidity();
+
+  if (window.trainingService.getSteps().length > 0 && !guideNameInput.value.trim()) {
+    saveGuideStatus.textContent = window.i18nService.translate("guideNameRequired", window.i18nService.getLanguage());
+    saveGuideStatus.dataset.type = "error";
+  }
 });
 
 topicSelect.addEventListener("change", () => {
   saveGuideStatus.textContent = "";
   saveGuideStatus.removeAttribute("data-type");
-  updateAddStepAvailability();
+  updateGuideEditorValidity();
+
+  if (window.trainingService.getSteps().length > 0 && !topicSelect.value) {
+    saveGuideStatus.textContent = window.i18nService.translate("guideTopicRequired", window.i18nService.getLanguage());
+    saveGuideStatus.dataset.type = "error";
+  }
 });
 
 chrome.runtime.onMessage.addListener((message) => {
@@ -704,7 +739,7 @@ async function initializePanel() {
   saveGuideStatus.textContent = "";
   saveGuideStatus.removeAttribute("data-type");
   activeStepId = null;
-  updateAddStepAvailability();
+  updateGuideEditorValidity();
   renderSteps();
 
   const restoredUser = await window.authService.restoreSession();
