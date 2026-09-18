@@ -1,10 +1,27 @@
 (() => {
+  class ApiError extends Error {
+    constructor(message, status = null) {
+      super(message);
+      this.name = "ApiError";
+      this.status = status;
+    }
+  }
+
   async function request(path, options = {}) {
     const baseUrl = window.appConfig.api.baseUrl.replace(/\/$/, "");
-    const response = await fetch(baseUrl + path, options);
+    let response;
+
+    try {
+      response = await fetch(baseUrl + path, options);
+    } catch (error) {
+      throw new ApiError("GWTP API is unavailable.");
+    }
 
     if (!response.ok) {
-      throw new Error("GWTP API request failed with status " + response.status + ".");
+      throw new ApiError(
+        "GWTP API request failed with status " + response.status + ".",
+        response.status
+      );
     }
 
     const contentType = response.headers.get("content-type") || "";
@@ -15,5 +32,5 @@
     return request("/api/health");
   }
 
-  window.apiService = Object.freeze({ request, healthCheck });
+  window.apiService = Object.freeze({ request, healthCheck, ApiError });
 })();
