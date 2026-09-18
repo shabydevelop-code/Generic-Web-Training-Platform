@@ -30,6 +30,9 @@ const newPassword = document.getElementById("newPassword");
 const newRole = document.getElementById("newRole");
 const createUserButton = document.getElementById("createUserButton");
 const createUserStatus = document.getElementById("createUserStatus");
+const createUserCard = document.getElementById("createUserCard");
+const openCreateUserButton = document.getElementById("openCreateUserButton");
+const closeCreateUserButton = document.getElementById("closeCreateUserButton");
 const editUserCard = document.getElementById("editUserCard");
 const editUsername = document.getElementById("editUsername");
 const editDisplayName = document.getElementById("editDisplayName");
@@ -54,6 +57,18 @@ function updateAuthenticatedView() {
   adminView.hidden = !isAdmin;
   createModeView.hidden = !isEditor;
   learnModeView.hidden = !isLearner;
+}
+
+function openCreateUser() {
+  closeUserEditor();
+  createUserStatus.textContent = "";
+  createUserCard.hidden = false;
+  newDisplayName.focus();
+}
+
+function closeCreateUser() {
+  createUserCard.hidden = true;
+  createUserStatus.textContent = "";
 }
 
 async function handleCreateUser() {
@@ -86,6 +101,7 @@ async function handleCreateUser() {
     createUserStatus.textContent = window.i18nService.translate("userCreated", language);
     createUserStatus.dataset.type = "success";
     await loadAdminUsers();
+    closeCreateUser();
   } catch (error) {
     const key =
       error?.status === 409
@@ -106,6 +122,7 @@ function openUserEditor(user) {
     return;
   }
 
+  closeCreateUser();
   editingUserId = user.id;
   editUsername.textContent = user.username;
   editDisplayName.value = user.displayName || "";
@@ -466,6 +483,8 @@ async function handleLogout() {
   usernameInput.focus();
 }
 
+openCreateUserButton.addEventListener("click", openCreateUser);
+closeCreateUserButton.addEventListener("click", closeCreateUser);
 createUserButton.addEventListener("click", handleCreateUser);
 saveUserButton.addEventListener("click", handleSaveUser);
 cancelEditUserButton.addEventListener("click", closeUserEditor);
