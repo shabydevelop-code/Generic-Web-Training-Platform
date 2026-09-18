@@ -259,5 +259,15 @@ passwordInput.addEventListener("keydown", (event) => {
   }
 });
 
+async function verifyApiConnection() {
+  try {
+    const health = await window.apiService.healthCheck();
+    console.info("GWTP API connected:", health);
+  } catch (error) {
+    console.error("GWTP API connection failed:", error);
+  }
+}
+
 window.i18nService.initialize();
 renderSteps();
+verifyApiConnection();
