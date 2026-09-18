@@ -62,6 +62,13 @@
     return accessToken;
   }
 
+  async function updateCurrentUser(user) {
+    const updatedUser = { ...currentUser, ...user, accessToken };
+    applyUser(updatedUser);
+    await saveSession(updatedUser);
+    return updatedUser;
+  }
+
   async function logout() {
     applyUser(null);
     await chrome.storage.local.remove(SESSION_KEY);
@@ -73,6 +80,7 @@
     getCurrentUser,
     getCurrentRole,
     getAccessToken,
+    updateCurrentUser,
     logout
   });
 })();
