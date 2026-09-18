@@ -44,6 +44,7 @@
 
       <div id="appView" hidden>
         <div class="app-toolbar">
+          <div id="currentUserIdentity" class="current-user-identity"></div>
           <button id="adminButton" class="toolbar-button" type="button" data-i18n="adminButton" hidden>Admin</button>
           <button id="logoutButton" class="logout-button" type="button" data-i18n="logoutButton">Log out</button>
         </div>
@@ -67,8 +68,8 @@
 
           <section id="createUserCard" class="card" hidden>
             <h2 data-i18n="createUserTitle">Create User</h2>
-            <label for="newDisplayName" data-i18n="displayNameLabel">Display name</label>
-            <input id="newDisplayName" type="text" autocomplete="off" />
+            <label for="newDisplayName"><span data-i18n="displayNameLabel">Display name</span> <span class="required-marker" aria-hidden="true">*</span></label>
+            <input id="newDisplayName" type="text" autocomplete="off" required aria-required="true" />
 
             <label for="newUsername"><span data-i18n="usernameLabel">Username</span> <span class="required-marker" aria-hidden="true">*</span></label>
             <input id="newUsername" type="text" autocomplete="off" required aria-required="true" />
