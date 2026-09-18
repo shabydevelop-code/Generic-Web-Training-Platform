@@ -1,5 +1,7 @@
 const selectorInput = document.getElementById("selectorInput");
 const selectButton = document.getElementById("selectButton");
+const addStepButton = document.getElementById("addStepButton");
+const cancelStepButton = document.getElementById("cancelStepButton");
 const topicSelect = document.getElementById("topicSelect");
 const newTopicInput = document.getElementById("newTopicInput");
 const createTopicButton = document.getElementById("createTopicButton");
@@ -343,6 +345,30 @@ async function handleCreateTopic() {
   }
 }
 
+function closeStepCreator() {
+  currentSelectedElement = null;
+  selectorInput.value = "";
+  instructionInput.value = "";
+  selectedElement.hidden = true;
+  stepEditor.hidden = true;
+  selectButton.hidden = true;
+  addStepButton.hidden = false;
+  statusElement.textContent = "";
+  statusElement.removeAttribute("data-type");
+}
+
+function openStepCreator() {
+  currentSelectedElement = null;
+  selectorInput.value = "";
+  instructionInput.value = "";
+  selectedElement.hidden = true;
+  stepEditor.hidden = false;
+  selectButton.hidden = false;
+  addStepButton.hidden = true;
+  statusElement.textContent = "";
+  statusElement.removeAttribute("data-type");
+}
+
 function setStatus(message, type = "info") {
   statusElement.textContent = message;
   statusElement.dataset.type = type;
@@ -460,8 +486,8 @@ saveStepButton.addEventListener("click", () => {
       element: currentSelectedElement
     });
 
-    instructionInput.value = "";
     renderSteps();
+    closeStepCreator();
     setStatus(`Step ${step.order} saved.`, "success");
   } catch (error) {
     setStatus(error.message || "Could not save the step.", "error");
@@ -610,6 +636,8 @@ async function handleLogout() {
   usernameInput.focus();
 }
 
+addStepButton.addEventListener("click", openStepCreator);
+cancelStepButton.addEventListener("click", closeStepCreator);
 createTopicButton.addEventListener("click", handleCreateTopic);
 newTopicInput.addEventListener("keydown", (event) => {
   if (event.key === "Enter") handleCreateTopic();
