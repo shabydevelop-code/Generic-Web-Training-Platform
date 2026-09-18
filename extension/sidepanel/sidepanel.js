@@ -515,7 +515,9 @@ async function loadAdminUsers() {
       meta.className = "user-item__meta";
 
       const role = document.createElement("span");
-      role.textContent = Array.isArray(user.roles) && user.roles.length ? user.roles.join(", ") : "—";
+      role.textContent = Array.isArray(user.roles) && user.roles.length
+        ? user.roles.map((userRole) => window.i18nService.translate(`${userRole}Role`, language)).join(", ")
+        : "—";
 
       const state = document.createElement("span");
       state.textContent = window.i18nService.translate(user.isActive ? "userActive" : "userInactive", language);
