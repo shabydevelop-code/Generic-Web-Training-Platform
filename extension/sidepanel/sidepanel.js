@@ -1,7 +1,8 @@
 const selectorInput = document.getElementById("selectorInput");
 const selectButton = document.getElementById("selectButton");
-const highlightButton = document.getElementById("highlightButton");
-const clearButton = document.getElementById("clearButton");
+const guideNameInput = document.getElementById("guideNameInput");
+const saveGuideButton = document.getElementById("saveGuideButton");
+const saveGuideStatus = document.getElementById("saveGuideStatus");
 const statusElement = document.getElementById("status");
 const selectedElement = document.getElementById("selectedElement");
 const selectedTag = document.getElementById("selectedTag");
@@ -342,51 +343,6 @@ selectButton.addEventListener("click", async () => {
   }
 });
 
-highlightButton.addEventListener("click", async () => {
-  const selector = selectorInput.value.trim();
-
-  if (!selector) {
-    setStatus("Enter a CSS selector first.", "error");
-    return;
-  }
-
-  setStatus("Looking for the element...");
-
-  try {
-    const response = await window.messagingService.sendToActivePage({
-      type: "GWTP_HIGHLIGHT_ELEMENT",
-      selector
-    });
-
-    setStatus(
-      response?.message || "Request completed.",
-      response?.success ? "success" : "error"
-    );
-  } catch (error) {
-    setStatus(
-      "This page cannot currently be controlled. Try a regular http/https page and reload it after updating the extension.",
-      "error"
-    );
-    console.error(error);
-  }
-});
-
-clearButton.addEventListener("click", async () => {
-  try {
-    await window.messagingService.sendToActivePage({ type: "GWTP_CLEAR_HIGHLIGHT" });
-    currentSelectedElement = null;
-    activeStepId = null;
-    selectedElement.hidden = true;
-    stepEditor.hidden = true;
-    instructionInput.value = "";
-    renderSteps();
-    setStatus("Highlight cleared.", "success");
-  } catch (error) {
-    setStatus("Could not clear the highlight on this page.", "error");
-    console.error(error);
-  }
-});
-
 saveStepButton.addEventListener("click", () => {
   const instruction = instructionInput.value.trim();
   const selector = selectorInput.value.trim();
@@ -416,6 +372,33 @@ saveStepButton.addEventListener("click", () => {
     setStatus(error.message || "Could not save the step.", "error");
     console.error(error);
   }
+});
+
+saveGuideButton.addEventListener("click", () => {
+  const guideName = guideNameInput.value.trim();
+  const steps = window.trainingService.getSteps();
+  const language = window.i18nService.getLanguage();
+
+  if (!guideName) {
+    saveGuideStatus.textContent = window.i18nService.translate("guideNameRequired", language);
+    saveGuideStatus.dataset.type = "error";
+    guideNameInput.focus();
+    return;
+  }
+
+  if (steps.length === 0) {
+    saveGuideStatus.textContent = window.i18nService.translate("guideStepsRequired", language);
+    saveGuideStatus.dataset.type = "error";
+    return;
+  }
+
+  saveGuideStatus.textContent = window.i18nService.translate("guideReadyToSave", language);
+  saveGuideStatus.dataset.type = "info";
+});
+
+guideNameInput.addEventListener("input", () => {
+  saveGuideStatus.textContent = "";
+  saveGuideStatus.removeAttribute("data-type");
 });
 
 chrome.runtime.onMessage.addListener((message) => {
