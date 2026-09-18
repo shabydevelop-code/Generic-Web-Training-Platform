@@ -9,6 +9,8 @@
       passwordPlaceholder: "Enter password",
       continueButton: "Continue",
       invalidPassword: "Incorrect username or password. Please try again.",
+      serverUnavailable: "Cannot connect to the server. Make sure the service is running and try again.",
+      serverError: "The server encountered an error. Please try again.",
       logoutButton: "Log out"
     }),
     he: Object.freeze({
@@ -20,6 +22,8 @@
       passwordPlaceholder: "הזן סיסמה",
       continueButton: "המשך",
       invalidPassword: "שם המשתמש או הסיסמה שגויים. נסה שוב.",
+      serverUnavailable: "לא ניתן להתחבר לשרת. ודא שהשירות פעיל ונסה שוב.",
+      serverError: "אירעה שגיאה בשרת. נסה שוב.",
       logoutButton: "יציאה"
     })
   });
