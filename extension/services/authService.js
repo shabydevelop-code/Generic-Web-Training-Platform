@@ -14,11 +14,20 @@
 
       currentUser = user;
       currentRole = Array.isArray(user.roles) && user.roles.length > 0 ? user.roles[0] : null;
-      return user;
+      return { success: true, user };
     } catch (error) {
       currentUser = null;
       currentRole = null;
-      return null;
+
+      if (error?.status === 401) {
+        return { success: false, reason: "invalidCredentials" };
+      }
+
+      if (error?.status == null) {
+        return { success: false, reason: "serverUnavailable" };
+      }
+
+      return { success: false, reason: "serverError" };
     }
   }
 
