@@ -89,7 +89,7 @@ function updateAuthenticatedView() {
   const language = window.i18nService.getLanguage();
   const roleLabel = window.i18nService.translate(`${role}Role`, language);
   currentUserName.textContent = currentUser?.displayName || currentUser?.username || "";
-  currentUserRole.textContent = roleLabel;
+  currentUserRole.textContent = `${window.i18nService.translate("currentRoleLabel", language)}: ${roleLabel}`;
 
   adminButton.hidden = true;
   adminView.hidden = !isAdmin;
