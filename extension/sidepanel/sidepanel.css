@@ -525,3 +525,17 @@ select:focus {
   outline: 2px solid #2563eb;
   outline-offset: 2px;
 }
+
+.guide-primary-actions {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.guide-primary-actions .button {
+  min-width: 0;
+}
+
+.guide-library__title {
+  margin: 0 0 14px;
+}
