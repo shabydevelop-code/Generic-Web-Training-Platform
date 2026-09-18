@@ -15,6 +15,7 @@ const learnModeView = document.getElementById("learnModeView");
 const createModeView = document.getElementById("createModeView");
 const loginView = document.getElementById("loginView");
 const appView = document.getElementById("appView");
+const usernameInput = document.getElementById("usernameInput");
 const passwordInput = document.getElementById("passwordInput");
 const loginButton = document.getElementById("loginButton");
 const loginStatus = document.getElementById("loginStatus");
@@ -215,17 +216,18 @@ chrome.runtime.onMessage.addListener((message) => {
 
 
 async function handleLogin() {
+  const username = usernameInput.value.trim();
   const password = passwordInput.value;
 
-  if (!password) {
+  if (!username || !password) {
     loginStatus.textContent = window.i18nService.translate("invalidPassword", window.i18nService.getLanguage());
     loginStatus.dataset.type = "error";
     return;
   }
 
-  const role = await window.authService.authenticate(password);
+  const user = await window.authService.authenticate(username, password);
 
-  if (!role) {
+  if (!user) {
     loginStatus.textContent = window.i18nService.translate("invalidPassword", window.i18nService.getLanguage());
     loginStatus.dataset.type = "error";
     passwordInput.select();
@@ -247,12 +249,18 @@ function handleLogout() {
   learnModeView.hidden = true;
   loginView.hidden = false;
   loginStatus.textContent = "";
+  usernameInput.value = "";
   passwordInput.value = "";
-  passwordInput.focus();
+  usernameInput.focus();
 }
 
 logoutButton.addEventListener("click", handleLogout);
 loginButton.addEventListener("click", handleLogin);
+usernameInput.addEventListener("keydown", (event) => {
+  if (event.key === "Enter") {
+    passwordInput.focus();
+  }
+});
 passwordInput.addEventListener("keydown", (event) => {
   if (event.key === "Enter") {
     handleLogin();
