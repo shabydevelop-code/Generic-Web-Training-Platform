@@ -225,12 +225,23 @@ async function handleLogin() {
     return;
   }
 
-  const user = await window.authService.authenticate(username, password);
+  const result = await window.authService.authenticate(username, password);
 
-  if (!user) {
-    loginStatus.textContent = window.i18nService.translate("invalidPassword", window.i18nService.getLanguage());
+  if (!result.success) {
+    const messageKey =
+      result.reason === "serverUnavailable"
+        ? "serverUnavailable"
+        : result.reason === "serverError"
+          ? "serverError"
+          : "invalidPassword";
+
+    loginStatus.textContent = window.i18nService.translate(messageKey, window.i18nService.getLanguage());
     loginStatus.dataset.type = "error";
-    passwordInput.select();
+
+    if (result.reason === "invalidCredentials") {
+      passwordInput.select();
+    }
+
     return;
   }
 
