@@ -110,6 +110,44 @@ app.MapGet("/api/sites/{id:long}", (long id) =>
     });
 });
 
+
+app.MapPut("/api/sites/{id:long}", (long id, UpdateSiteRequest request) =>
+{
+    if (string.IsNullOrWhiteSpace(request.Code) || string.IsNullOrWhiteSpace(request.Name))
+    {
+        return Results.BadRequest(new { message = "Site code and name are required." });
+    }
+
+    using var connection = new SqliteConnection(connectionString);
+    connection.Open();
+
+    using var command = connection.CreateCommand();
+    command.CommandText = """
+        UPDATE Sites
+        SET Code = $code,
+            Name = $name,
+            Type = $type,
+            City = $city,
+            ContactName = $contactName,
+            Phone = $phone
+        WHERE Id = $id;
+        """;
+    command.Parameters.AddWithValue("$id", id);
+    command.Parameters.AddWithValue("$code", request.Code.Trim());
+    command.Parameters.AddWithValue("$name", request.Name.Trim());
+    command.Parameters.AddWithValue("$type", request.Type?.Trim() ?? "");
+    command.Parameters.AddWithValue("$city", request.City?.Trim() ?? "");
+    command.Parameters.AddWithValue("$contactName", request.ContactName?.Trim() ?? "");
+    command.Parameters.AddWithValue("$phone", request.Phone?.Trim() ?? "");
+
+    if (command.ExecuteNonQuery() == 0)
+    {
+        return Results.NotFound();
+    }
+
+    return Results.Ok(new { id, saved = true });
+});
+
 app.Run();
 
 static void InitializeDatabase(string connectionString)
@@ -162,3 +200,12 @@ static void InitializeDatabase(string connectionString)
         """;
     command.ExecuteNonQuery();
 }
+
+
+sealed record UpdateSiteRequest(
+    string Code,
+    string Name,
+    string? Type,
+    string? City,
+    string? ContactName,
+    string? Phone);
