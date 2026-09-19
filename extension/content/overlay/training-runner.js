@@ -78,8 +78,8 @@ function showTrainingStep(step, navigation = {}) {
           if (!response?.success || !response.current?.step) return;
 
           showTrainingStep(response.current.step, {
-            stepIndex: response.current.stepIndex,
-            totalSteps: navigation.totalSteps
+            ...navigation,
+            stepIndex: response.current.stepIndex
           });
         });
       });
