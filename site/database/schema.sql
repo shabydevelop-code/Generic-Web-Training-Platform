@@ -1,0 +1,24 @@
+PRAGMA foreign_keys = ON;
+
+CREATE TABLE IF NOT EXISTS Sites (
+    Id INTEGER PRIMARY KEY,
+    SystemId TEXT NOT NULL,
+    Code TEXT NOT NULL,
+    Name TEXT NOT NULL,
+    Type TEXT NOT NULL,
+    City TEXT NOT NULL,
+    ContactName TEXT NOT NULL,
+    Phone TEXT NOT NULL,
+    Status TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS Assets (
+    Id INTEGER PRIMARY KEY AUTOINCREMENT,
+    SiteId INTEGER NOT NULL,
+    SerialNumber TEXT NOT NULL,
+    Description TEXT NOT NULL,
+    IpAddress TEXT NOT NULL,
+    Status TEXT NOT NULL,
+    InstallationDate TEXT NOT NULL,
+    FOREIGN KEY (SiteId) REFERENCES Sites(Id) ON DELETE CASCADE
+);
