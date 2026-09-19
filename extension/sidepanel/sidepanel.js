@@ -24,6 +24,44 @@ const richTextToolbarButtons = document.querySelectorAll("[data-rich-command]");
 function sanitizeInstructionHtml(html) {
   const template = document.createElement("template");
   template.innerHTML = html;
+  const allowedTags = new Set(["STRONG", "B", "EM", "I", "U", "BR", "UL", "OL", "LI", "P", "DIV"]);
+
+  const cleanNode = (node) => {
+    [...node.childNodes].forEach((child) => {
+      if (child.nodeType !== Node.ELEMENT_NODE) return;
+      if (!allowedTags.has(child.tagName)) {
+        child.replaceWith(...child.childNodes);
+        return;
+      }
+      [...child.attributes].forEach((attribute) => child.removeAttribute(attribute.name));
+      cleanNode(child);
+    });
+  };
+
+  cleanNode(template.content);
+  return template.innerHTML.trim();
+}
+
+function clearInstructionInput() {
+  instructionInput.replaceChildren();
+}
+
+function setInstructionHtml(html) {
+  instructionInput.innerHTML = sanitizeInstructionHtml(html || "");
+}
+
+function getInstructionHtml() {
+  return sanitizeInstructionHtml(instructionInput.innerHTML);
+}
+
+function hasInstructionContent() {
+  return instructionInput.textContent.trim().length > 0 || instructionInput.querySelector("br, li") !== null;
+}
+const richTextToolbarButtons = document.querySelectorAll("[data-rich-command]");
+
+function sanitizeInstructionHtml(html) {
+  const template = document.createElement("template");
+  template.innerHTML = html;
 
   const allowedTags = new Set(["STRONG", "B", "EM", "I", "U", "BR", "UL", "OL", "LI", "P", "DIV"]);
   const cleanNode = (node) => {
@@ -1189,6 +1227,14 @@ richTextToolbarButtons.forEach((button) => {
     event.preventDefault();
   });
 
+  button.addEventListener("click", () => {
+    instructionInput.focus();
+    document.execCommand(button.dataset.richCommand, false);
+  });
+});
+
+richTextToolbarButtons.forEach((button) => {
+  button.addEventListener("mousedown", (event) => event.preventDefault());
   button.addEventListener("click", () => {
     instructionInput.focus();
     document.execCommand(button.dataset.richCommand, false);
