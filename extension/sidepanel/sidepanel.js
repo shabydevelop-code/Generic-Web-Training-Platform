@@ -191,7 +191,14 @@ function handleLearnerTopicChange() {
   topic.guides.forEach((guide) => {
     const option = document.createElement("option");
     option.value = String(guide.id);
-    option.textContent = guide.name;
+    const statusKey = guide.progressStatus === "Completed"
+      ? "guideStatusCompleted"
+      : guide.progressStatus === "InProgress"
+        ? "guideStatusInProgress"
+        : null;
+    option.textContent = statusKey
+      ? `${guide.name} — ${window.i18nService.translate(statusKey, language)}`
+      : guide.name;
     learnerGuideSelect.appendChild(option);
   });
 
@@ -200,7 +207,24 @@ function handleLearnerTopicChange() {
 }
 
 function handleLearnerGuideChange() {
-  startLearningButton.disabled = !learnerGuideSelect.value;
+  const guideId = Number(learnerGuideSelect.value);
+  startLearningButton.disabled = !guideId;
+
+  if (!guideId) {
+    startLearningButton.textContent = window.i18nService.translate("startLearningButton", window.i18nService.getLanguage());
+    return;
+  }
+
+  const topicId = Number(learnerTopicSelect.value);
+  const topic = learnerCatalog.find((item) => item.id === topicId);
+  const guide = topic?.guides?.find((item) => item.id === guideId);
+  const key = guide?.progressStatus === "Completed"
+    ? "restartLearningButton"
+    : guide?.progressStatus === "InProgress"
+      ? "continueLearningButton"
+      : "startLearningButton";
+
+  startLearningButton.textContent = window.i18nService.translate(key, window.i18nService.getLanguage());
 }
 
 async function handleStartLearning() {
