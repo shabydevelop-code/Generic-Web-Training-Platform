@@ -129,6 +129,7 @@ async function loadSite() {
 }
 
 async function saveSite() {
+  clearValidationErrors();
   const payload = {
     code: getValue("site-code"),
     name: getValue("site-name"),
@@ -149,6 +150,10 @@ async function saveSite() {
     });
 
     if (!response.ok) {
+      if (response.status === 400) {
+        showValidationErrors(await response.json());
+        return;
+      }
       throw new Error(`Failed to save site: HTTP ${response.status}`);
     }
 
@@ -238,4 +243,25 @@ function setValue(id, value) {
 function getValue(id) {
   const element = document.getElementById(id);
   return element?.value ?? "";
+}
+
+
+function clearValidationErrors() {
+  document.querySelectorAll(".ps-validation-error").forEach((element) => element.remove());
+  document.querySelectorAll("[aria-invalid='true']").forEach((element) => element.removeAttribute("aria-invalid"));
+}
+
+function showValidationErrors(result) {
+  clearValidationErrors();
+  const errors = result?.errors ?? {};
+  for (const [fieldId, message] of Object.entries(errors)) {
+    const field = document.getElementById(fieldId);
+    if (!field) continue;
+    field.setAttribute("aria-invalid", "true");
+    const error = document.createElement("div");
+    error.className = "ps-validation-error";
+    error.textContent = message;
+    field.insertAdjacentElement("afterend", error);
+  }
+  alert(result?.message ?? "לא ניתן לשמור. יש לתקן את השדות המסומנים.");
 }
