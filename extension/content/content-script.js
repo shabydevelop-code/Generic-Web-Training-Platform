@@ -18,7 +18,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   }
 
   if (message?.type === "GWTP_SHOW_TRAINING_STEP") {
-    sendResponse(showTrainingStep(message.step));
+    sendResponse(showTrainingStep(message.step, message.navigation));
     return;
   }
 
