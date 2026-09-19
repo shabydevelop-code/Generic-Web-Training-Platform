@@ -344,6 +344,10 @@
     document.querySelectorAll("[data-i18n-placeholder]").forEach((element) => {
       element.placeholder = translate(element.dataset.i18nPlaceholder, language);
     });
+
+    document.querySelectorAll("[data-i18n-data-placeholder]").forEach((element) => {
+      element.dataset.placeholder = translate(element.dataset.i18nDataPlaceholder, language);
+    });
   }
 
   function initialize() {
