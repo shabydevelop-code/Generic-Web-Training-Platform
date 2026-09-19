@@ -87,10 +87,30 @@ function showServerMessageAfterPageLoad(message) {
     return;
   }
 
-  requestAnimationFrame(() => {
+  const splash = document.getElementById("splash-screen");
+  const showAlert = () => {
     requestAnimationFrame(() => {
       alert(message);
     });
+  };
+
+  if (!splash || splash.classList.contains("hidden")) {
+    showAlert();
+    return;
+  }
+
+  const observer = new MutationObserver(() => {
+    if (!splash.classList.contains("hidden")) {
+      return;
+    }
+
+    observer.disconnect();
+    showAlert();
+  });
+
+  observer.observe(splash, {
+    attributes: true,
+    attributeFilter: ["class"]
   });
 }
 
