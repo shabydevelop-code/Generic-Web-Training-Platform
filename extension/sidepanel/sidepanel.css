@@ -994,3 +994,26 @@ body {
   margin: 6px 0;
   padding-inline-start: 24px;
 }
+
+
+.step-item__reorder {
+  display: flex;
+  gap: 4px;
+  margin-inline-start: auto;
+}
+
+.step-item__reorder-button {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid #d6dce5;
+  border-radius: 6px;
+  background: #fff;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.step-item__reorder-button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
