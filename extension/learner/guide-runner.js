@@ -100,14 +100,10 @@
 
     if (!response?.success || !response.current?.step) return false;
 
-    const activeTraining = await chrome.runtime.sendMessage({
-      type: "GWTP_TRAINING_GET_SESSION"
-    });
-
     await showFirstStep({
       steps: [response.current.step],
       stepIndex: response.current.stepIndex,
-      totalSteps: activeTraining?.session?.steps?.length || 1
+      totalSteps: response.current.totalSteps || 1
     });
     return true;
   }
