@@ -3,18 +3,88 @@ const SITE_ID = 77402;
 document.addEventListener("DOMContentLoaded", () => {
   const form = document.getElementById("form-site");
   const refreshButton = document.getElementById("btn-refresh-site");
+  const typeSelect = document.getElementById("site-type");
 
   form?.addEventListener("submit", async (event) => {
-    event.preventDefault();
-    await saveSite();
+    if (event.submitter?.id === "btn-save-site") {
+      event.preventDefault();
+      await saveSite();
+    }
+  });
+
+  typeSelect?.addEventListener("change", () => {
+    form?.requestSubmit();
   });
 
   refreshButton?.addEventListener("click", () => {
     location.reload();
   });
 
-  loadSite();
+  initializeSite();
 });
+
+
+async function initializeSite() {
+  const params = new URLSearchParams(location.search);
+  const stateToken = params.get("state");
+  const message = params.get("message");
+
+  if (stateToken) {
+    const restored = await loadServerState(stateToken);
+    if (restored) {
+      showServerMessage(message);
+      return;
+    }
+  }
+
+  await loadSite();
+  showServerMessage(message);
+}
+
+async function loadServerState(token) {
+  try {
+    const response = await fetch(`/api/site-state/${encodeURIComponent(token)}`, {
+      headers: { Accept: "application/json" }
+    });
+
+    if (!response.ok) {
+      return false;
+    }
+
+    const state = await response.json();
+    setValue("site-code", state.code);
+    setValue("site-name", state.name);
+    setValue("site-type", state.type);
+    setValue("site-city", state.city);
+    setValue("site-contact-name", state.contactName);
+    setValue("site-phone", state.phone);
+
+    const siteResponse = await fetch(`/api/sites/${SITE_ID}`, {
+      headers: { Accept: "application/json" }
+    });
+
+    if (siteResponse.ok) {
+      const persistedSite = await siteResponse.json();
+      renderSiteMetadata(persistedSite);
+      renderAssets(Array.isArray(persistedSite.assets) ? persistedSite.assets : []);
+    }
+
+    return true;
+  } catch (error) {
+    console.error("[Demo CRM] Unable to restore server form state.", error);
+    return false;
+  }
+}
+
+function showServerMessage(message) {
+  const element = document.getElementById("site-server-message");
+  if (!element || !message) {
+    return;
+  }
+
+  element.textContent = message;
+  element.hidden = false;
+}
 
 async function loadSite() {
   try {
@@ -73,6 +143,11 @@ function renderSite(site) {
   setValue("site-contact-name", site.contactName);
   setValue("site-phone", site.phone);
 
+  renderSiteMetadata(site);
+  renderAssets(Array.isArray(site.assets) ? site.assets : []);
+}
+
+function renderSiteMetadata(site) {
   const systemId = document.getElementById("site-system-id");
   if (systemId) {
     systemId.textContent = `מזהה מערכת: ${site.systemId}`;
@@ -83,8 +158,6 @@ function renderSite(site) {
     statusBadge.textContent = site.status === "active" ? "פעיל ומחובר" : site.status;
     statusBadge.className = `ps-status-badge ${site.status === "active" ? "ps-status-active" : "ps-status-pending"}`;
   }
-
-  renderAssets(Array.isArray(site.assets) ? site.assets : []);
 }
 
 function renderAssets(assets) {
