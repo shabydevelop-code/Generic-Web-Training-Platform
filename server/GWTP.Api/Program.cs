@@ -1098,6 +1098,36 @@ static void ApplyDatabaseMigrations(string databasePath)
         migrationCommand.CommandText = "ALTER TABLE Guides ADD COLUMN StartUrl TEXT;";
         migrationCommand.ExecuteNonQuery();
     }
+
+    var progressColumns = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+    using (var progressColumnsCommand = connection.CreateCommand())
+    {
+        progressColumnsCommand.CommandText = "PRAGMA table_info(UserProgress);";
+        using var progressReader = progressColumnsCommand.ExecuteReader();
+        while (progressReader.Read()) progressColumns.Add(progressReader.GetString(1));
+    }
+
+    var progressMigrations = new Dictionary<string, string>
+    {
+        ["CurrentStepOrder"] = "ALTER TABLE UserProgress ADD COLUMN CurrentStepOrder INTEGER NOT NULL DEFAULT 1;",
+        ["Status"] = "ALTER TABLE UserProgress ADD COLUMN Status TEXT NOT NULL DEFAULT 'InProgress';",
+        ["StartedAt"] = "ALTER TABLE UserProgress ADD COLUMN StartedAt TEXT;",
+        ["LastActivityAt"] = "ALTER TABLE UserProgress ADD COLUMN LastActivityAt TEXT;",
+        ["CompletedAt"] = "ALTER TABLE UserProgress ADD COLUMN CompletedAt TEXT;"
+    };
+
+    foreach (var migration in progressMigrations)
+    {
+        if (progressColumns.Contains(migration.Key)) continue;
+        using var migrationCommand = connection.CreateCommand();
+        migrationCommand.CommandText = migration.Value;
+        migrationCommand.ExecuteNonQuery();
+    }
+
+    using var normalizeProgress = connection.CreateCommand();
+    normalizeProgress.CommandText = "UPDATE UserProgress SET StartedAt = COALESCE(StartedAt, CURRENT_TIMESTAMP), LastActivityAt = COALESCE(LastActivityAt, CURRENT_TIMESTAMP);";
+    normalizeProgress.ExecuteNonQuery();
+
 }
 
 static void EnsureDevelopmentAdmin(string databasePath)
