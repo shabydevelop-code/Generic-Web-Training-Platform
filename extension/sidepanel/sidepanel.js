@@ -22,6 +22,11 @@ const saveStepButton = document.getElementById("saveStepButton");
 const stepsSection = document.getElementById("stepsSection");
 const stepsList = document.getElementById("stepsList");
 const learnModeView = document.getElementById("learnModeView");
+const learnerTopicSelect = document.getElementById("learnerTopicSelect");
+const learnerGuideSelect = document.getElementById("learnerGuideSelect");
+const startLearningButton = document.getElementById("startLearningButton");
+const learnerStatus = document.getElementById("learnerStatus");
+let learnerCatalog = [];
 const createModeView = document.getElementById("createModeView");
 const loginView = document.getElementById("loginView");
 const appView = document.getElementById("appView");
@@ -119,6 +124,83 @@ function updateAuthenticatedView() {
   learnModeView.hidden = !isLearner;
 }
 
+
+async function loadLearnerCatalog() {
+  if (window.authService.getCurrentRole() !== "learner") return;
+
+  const language = window.i18nService.getLanguage();
+  learnerCatalog = [];
+  learnerTopicSelect.replaceChildren();
+  learnerGuideSelect.replaceChildren();
+  learnerGuideSelect.disabled = true;
+  startLearningButton.disabled = true;
+  learnerStatus.textContent = window.i18nService.translate("loadingLearnerCatalog", language);
+  learnerStatus.dataset.type = "info";
+
+  const topicPlaceholder = document.createElement("option");
+  topicPlaceholder.value = "";
+  topicPlaceholder.textContent = window.i18nService.translate("learnerTopicPlaceholder", language);
+  learnerTopicSelect.appendChild(topicPlaceholder);
+
+  const guidePlaceholder = document.createElement("option");
+  guidePlaceholder.value = "";
+  guidePlaceholder.textContent = window.i18nService.translate("learnerGuidePlaceholder", language);
+  learnerGuideSelect.appendChild(guidePlaceholder);
+
+  try {
+    learnerCatalog = await window.apiService.request("/api/learner/catalog");
+
+    learnerCatalog.forEach((topic) => {
+      const option = document.createElement("option");
+      option.value = String(topic.id);
+      option.textContent = topic.name;
+      learnerTopicSelect.appendChild(option);
+    });
+
+    learnerStatus.textContent = learnerCatalog.length === 0
+      ? window.i18nService.translate("noPublishedGuides", language)
+      : "";
+    learnerStatus.dataset.type = learnerCatalog.length === 0 ? "info" : "";
+  } catch (error) {
+    learnerStatus.textContent = window.i18nService.translate(
+      error?.status == null ? "serverUnavailable" : "learnerCatalogLoadError",
+      language
+    );
+    learnerStatus.dataset.type = "error";
+  }
+}
+
+function handleLearnerTopicChange() {
+  const language = window.i18nService.getLanguage();
+  const topicId = Number(learnerTopicSelect.value);
+  const topic = learnerCatalog.find((item) => item.id === topicId);
+
+  learnerGuideSelect.replaceChildren();
+  const placeholder = document.createElement("option");
+  placeholder.value = "";
+  placeholder.textContent = window.i18nService.translate("learnerGuidePlaceholder", language);
+  learnerGuideSelect.appendChild(placeholder);
+
+  if (!topic) {
+    learnerGuideSelect.disabled = true;
+    startLearningButton.disabled = true;
+    return;
+  }
+
+  topic.guides.forEach((guide) => {
+    const option = document.createElement("option");
+    option.value = String(guide.id);
+    option.textContent = guide.name;
+    learnerGuideSelect.appendChild(option);
+  });
+
+  learnerGuideSelect.disabled = false;
+  startLearningButton.disabled = true;
+}
+
+function handleLearnerGuideChange() {
+  startLearningButton.disabled = !learnerGuideSelect.value;
+}
 
 function openTopicEditor(topic) {
   closeTopicCreator();
@@ -1152,6 +1234,8 @@ async function handleLogout() {
   usernameInput.focus();
 }
 
+learnerTopicSelect.addEventListener("change", handleLearnerTopicChange);
+learnerGuideSelect.addEventListener("change", handleLearnerGuideChange);
 openTopicsButton.addEventListener("click", openTopics);
 backFromTopicsButton.addEventListener("click", closeTopics);
 cancelDeleteButton.addEventListener("click", closeDeleteConfirmation);
@@ -1254,6 +1338,7 @@ async function initializePanel() {
     await loadAdminUsers();
     await loadTopics();
     await loadGuides();
+    await loadLearnerCatalog();
   } else {
     loginView.hidden = false;
     appView.hidden = true;
