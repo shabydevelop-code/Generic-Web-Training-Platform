@@ -77,13 +77,11 @@ async function loadServerState(token) {
 }
 
 function showServerMessage(message) {
-  const element = document.getElementById("site-server-message");
-  if (!element || !message) {
+  if (!message) {
     return;
   }
 
-  element.textContent = message;
-  element.hidden = false;
+  alert(message);
 }
 
 async function loadSite() {
