@@ -19,6 +19,45 @@ const selectedTag = document.getElementById("selectedTag");
 const selectedSelector = document.getElementById("selectedSelector");
 const stepEditor = document.getElementById("stepEditor");
 const instructionInput = document.getElementById("instructionInput");
+const richTextToolbarButtons = document.querySelectorAll("[data-rich-command]");
+
+function sanitizeInstructionHtml(html) {
+  const template = document.createElement("template");
+  template.innerHTML = html;
+
+  const allowedTags = new Set(["STRONG", "B", "EM", "I", "U", "BR", "UL", "OL", "LI", "P", "DIV"]);
+  const cleanNode = (node) => {
+    [...node.childNodes].forEach((child) => {
+      if (child.nodeType === Node.ELEMENT_NODE) {
+        if (!allowedTags.has(child.tagName)) {
+          child.replaceWith(...child.childNodes);
+          return;
+        }
+        [...child.attributes].forEach((attribute) => child.removeAttribute(attribute.name));
+        cleanNode(child);
+      }
+    });
+  };
+
+  cleanNode(template.content);
+  return template.innerHTML.trim();
+}
+
+function clearInstructionInput() {
+  instructionInput.replaceChildren();
+}
+
+function setInstructionHtml(html) {
+  instructionInput.innerHTML = sanitizeInstructionHtml(html || "");
+}
+
+function getInstructionHtml() {
+  return sanitizeInstructionHtml(instructionInput.innerHTML);
+}
+
+function hasInstructionContent() {
+  return instructionInput.textContent.trim().length > 0 || instructionInput.querySelector("br, li") !== null;
+}
 const saveStepButton = document.getElementById("saveStepButton");
 const stepsSection = document.getElementById("stepsSection");
 const stepsList = document.getElementById("stepsList");
@@ -933,7 +972,7 @@ function closeStepCreator() {
   editStepDeleteSection.hidden = true;
   currentSelectedElement = null;
   selectorInput.value = "";
-  instructionInput.value = "";
+  clearInstructionInput();
   selectedElement.hidden = true;
   stepEditor.hidden = true;
   selectButton.hidden = true;
@@ -950,7 +989,7 @@ function openStepCreator() {
   editStepDeleteSection.hidden = true;
   currentSelectedElement = null;
   selectorInput.value = "";
-  instructionInput.value = "";
+  clearInstructionInput();
   selectedElement.hidden = true;
   stepEditor.hidden = false;
   selectButton.hidden = false;
@@ -971,7 +1010,7 @@ function openStepEditor(step) {
     text: ""
   };
   selectorInput.value = step.selector;
-  instructionInput.value = step.instruction;
+  setInstructionHtml(step.instruction);
   selectedTag.textContent = step.element?.tagName ? `<${step.element.tagName}>${step.element.text ? ` — ${step.element.text}` : ""}` : "";
   selectedSelector.textContent = step.selector;
   selectedElement.hidden = false;
@@ -1105,7 +1144,7 @@ saveStepButton.addEventListener("click", () => {
     return;
   }
 
-  const instruction = instructionInput.value.trim();
+  const instruction = getInstructionHtml();
   const selector = selectorInput.value.trim();
 
   if (!currentSelectedElement) {
@@ -1113,7 +1152,7 @@ saveStepButton.addEventListener("click", () => {
     return;
   }
 
-  if (!instruction) {
+  if (!hasInstructionContent()) {
     setStatus(window.i18nService.translate("stepInstructionRequired", language), "error");
     instructionInput.focus();
     return;
@@ -1143,6 +1182,17 @@ saveStepButton.addEventListener("click", () => {
     setStatus(error.message || "Could not save the step.", "error");
     console.error(error);
   }
+});
+
+richTextToolbarButtons.forEach((button) => {
+  button.addEventListener("mousedown", (event) => {
+    event.preventDefault();
+  });
+
+  button.addEventListener("click", () => {
+    instructionInput.focus();
+    document.execCommand(button.dataset.richCommand, false);
+  });
 });
 
 saveGuideButton.addEventListener("click", async () => {
