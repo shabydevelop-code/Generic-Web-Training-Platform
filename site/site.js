@@ -88,30 +88,25 @@ function showServerMessageAfterPageLoad(message) {
   }
 
   const splash = document.getElementById("splash-screen");
-  const showAlert = () => {
+
+  const showAlertWhenSplashIsGone = () => {
+    const splashStyle = splash ? getComputedStyle(splash) : null;
+    const splashIsVisible = splash &&
+      splashStyle &&
+      splashStyle.visibility !== "hidden" &&
+      Number.parseFloat(splashStyle.opacity || "1") > 0;
+
+    if (splashIsVisible) {
+      requestAnimationFrame(showAlertWhenSplashIsGone);
+      return;
+    }
+
     requestAnimationFrame(() => {
       alert(message);
     });
   };
 
-  if (!splash || splash.classList.contains("hidden")) {
-    showAlert();
-    return;
-  }
-
-  const observer = new MutationObserver(() => {
-    if (!splash.classList.contains("hidden")) {
-      return;
-    }
-
-    observer.disconnect();
-    showAlert();
-  });
-
-  observer.observe(splash, {
-    attributes: true,
-    attributeFilter: ["class"]
-  });
+  showAlertWhenSplashIsGone();
 }
 
 async function loadSite() {
