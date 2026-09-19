@@ -203,6 +203,30 @@ function handleLearnerGuideChange() {
   startLearningButton.disabled = !learnerGuideSelect.value;
 }
 
+async function handleStartLearning() {
+  const guideId = Number(learnerGuideSelect.value);
+  const language = window.i18nService.getLanguage();
+
+  if (!guideId) return;
+
+  startLearningButton.disabled = true;
+  learnerStatus.textContent = window.i18nService.translate("startingGuide", language);
+  learnerStatus.dataset.type = "info";
+
+  try {
+    const guide = await window.apiService.request(`/api/learner/guides/${guideId}`);
+    await window.guideRunner.start(guide);
+    learnerStatus.textContent = "";
+    learnerStatus.removeAttribute("data-type");
+  } catch (error) {
+    console.error("Could not start learner guide.", error);
+    learnerStatus.textContent = window.i18nService.translate("guideStartError", language);
+    learnerStatus.dataset.type = "error";
+  } finally {
+    startLearningButton.disabled = !learnerGuideSelect.value;
+  }
+}
+
 function openTopicEditor(topic) {
   closeTopicCreator();
   backFromTopicsButton.hidden = true;
@@ -1256,6 +1280,7 @@ async function handleLogout() {
 
 learnerTopicSelect.addEventListener("change", handleLearnerTopicChange);
 learnerGuideSelect.addEventListener("change", handleLearnerGuideChange);
+startLearningButton.addEventListener("click", handleStartLearning);
 openTopicsButton.addEventListener("click", openTopics);
 backFromTopicsButton.addEventListener("click", closeTopics);
 cancelDeleteButton.addEventListener("click", closeDeleteConfirmation);
