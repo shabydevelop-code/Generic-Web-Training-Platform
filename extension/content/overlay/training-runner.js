@@ -43,15 +43,19 @@ function showTrainingStep(step, navigation = {}) {
   overlay.className = "gwtp-training-overlay";
   overlay.style.position = "fixed";
   overlay.style.zIndex = "2147483647";
-  overlay.style.maxWidth = "320px";
-  overlay.style.padding = "12px 14px";
-  overlay.style.border = "1px solid #d0d5dd";
-  overlay.style.borderRadius = "10px";
+  overlay.style.maxWidth = "340px";
+  overlay.style.padding = "16px 16px 14px";
+  overlay.style.border = "2px solid #2563eb";
+  overlay.style.borderTop = "5px solid #2563eb";
+  overlay.style.borderRadius = "12px";
   overlay.style.background = "#ffffff";
-  overlay.style.boxShadow = "0 8px 24px rgba(16, 24, 40, 0.18)";
+  overlay.style.boxShadow = "0 14px 38px rgba(15, 23, 42, 0.30), 0 3px 10px rgba(37, 99, 235, 0.16)";
   overlay.style.color = "#172033";
   overlay.style.font = "14px/1.45 system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
   const instruction = document.createElement("div");
+  instruction.style.fontWeight = "500";
+  instruction.style.fontSize = "14px";
+  instruction.style.lineHeight = "1.55";
 
   const sanitizeInstructionHtml = (html) => {
     const template = document.createElement("template");
@@ -239,7 +243,7 @@ function showTrainingStep(step, navigation = {}) {
 
     const rect = gwtpTrainingTarget.getBoundingClientRect();
     const overlayRect = gwtpTrainingOverlay.getBoundingClientRect();
-    const gap = 10;
+    const gap = 14;
 
     let top = rect.bottom + gap;
     if (top + overlayRect.height > window.innerHeight - gap) {
