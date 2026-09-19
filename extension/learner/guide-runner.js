@@ -48,8 +48,8 @@
           type: "GWTP_SHOW_TRAINING_STEP",
           step: firstStep,
           navigation: {
-            stepIndex: 0,
-            totalSteps: guide.steps.length
+            stepIndex: Number.isInteger(guide.stepIndex) ? guide.stepIndex : 0,
+            totalSteps: guide.totalSteps || guide.steps.length
           }
         });
 
@@ -101,6 +101,7 @@
 
     await showFirstStep({
       steps: [response.current.step],
+      stepIndex: response.current.stepIndex,
       totalSteps: activeTraining?.session?.steps?.length || 1
     });
     return true;
