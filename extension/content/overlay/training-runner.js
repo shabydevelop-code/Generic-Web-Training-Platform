@@ -22,13 +22,13 @@ function showTrainingStep(step, navigation = {}) {
     return { success: false, message: "Step selector is missing." };
   }
 
-  let target;
+  const targetResult = findElement(step.selector);
 
-  try {
-    target = document.querySelector(step.selector);
-  } catch {
-    return { success: false, message: "Step selector is invalid." };
+  if (targetResult.error) {
+    return { success: false, message: targetResult.error };
   }
+
+  const target = targetResult.element;
 
   if (!target) {
     return { success: false, message: "Step element was not found on this page." };
