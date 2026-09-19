@@ -113,6 +113,40 @@ function showTrainingStep(step, navigation = {}) {
         if (response?.success) {
           clearTrainingStep();
           clearHighlight();
+
+          const completion = document.createElement("div");
+          completion.style.position = "fixed";
+          completion.style.zIndex = "2147483647";
+          completion.style.left = "50%";
+          completion.style.top = "50%";
+          completion.style.transform = "translate(-50%, -50%)";
+          completion.style.maxWidth = "360px";
+          completion.style.padding = "20px";
+          completion.style.border = "1px solid #d0d5dd";
+          completion.style.borderRadius = "12px";
+          completion.style.background = "#ffffff";
+          completion.style.boxShadow = "0 12px 32px rgba(16, 24, 40, 0.2)";
+          completion.style.color = "#172033";
+          completion.style.font = "14px/1.45 system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
+          completion.dir = navigation.direction || "ltr";
+
+          const title = document.createElement("strong");
+          title.textContent = navigation.labels?.completedTitle || "";
+          title.style.display = "block";
+          title.style.fontSize = "16px";
+
+          const message = document.createElement("p");
+          message.textContent = navigation.labels?.completedMessage || "";
+          message.style.margin = "8px 0 16px";
+
+          const closeButton = document.createElement("button");
+          closeButton.type = "button";
+          closeButton.textContent = navigation.labels?.closeCompletion || "";
+          closeButton.style.padding = "6px 12px";
+          closeButton.addEventListener("click", () => completion.remove());
+
+          completion.append(title, message, closeButton);
+          document.documentElement.appendChild(completion);
           return;
         }
 
