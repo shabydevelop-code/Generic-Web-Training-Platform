@@ -227,6 +227,19 @@ function handleLearnerGuideChange() {
   startLearningButton.textContent = window.i18nService.translate(key, window.i18nService.getLanguage());
 }
 
+function refreshSelectedLearnerGuideUi() {
+  const selectedGuideId = Number(learnerGuideSelect.value);
+  const selectedTopicId = Number(learnerTopicSelect.value);
+  handleLearnerTopicChange();
+
+  if (selectedGuideId) {
+    learnerGuideSelect.value = String(selectedGuideId);
+    handleLearnerGuideChange();
+  } else if (selectedTopicId) {
+    learnerTopicSelect.value = String(selectedTopicId);
+  }
+}
+
 async function handleStartLearning() {
   const guideId = Number(learnerGuideSelect.value);
   const language = window.i18nService.getLanguage();
@@ -240,6 +253,14 @@ async function handleStartLearning() {
   try {
     const guide = await window.apiService.request(`/api/learner/guides/${guideId}`);
     await window.guideRunner.start(guide);
+
+    const topic = learnerCatalog.find((item) => item.id === Number(learnerTopicSelect.value));
+    const catalogGuide = topic?.guides?.find((item) => item.id === guideId);
+    if (catalogGuide) {
+      catalogGuide.progressStatus = "InProgress";
+      refreshSelectedLearnerGuideUi();
+    }
+
     learnerStatus.textContent = "";
     learnerStatus.removeAttribute("data-type");
   } catch (error) {
@@ -1392,12 +1413,27 @@ passwordInput.addEventListener("keydown", (event) => {
 });
 
 chrome.runtime.onMessage.addListener((message) => {
-  if (message?.type !== "GWTP_PAGE_READY") return;
   if (window.authService.getCurrentRole() !== "learner") return;
 
-  window.guideRunner.restoreActiveStep().catch((error) => {
-    console.info("GWTP active step restore skipped:", error);
-  });
+  if (message?.type === "GWTP_PAGE_READY") {
+    window.guideRunner.restoreActiveStep().catch((error) => {
+      console.info("GWTP active step restore skipped:", error);
+    });
+    return;
+  }
+
+  if (message?.type === "GWTP_TRAINING_COMPLETED") {
+    const guideId = Number(message.guideId);
+    const topic = learnerCatalog.find((item) => item.guides?.some((guide) => guide.id === guideId));
+    const guide = topic?.guides?.find((item) => item.id === guideId);
+
+    if (guide) {
+      guide.progressStatus = "Completed";
+      if (Number(learnerGuideSelect.value) === guideId) {
+        refreshSelectedLearnerGuideUi();
+      }
+    }
+  }
 });
 
 async function verifyApiConnection() {
