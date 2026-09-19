@@ -39,6 +39,7 @@ async function initializeSite() {
   if (stateToken) {
     const restored = await loadServerState(stateToken);
     if (restored) {
+      history.replaceState(null, "", location.pathname);
       showServerMessageAfterPageLoad(message);
       return;
     }
