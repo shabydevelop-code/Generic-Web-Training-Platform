@@ -30,7 +30,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const deltaY = e.changedTouches[0].clientY - touchStartY;
       // Horizontal swipe threshold
       if (Math.abs(deltaX) > 100 && Math.abs(deltaY) < 60) {
-        const pages = ['site.html', 'ticket.html', 'leads.html', 'customer360.html'];
+        const pages = ['site.html', 'case.html', 'leads.html', 'customer360.html'];
         const currentPath = window.location.pathname.split('/').pop();
         const currentIndex = pages.indexOf(currentPath);
         if (currentIndex !== -1) {
