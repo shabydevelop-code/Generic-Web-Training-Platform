@@ -49,7 +49,12 @@
           step: firstStep,
           navigation: {
             stepIndex: Number.isInteger(guide.stepIndex) ? guide.stepIndex : 0,
-            totalSteps: guide.totalSteps || guide.steps.length
+            totalSteps: guide.totalSteps || guide.steps.length,
+            direction: window.i18nService.getLanguage() === "he" ? "rtl" : "ltr",
+            labels: {
+              previous: window.i18nService.translate("previousButton", window.i18nService.getLanguage()),
+              next: window.i18nService.translate("nextButton", window.i18nService.getLanguage())
+            }
           }
         });
 
