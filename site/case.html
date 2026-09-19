@@ -54,7 +54,7 @@
         <span id="case-priority" style="font-size: 11px; color: #475569;"></span>
       </div>
       <div class="ps-panel-body">
-        <form id="form-case">
+        <form id="form-case" method="post" action="/case/field-change">
           <div class="ps-form-grid">
             <div class="ps-form-group">
               <label for="case-id" class="ps-label">מספר פניה</label>
@@ -62,15 +62,15 @@
             </div>
             <div class="ps-form-group">
               <label for="case-customer" class="ps-label required">שם לקוח</label>
-              <input type="text" id="case-customer" class="ps-input" required>
+              <input type="text" id="case-customer" name="customer" class="ps-input" required>
             </div>
             <div class="ps-form-group">
               <label for="case-site" class="ps-label">אתר מקושר</label>
-              <input type="text" id="case-site" class="ps-input">
+              <input type="text" id="case-site" name="site" class="ps-input">
             </div>
             <div class="ps-form-group">
               <label for="case-category" class="ps-label required">סיווג תקלה / קטגוריה</label>
-              <select id="case-category" class="ps-select">
+              <select id="case-category" name="category" class="ps-select">
                 <option value="network">תקלת תקשורת ורשת</option>
                 <option value="billing">בירור חיוב וחשבונית</option>
                 <option value="hardware">תקלת חומרה באתר</option>
@@ -79,7 +79,7 @@
             </div>
             <div class="ps-form-group">
               <label for="case-assigned" class="ps-label">נציג מטפל (Owner)</label>
-              <input type="text" id="case-assigned" class="ps-input">
+              <input type="text" id="case-assigned" name="assigned" class="ps-input">
             </div>
             <div class="ps-form-group">
               <label for="case-sla" class="ps-label">יעד SLA</label>
@@ -89,12 +89,12 @@
 
           <div class="ps-form-group" style="margin-top: 14px;">
             <label for="case-subject" class="ps-label required">נושא הפניה</label>
-            <input type="text" id="case-subject" class="ps-input" required>
+            <input type="text" id="case-subject" name="subject" class="ps-input" required>
           </div>
 
           <div class="ps-form-group" style="margin-top: 14px;">
             <label for="case-notes" class="ps-label">תיאור מפורט והערות טיפול</label>
-            <textarea id="case-notes" class="ps-textarea" rows="3"></textarea>
+            <textarea id="case-notes" name="notes" class="ps-textarea" rows="3"></textarea>
           </div>
 
           <div class="ps-action-bar" style="margin-top: 14px;">
