@@ -16,7 +16,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
 async function initializeLead() {
   const token = new URLSearchParams(location.search).get("state");
-  if (token && await loadLeadState(token)) return;
+  if (token && await loadLeadState(token)) {
+    history.replaceState(null, "", location.pathname);
+    return;
+  }
   await loadLead();
 }
 
