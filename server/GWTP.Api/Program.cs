@@ -1167,7 +1167,31 @@ static void ApplyDatabaseMigrations(string databasePath)
 static void EnsureDemoSiteGuide(string databasePath)
 {
     const string topicName = "Demo CRM";
-    const string guideName = "עדכון פרטי אתר";
+    const string guideName = "תרגול מלא - Demo CRM";
+
+    var steps = new (string Selector, string Instruction)[]
+    {
+        ("#site-code", "זהו קוד האתר במערכת. אין צורך לשנות אותו."),
+        ("#site-name", "כאן מופיע שם האתר או הסניף."),
+        ("#site-phone", "שנה את מספר הטלפון למספר חדש."),
+        ("#site-type", "שנה את סוג האתר ל<strong>סניף מכירות</strong>."),
+        ("#btn-save-site", "לחץ על <strong>שמור שינויים</strong> כדי לשמור את נתוני האתר."),
+        ("#nav-case", "כעת עבור למסך <strong>פניה</strong>."),
+        ("#case-category", "בחר קטגוריה מתאימה לפניה."),
+        ("#case-assigned", "עדכן את הנציג המטפל בפניה."),
+        ("#case-subject", "עדכן את נושא הפניה. שים לב שהשרת מבצע ולידציה בעת השמירה."),
+        ("#btn-save-case", "לחץ על <strong>שמור פניה</strong>. אם קיימת שגיאת ולידציה, תקן אותה ושמור שוב."),
+        ("#nav-leads", "עבור למסך <strong>לידים</strong>."),
+        ("#lead-source", "שנה את מקור הליד."),
+        ("#lead-interest", "שנה את המוצר המבוקש."),
+        ("#lead-email", "בדוק את כתובת הדוא״ל. השרת יאכוף כתובת תקינה בעת השמירה."),
+        ("#btn-save-lead", "לחץ על <strong>שמור ליד</strong>. אם השמירה נדחית, תקן את השדה המסומן ונסה שוב."),
+        ("#nav-360", "עבור למסך <strong>360</strong>."),
+        ("#c360-tier", "שנה את סיווג הלקוח."),
+        ("#c360-manager", "עדכן את מנהל תיק הלקוח."),
+        ("#c360-mrr", "בדוק את המחזור החודשי. השרת דורש שהערך יכיל מספר."),
+        ("#btn-save-360", "לחץ על <strong>שמור פרטי לקוח</strong>. תקן שגיאות ולידציה אם יוצגו.")
+    };
 
     using var connection = OpenConnection(databasePath);
     using var transaction = connection.BeginTransaction();
@@ -1178,7 +1202,6 @@ static void EnsureDemoSiteGuide(string databasePath)
         INSERT INTO Topics (Name)
         SELECT $name
         WHERE NOT EXISTS (SELECT 1 FROM Topics WHERE Name = $name COLLATE NOCASE);
-
         SELECT Id FROM Topics WHERE Name = $name COLLATE NOCASE ORDER BY Id LIMIT 1;
         """;
     topicCommand.Parameters.AddWithValue("$name", topicName);
@@ -1186,37 +1209,48 @@ static void EnsureDemoSiteGuide(string databasePath)
 
     using var guideLookup = connection.CreateCommand();
     guideLookup.Transaction = transaction;
-    guideLookup.CommandText = "SELECT Id FROM Guides WHERE TopicId = $topicId AND Name = $name COLLATE NOCASE LIMIT 1;";
+    guideLookup.CommandText = """
+        SELECT Id FROM Guides
+        WHERE TopicId = $topicId
+          AND Name IN ('עדכון פרטי אתר', $guideName)
+        ORDER BY CASE WHEN Name = $guideName THEN 0 ELSE 1 END, Id
+        LIMIT 1;
+        """;
     guideLookup.Parameters.AddWithValue("$topicId", topicId);
-    guideLookup.Parameters.AddWithValue("$name", guideName);
+    guideLookup.Parameters.AddWithValue("$guideName", guideName);
     var existingGuideId = guideLookup.ExecuteScalar();
 
-    if (existingGuideId is not null)
+    long guideId;
+    if (existingGuideId is null)
     {
-        transaction.Commit();
-        return;
+        using var guideCommand = connection.CreateCommand();
+        guideCommand.Transaction = transaction;
+        guideCommand.CommandText = """
+            INSERT INTO Guides (TopicId, Name, StartUrl, IsAvailable)
+            VALUES ($topicId, $name, $startUrl, 1);
+            SELECT last_insert_rowid();
+            """;
+        guideCommand.Parameters.AddWithValue("$topicId", topicId);
+        guideCommand.Parameters.AddWithValue("$name", guideName);
+        guideCommand.Parameters.AddWithValue("$startUrl", "http://localhost:5100/site.html");
+        guideId = Convert.ToInt64(guideCommand.ExecuteScalar());
     }
-
-    using var guideCommand = connection.CreateCommand();
-    guideCommand.Transaction = transaction;
-    guideCommand.CommandText = """
-        INSERT INTO Guides (TopicId, Name, StartUrl, IsAvailable)
-        VALUES ($topicId, $name, $startUrl, 1);
-        SELECT last_insert_rowid();
-        """;
-    guideCommand.Parameters.AddWithValue("$topicId", topicId);
-    guideCommand.Parameters.AddWithValue("$name", guideName);
-    guideCommand.Parameters.AddWithValue("$startUrl", "http://localhost:5100/site.html");
-    var guideId = Convert.ToInt64(guideCommand.ExecuteScalar());
-
-    var steps = new (string Selector, string Instruction)[]
+    else
     {
-        ("#site-code", "זהו קוד האתר במערכת. אין צורך לשנות אותו."),
-        ("#site-name", "כאן מופיע שם האתר או הסניף."),
-        ("#site-phone", "שנה את מספר הטלפון למספר חדש."),
-        ("#site-type", "שנה את סוג האתר ל<strong>סניף מכירות</strong>."),
-        ("#btn-save-site", "לחץ על <strong>שמור שינויים</strong> כדי לשמור את הנתונים.")
-    };
+        guideId = Convert.ToInt64(existingGuideId);
+        using var updateGuide = connection.CreateCommand();
+        updateGuide.Transaction = transaction;
+        updateGuide.CommandText = """
+            UPDATE Guides
+            SET Name = $name, StartUrl = $startUrl, IsAvailable = 1
+            WHERE Id = $guideId;
+            DELETE FROM GuideSteps WHERE GuideId = $guideId;
+            """;
+        updateGuide.Parameters.AddWithValue("$guideId", guideId);
+        updateGuide.Parameters.AddWithValue("$name", guideName);
+        updateGuide.Parameters.AddWithValue("$startUrl", "http://localhost:5100/site.html");
+        updateGuide.ExecuteNonQuery();
+    }
 
     for (var index = 0; index < steps.Length; index++)
     {
