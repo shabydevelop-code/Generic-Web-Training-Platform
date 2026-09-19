@@ -1,5 +1,5 @@
 (() => {
-  window.appConfig = Object.freeze({
+  globalThis.appConfig = Object.freeze({
     language: "he",
     api: Object.freeze({
       baseUrl: "http://localhost:5000"
