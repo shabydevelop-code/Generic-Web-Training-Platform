@@ -16,7 +16,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
 async function initializeCase() {
   const token = new URLSearchParams(location.search).get("state");
-  if (token && await loadCaseState(token)) return;
+  if (token && await loadCaseState(token)) {
+    history.replaceState(null, "", location.pathname);
+    return;
+  }
   await loadCase();
 }
 
