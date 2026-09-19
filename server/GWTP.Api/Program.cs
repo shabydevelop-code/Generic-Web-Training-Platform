@@ -704,8 +704,8 @@ editorGuides.MapPut("/{id:long}", (long id, CreateGuideRequest request) =>
 {
     var name = request.Name?.Trim();
 
-    if (string.IsNullOrWhiteSpace(name) || request.TopicId <= 0 || request.Steps is null)
-        return Results.BadRequest(new { message = "Topic and guide name are required." });
+    if (string.IsNullOrWhiteSpace(name) || string.IsNullOrWhiteSpace(request.StartUrl) || request.TopicId <= 0 || request.Steps is null)
+        return Results.BadRequest(new { message = "Topic, guide name and start URL are required." });
 
     if (request.IsAvailable && request.Steps.Count == 0)
         return Results.BadRequest(new { message = "An available guide must contain at least one step." });
@@ -789,9 +789,9 @@ editorGuides.MapPost("", (CreateGuideRequest request) =>
 {
     var name = request.Name?.Trim();
 
-    if (string.IsNullOrWhiteSpace(name) || request.TopicId <= 0 || request.Steps is null)
+    if (string.IsNullOrWhiteSpace(name) || string.IsNullOrWhiteSpace(request.StartUrl) || request.TopicId <= 0 || request.Steps is null)
     {
-        return Results.BadRequest(new { message = "Topic and guide name are required." });
+        return Results.BadRequest(new { message = "Topic, guide name and start URL are required." });
     }
 
     if (request.IsAvailable && request.Steps.Count == 0)
