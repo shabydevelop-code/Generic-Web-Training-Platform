@@ -12,6 +12,8 @@ var databasePath = Path.Combine(databaseDirectory, "demo-crm.db");
 
 Directory.CreateDirectory(databaseDirectory);
 
+var SiteFormStates = new Dictionary<string, SiteFormState>();
+
 var connectionString = new SqliteConnectionStringBuilder
 {
     DataSource = databasePath,
@@ -111,6 +113,40 @@ app.MapGet("/api/sites/{id:long}", (long id) =>
 });
 
 
+
+app.MapPost("/site/type-change", async (HttpRequest request) =>
+{
+    var form = await request.ReadFormAsync();
+
+    var state = new SiteFormState(
+        form["code"].ToString(),
+        form["name"].ToString(),
+        form["type"].ToString(),
+        form["city"].ToString(),
+        form["contactName"].ToString(),
+        form["phone"].ToString());
+
+    var token = Guid.NewGuid().ToString("N");
+    SiteFormStates[token] = state;
+
+    var typeLabel = state.Type switch
+    {
+        "branch" => "סניף מכירות",
+        "warehouse" => "מרלוג והפצה",
+        "hq" => "מטה ראשי",
+        _ => state.Type
+    };
+
+    return Results.Redirect($"/site.html?state={Uri.EscapeDataString(token)}&message={Uri.EscapeDataString($"בחרת ב\"{typeLabel}\"")}");
+});
+
+app.MapGet("/api/site-state/{token}", (string token) =>
+{
+    return SiteFormStates.TryGetValue(token, out var state)
+        ? Results.Ok(state)
+        : Results.NotFound();
+});
+
 app.MapPut("/api/sites/{id:long}", (long id, UpdateSiteRequest request) =>
 {
     if (string.IsNullOrWhiteSpace(request.Code) || string.IsNullOrWhiteSpace(request.Name))
@@ -209,3 +245,12 @@ sealed record UpdateSiteRequest(
     string? City,
     string? ContactName,
     string? Phone);
+
+
+sealed record SiteFormState(
+    string Code,
+    string Name,
+    string Type,
+    string City,
+    string ContactName,
+    string Phone);
