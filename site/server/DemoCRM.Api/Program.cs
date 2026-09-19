@@ -289,7 +289,7 @@ app.MapGet("/api/case-state/{token}", (string token) =>
     hc.CommandText = "SELECT OccurredAt, Actor, ActionType, Description FROM CaseHistory WHERE CaseId=55891 ORDER BY Id;";
     using var hr = hc.ExecuteReader(); var history = new List<object>();
     while (hr.Read()) history.Add(new { occurredAt=hr.GetString(0), actor=hr.GetString(1), actionType=hr.GetString(2), description=hr.GetString(3) });
-    return Results.Ok(new { caseNumber, state.customer, state.site, state.category, state.assigned, sla, state.subject, state.notes, status, priority, history });
+    return Results.Ok(new { caseNumber, customer = state.Customer, site = state.Site, category = state.Category, assigned = state.Assigned, sla, subject = state.Subject, notes = state.Notes, status, priority, history });
 });
 
 app.MapPost("/lead/field-change", async (HttpRequest request) =>
@@ -318,7 +318,7 @@ app.MapGet("/api/lead-state/{token}", (string token) =>
     pc.CommandText="SELECT LeadNumber, Company, ContactName, SourceLabel, Stage, CreatedAt, StatusClass FROM LeadPipeline ORDER BY Id;";
     using var pr=pc.ExecuteReader(); var pipeline=new List<object>();
     while(pr.Read()) pipeline.Add(new { leadNumber=pr.GetString(0), company=pr.GetString(1), contactName=pr.GetString(2), sourceLabel=pr.GetString(3), stage=pr.GetString(4), createdAt=pr.GetString(5), statusClass=pr.GetString(6) });
-    return Results.Ok(new { leadNumber, state.company, state.contactName, state.email, state.source, state.interest, status, potential, pipeline });
+    return Results.Ok(new { leadNumber, company = state.Company, contactName = state.ContactName, email = state.Email, source = state.Source, interest = state.Interest, status, potential, pipeline });
 });
 
 app.MapPost("/site/type-change", async (HttpRequest request) =>
