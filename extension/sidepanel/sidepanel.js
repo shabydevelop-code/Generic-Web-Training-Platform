@@ -1272,6 +1272,7 @@ async function handleLogout() {
     console.info("GWTP page cleanup skipped during logout:", error);
   }
 
+  await window.trainingStateService.clear();
   await window.authService.logout();
   appView.hidden = true;
   adminModeActive = false;
@@ -1362,6 +1363,15 @@ passwordInput.addEventListener("keydown", (event) => {
   if (event.key === "Enter") {
     handleLogin();
   }
+});
+
+chrome.runtime.onMessage.addListener((message) => {
+  if (message?.type !== "GWTP_PAGE_READY") return;
+  if (window.authService.getCurrentRole() !== "learner") return;
+
+  window.guideRunner.restoreActiveStep().catch((error) => {
+    console.info("GWTP active step restore skipped:", error);
+  });
 });
 
 async function verifyApiConnection() {
