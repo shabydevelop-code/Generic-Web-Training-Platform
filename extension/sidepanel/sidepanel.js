@@ -1117,6 +1117,9 @@ function renderSteps() {
 
 selectButton.addEventListener("click", async () => {
   try {
+    await window.messagingService.sendToActivePage({ type: "GWTP_CLEAR_HIGHLIGHT" }).catch(() => {});
+    activeStepId = null;
+    markActiveStep(null);
     const response = await window.messagingService.sendToActivePage({ type: "GWTP_START_ELEMENT_PICKER" });
     setStatus(response?.message || "Selection mode active.");
   } catch (error) {
@@ -1183,14 +1186,60 @@ saveStepButton.addEventListener("click", () => {
   }
 });
 
+function applyInlineFormat(tagName) {
+  const selection = window.getSelection();
+  if (!selection || selection.rangeCount === 0 || selection.isCollapsed) return;
+
+  const range = selection.getRangeAt(0);
+  if (!instructionInput.contains(range.commonAncestorContainer)) return;
+
+  const element = document.createElement(tagName);
+  try {
+    range.surroundContents(element);
+  } catch {
+    const fragment = range.extractContents();
+    element.appendChild(fragment);
+    range.insertNode(element);
+  }
+
+  selection.removeAllRanges();
+  const formattedRange = document.createRange();
+  formattedRange.selectNodeContents(element);
+  selection.addRange(formattedRange);
+}
+
+function applyListFormat(tagName) {
+  const selection = window.getSelection();
+  if (!selection || selection.rangeCount === 0) return;
+
+  const range = selection.getRangeAt(0);
+  if (!instructionInput.contains(range.commonAncestorContainer)) return;
+
+  const text = selection.toString() || range.commonAncestorContainer.textContent || "";
+  const lines = text.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+  if (lines.length === 0) return;
+
+  const list = document.createElement(tagName);
+  lines.forEach((line) => {
+    const item = document.createElement("li");
+    item.textContent = line;
+    list.appendChild(item);
+  });
+
+  range.deleteContents();
+  range.insertNode(list);
+  selection.removeAllRanges();
+}
+
 richTextToolbarButtons.forEach((button) => {
   button.addEventListener("mousedown", (event) => {
     event.preventDefault();
-  });
-
-  button.addEventListener("click", () => {
-    instructionInput.focus();
-    document.execCommand(button.dataset.richCommand, false);
+    const command = button.dataset.richCommand;
+    if (command === "bold") applyInlineFormat("strong");
+    else if (command === "italic") applyInlineFormat("em");
+    else if (command === "underline") applyInlineFormat("u");
+    else if (command === "insertUnorderedList") applyListFormat("ul");
+    else if (command === "insertOrderedList") applyListFormat("ol");
   });
 });
 
