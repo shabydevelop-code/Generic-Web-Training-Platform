@@ -70,6 +70,13 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     return true;
   }
 
+  if (message?.type === "GWTP_TRAINING_GET_SESSION") {
+    getTrainingSession()
+      .then((session) => sendResponse({ success: true, session }))
+      .catch((error) => sendResponse({ success: false, message: error.message }));
+    return true;
+  }
+
   if (message?.type === "GWTP_TRAINING_GET_CURRENT") {
     getCurrentTrainingStep()
       .then((current) => sendResponse({ success: true, current }))
