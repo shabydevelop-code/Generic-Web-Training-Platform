@@ -33,6 +33,13 @@ app.UseStaticFiles(new StaticFileOptions
     FileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(siteRoot)
 });
 
+var extensionIconsPath = Path.GetFullPath(Path.Combine(siteRoot, "..", "extension", "icons"));
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(extensionIconsPath),
+    RequestPath = "/icons"
+});
+
 app.MapGet("/api/health", () => Results.Ok(new
 {
     service = "DemoCRM.Api",
