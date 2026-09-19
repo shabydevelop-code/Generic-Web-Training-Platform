@@ -66,11 +66,28 @@
       throw new Error("The guide start URL is missing.");
     }
 
+    const firstStep = guide?.steps?.[0];
+
+    if (!firstStep) {
+      throw new Error("The guide does not contain any steps.");
+    }
+
+    await window.trainingStateService.setActiveStep(guide.id, 0, firstStep);
     await navigateToStartUrl(guide.startUrl);
     return showFirstStep(guide);
   }
 
+  async function restoreActiveStep() {
+    const activeTraining = await window.trainingStateService.getActiveTraining();
+
+    if (!activeTraining?.trainingActive || !activeTraining.step) return false;
+
+    await showFirstStep({ steps: [activeTraining.step] });
+    return true;
+  }
+
   window.guideRunner = {
-    start
+    start,
+    restoreActiveStep
   };
 })();
