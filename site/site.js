@@ -4,9 +4,9 @@ document.addEventListener("DOMContentLoaded", () => {
   const form = document.getElementById("form-site");
   const refreshButton = document.getElementById("btn-refresh-site");
 
-  form?.addEventListener("submit", (event) => {
+  form?.addEventListener("submit", async (event) => {
     event.preventDefault();
-    alert("שמירת נתוני האתר לשרת תתווסף בשלב הבא.");
+    await saveSite();
   });
 
   refreshButton?.addEventListener("click", () => {
@@ -31,6 +31,39 @@ async function loadSite() {
   } catch (error) {
     console.error("[Demo CRM] Unable to load site data.", error);
     alert("לא ניתן לטעון את נתוני האתר מהשרת.");
+  }
+}
+
+
+async function saveSite() {
+  const payload = {
+    code: getValue("site-code"),
+    name: getValue("site-name"),
+    type: getValue("site-type"),
+    city: getValue("site-city"),
+    contactName: getValue("site-contact-name"),
+    phone: getValue("site-phone")
+  };
+
+  try {
+    const response = await fetch(`/api/sites/${SITE_ID}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json"
+      },
+      body: JSON.stringify(payload)
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to save site: HTTP ${response.status}`);
+    }
+
+    await loadSite();
+    alert("נתוני האתר נשמרו בהצלחה.");
+  } catch (error) {
+    console.error("[Demo CRM] Unable to save site data.", error);
+    alert("לא ניתן לשמור את נתוני האתר.");
   }
 }
 
@@ -105,4 +138,10 @@ function setValue(id, value) {
   if (element) {
     element.value = value ?? "";
   }
+}
+
+
+function getValue(id) {
+  const element = document.getElementById(id);
+  return element?.value ?? "";
 }
