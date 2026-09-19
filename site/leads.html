@@ -55,7 +55,7 @@
         <span id="lead-potential" style="font-size: 11px; color: #475569;"></span>
       </div>
       <div class="ps-panel-body">
-        <form id="form-lead" >
+        <form id="form-lead" method="post" action="/lead/field-change">
           <div class="ps-form-grid">
             <div class="ps-form-group">
               <label for="lead-id" class="ps-label">מספר ליד</label>
@@ -63,19 +63,19 @@
             </div>
             <div class="ps-form-group">
               <label for="lead-company" class="ps-label required">שם חברה / ארגון</label>
-              <input type="text" id="lead-company" class="ps-input" required>
+              <input type="text" id="lead-company" name="company" class="ps-input" required>
             </div>
             <div class="ps-form-group">
               <label for="lead-contact-name" class="ps-label required">שם איש קשר</label>
-              <input type="text" id="lead-contact-name" class="ps-input" required>
+              <input type="text" id="lead-contact-name" name="contactName" class="ps-input" required>
             </div>
             <div class="ps-form-group">
               <label for="lead-email" class="ps-label required">דוא''ל</label>
-              <input type="email" id="lead-email" class="ps-input" required>
+              <input type="email" id="lead-email" name="email" class="ps-input" required>
             </div>
             <div class="ps-form-group">
               <label for="lead-source" class="ps-label">מקור הליד (Source)</label>
-              <select id="lead-source" class="ps-select">
+              <select id="lead-source" name="source" class="ps-select">
                 <option value="web">אתר אינטרנט / קמפיין</option>
                 <option value="referral">המלצת לקוח קיים</option>
                 <option value="conference">כנס טכנולוגי</option>
@@ -84,7 +84,7 @@
             </div>
             <div class="ps-form-group">
               <label for="lead-interest" class="ps-label">מוצר מבוקש</label>
-              <select id="lead-interest" class="ps-select">
+              <select id="lead-interest" name="interest" class="ps-select">
                 <option value="cloud_crm">PeopleSoft CRM Cloud Integration</option>
                 <option value="security">אבטחת מידע וסייבר</option>
                 <option value="connectivity">קווי תמסורת ייעודיים</option>
