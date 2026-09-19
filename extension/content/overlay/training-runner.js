@@ -52,7 +52,33 @@ function showTrainingStep(step, navigation = {}) {
   overlay.style.color = "#172033";
   overlay.style.font = "14px/1.45 system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
   const instruction = document.createElement("div");
-  instruction.textContent = step.instruction || `Step ${step.order || ""}`;
+
+  const sanitizeInstructionHtml = (html) => {
+    const template = document.createElement("template");
+    template.innerHTML = html;
+    const allowedTags = new Set(["STRONG", "B", "EM", "I", "U", "BR", "UL", "OL", "LI", "P", "DIV"]);
+
+    const cleanNode = (node) => {
+      [...node.childNodes].forEach((child) => {
+        if (child.nodeType !== Node.ELEMENT_NODE) return;
+        if (!allowedTags.has(child.tagName)) {
+          child.replaceWith(...child.childNodes);
+          return;
+        }
+        [...child.attributes].forEach((attribute) => child.removeAttribute(attribute.name));
+        cleanNode(child);
+      });
+    };
+
+    cleanNode(template.content);
+    return template.innerHTML;
+  };
+
+  if (step.instruction) {
+    instruction.innerHTML = sanitizeInstructionHtml(step.instruction);
+  } else {
+    instruction.textContent = `Step ${step.order || ""}`;
+  }
   overlay.appendChild(instruction);
 
   const controls = document.createElement("div");
