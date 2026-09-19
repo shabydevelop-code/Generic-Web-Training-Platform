@@ -448,6 +448,73 @@ app.MapGet("/api/learner/catalog", (HttpContext httpContext) =>
     return Results.Ok(topics.Values);
 });
 
+app.MapGet("/api/learner/guides/{id:long}", (long id, HttpContext httpContext) =>
+{
+    var authorization = httpContext.Request.Headers.Authorization.ToString();
+
+    if (!authorization.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+        return Results.Unauthorized();
+
+    var token = authorization["Bearer ".Length..].Trim();
+    long userId;
+
+    lock (sessionLock)
+    {
+        if (!sessions.TryGetValue(token, out userId))
+            return Results.Unauthorized();
+    }
+
+    using var connection = OpenConnection(databasePath);
+
+    using var userCommand = connection.CreateCommand();
+    userCommand.CommandText = "SELECT COUNT(*) FROM Users WHERE Id = $userId AND IsActive = 1;";
+    userCommand.Parameters.AddWithValue("$userId", userId);
+
+    if (Convert.ToInt32(userCommand.ExecuteScalar()) == 0)
+        return Results.Unauthorized();
+
+    using var guideCommand = connection.CreateCommand();
+    guideCommand.CommandText = """
+        SELECT Id, TopicId, Name, StartUrl, IsAvailable
+        FROM Guides
+        WHERE Id = $id AND IsAvailable = 1;
+        """;
+    guideCommand.Parameters.AddWithValue("$id", id);
+
+    using var guideReader = guideCommand.ExecuteReader();
+    if (!guideReader.Read())
+        return Results.NotFound();
+
+    var guideId = guideReader.GetInt64(0);
+    var topicId = guideReader.GetInt64(1);
+    var name = guideReader.GetString(2);
+    var startUrl = guideReader.IsDBNull(3) ? null : guideReader.GetString(3);
+    var isAvailable = guideReader.GetInt64(4) == 1;
+    guideReader.Close();
+
+    using var stepsCommand = connection.CreateCommand();
+    stepsCommand.CommandText = """
+        SELECT StepOrder, Selector, Instruction
+        FROM GuideSteps
+        WHERE GuideId = $guideId
+        ORDER BY StepOrder;
+        """;
+    stepsCommand.Parameters.AddWithValue("$guideId", guideId);
+
+    using var stepsReader = stepsCommand.ExecuteReader();
+    var steps = new List<GuideStepResponse>();
+
+    while (stepsReader.Read())
+    {
+        steps.Add(new GuideStepResponse(
+            stepsReader.GetInt32(0),
+            stepsReader.GetString(1),
+            stepsReader.GetString(2)));
+    }
+
+    return Results.Ok(new GuideResponse(guideId, topicId, name, startUrl, isAvailable, steps));
+});
+
 var editorTopics = app.MapGroup("/api/topics");
 editorTopics.AddEndpointFilter(async (context, next) =>
 {
