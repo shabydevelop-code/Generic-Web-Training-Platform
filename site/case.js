@@ -1,10 +1,36 @@
 const CASE_ID = 55891;
 
 document.addEventListener("DOMContentLoaded", () => {
-  document.getElementById("form-case")?.addEventListener("submit", async (event) => { event.preventDefault(); await saveCase(); });
+  const form = document.getElementById("form-case");
+  form?.addEventListener("submit", async (event) => {
+    if (event.submitter?.id === "btn-save-case") {
+      event.preventDefault();
+      await saveCase();
+    }
+  });
+  document.getElementById("case-category")?.addEventListener("change", () => form?.requestSubmit());
+  document.getElementById("case-assigned")?.addEventListener("change", () => form?.requestSubmit());
   document.getElementById("btn-escalate-case")?.addEventListener("click", escalateCase);
-  loadCase();
+  initializeCase();
 });
+
+async function initializeCase() {
+  const token = new URLSearchParams(location.search).get("state");
+  if (token && await loadCaseState(token)) return;
+  await loadCase();
+}
+
+async function loadCaseState(token) {
+  try {
+    const response = await fetch("/api/case-state/" + encodeURIComponent(token), { headers: { Accept: "application/json" } });
+    if (!response.ok) return false;
+    renderCase(await response.json());
+    return true;
+  } catch (error) {
+    console.error("[Demo CRM] Unable to restore case state.", error);
+    return false;
+  }
+}
 
 async function loadCase() {
   try {
