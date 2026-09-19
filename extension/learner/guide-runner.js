@@ -72,17 +72,26 @@
       throw new Error("The guide does not contain any steps.");
     }
 
-    await window.trainingStateService.setActiveStep(guide.id, 0, firstStep);
+    const startResponse = await chrome.runtime.sendMessage({
+      type: "GWTP_TRAINING_START",
+      guide
+    });
+
+    if (!startResponse?.success) {
+      throw new Error(startResponse?.message || "Could not start the training session.");
+    }
     await navigateToStartUrl(guide.startUrl);
     return showFirstStep(guide);
   }
 
   async function restoreActiveStep() {
-    const activeTraining = await window.trainingStateService.getActiveTraining();
+    const response = await chrome.runtime.sendMessage({
+      type: "GWTP_TRAINING_GET_CURRENT"
+    });
 
-    if (!activeTraining?.trainingActive || !activeTraining.step) return false;
+    if (!response?.success || !response.current?.step) return false;
 
-    await showFirstStep({ steps: [activeTraining.step] });
+    await showFirstStep({ steps: [response.current.step] });
     return true;
   }
 
