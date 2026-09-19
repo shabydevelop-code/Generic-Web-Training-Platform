@@ -244,13 +244,24 @@
           <input id="selectorInput" type="hidden" value="" />
 
           <label for="instructionInput" data-i18n="instructionLabel">Instruction</label>
-          <textarea
-            id="instructionInput"
-            rows="4"
-            autocomplete="off"
-            data-i18n-placeholder="instructionPlaceholder"
-            placeholder="Type the instruction for this step..."
-          ></textarea>
+          <div class="rich-text-editor">
+            <div class="rich-text-toolbar" role="toolbar">
+              <button type="button" class="rich-text-toolbar__button" data-rich-command="bold" aria-label="Bold"><strong>B</strong></button>
+              <button type="button" class="rich-text-toolbar__button" data-rich-command="italic" aria-label="Italic"><em>I</em></button>
+              <button type="button" class="rich-text-toolbar__button" data-rich-command="underline" aria-label="Underline"><u>U</u></button>
+              <button type="button" class="rich-text-toolbar__button" data-rich-command="insertUnorderedList" aria-label="Bulleted list">• List</button>
+              <button type="button" class="rich-text-toolbar__button" data-rich-command="insertOrderedList" aria-label="Numbered list">1. List</button>
+            </div>
+            <div
+              id="instructionInput"
+              class="rich-text-input"
+              contenteditable="true"
+              role="textbox"
+              aria-multiline="true"
+              data-i18n-placeholder="instructionPlaceholder"
+              data-placeholder="Type the instruction for this step..."
+            ></div>
+          </div>
 
           <p id="status" class="status" aria-live="polite"></p>
             <div class="actions">
