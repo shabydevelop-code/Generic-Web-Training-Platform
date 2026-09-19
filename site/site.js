@@ -29,6 +29,12 @@ async function initializeSite() {
   const stateToken = params.get("state");
   const message = params.get("message");
 
+  if (message) {
+    params.delete("message");
+    const cleanQuery = params.toString();
+    history.replaceState(null, "", `${location.pathname}${cleanQuery ? `?${cleanQuery}` : ""}`);
+  }
+
   if (stateToken) {
     const restored = await loadServerState(stateToken);
     if (restored) {
