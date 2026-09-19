@@ -27,6 +27,7 @@ var schemaPath = Path.Combine(databaseDirectory, "schema.sql");
 InitializeDatabase(databasePath, schemaPath);
 ApplyDatabaseMigrations(databasePath);
 EnsureDevelopmentAdmin(databasePath);
+EnsureDemoSiteGuide(databasePath);
 
 var sessions = new Dictionary<string, long>(StringComparer.Ordinal);
 var sessionLock = new object();
@@ -1160,6 +1161,79 @@ static void ApplyDatabaseMigrations(string databasePath)
     normalizeProgress.CommandText = "UPDATE UserProgress SET StartedAt = COALESCE(StartedAt, CURRENT_TIMESTAMP), LastActivityAt = COALESCE(LastActivityAt, CURRENT_TIMESTAMP);";
     normalizeProgress.ExecuteNonQuery();
 
+}
+
+
+static void EnsureDemoSiteGuide(string databasePath)
+{
+    const string topicName = "Demo CRM";
+    const string guideName = "עדכון פרטי אתר";
+
+    using var connection = OpenConnection(databasePath);
+    using var transaction = connection.BeginTransaction();
+
+    using var topicCommand = connection.CreateCommand();
+    topicCommand.Transaction = transaction;
+    topicCommand.CommandText = """
+        INSERT INTO Topics (Name)
+        SELECT $name
+        WHERE NOT EXISTS (SELECT 1 FROM Topics WHERE Name = $name COLLATE NOCASE);
+
+        SELECT Id FROM Topics WHERE Name = $name COLLATE NOCASE ORDER BY Id LIMIT 1;
+        """;
+    topicCommand.Parameters.AddWithValue("$name", topicName);
+    var topicId = Convert.ToInt64(topicCommand.ExecuteScalar());
+
+    using var guideLookup = connection.CreateCommand();
+    guideLookup.Transaction = transaction;
+    guideLookup.CommandText = "SELECT Id FROM Guides WHERE TopicId = $topicId AND Name = $name COLLATE NOCASE LIMIT 1;";
+    guideLookup.Parameters.AddWithValue("$topicId", topicId);
+    guideLookup.Parameters.AddWithValue("$name", guideName);
+    var existingGuideId = guideLookup.ExecuteScalar();
+
+    if (existingGuideId is not null)
+    {
+        transaction.Commit();
+        return;
+    }
+
+    using var guideCommand = connection.CreateCommand();
+    guideCommand.Transaction = transaction;
+    guideCommand.CommandText = """
+        INSERT INTO Guides (TopicId, Name, StartUrl, IsAvailable)
+        VALUES ($topicId, $name, $startUrl, 1);
+        SELECT last_insert_rowid();
+        """;
+    guideCommand.Parameters.AddWithValue("$topicId", topicId);
+    guideCommand.Parameters.AddWithValue("$name", guideName);
+    guideCommand.Parameters.AddWithValue("$startUrl", "http://localhost:5100/site.html");
+    var guideId = Convert.ToInt64(guideCommand.ExecuteScalar());
+
+    var steps = new (string Selector, string Instruction)[]
+    {
+        ("#site-code", "זהו קוד האתר במערכת. אין צורך לשנות אותו."),
+        ("#site-name", "כאן מופיע שם האתר או הסניף."),
+        ("#site-phone", "שנה את מספר הטלפון למספר חדש."),
+        ("#site-type", "שנה את סוג האתר ל<strong>סניף מכירות</strong>."),
+        ("#btn-save-site", "לחץ על <strong>שמור שינויים</strong> כדי לשמור את הנתונים.")
+    };
+
+    for (var index = 0; index < steps.Length; index++)
+    {
+        using var stepCommand = connection.CreateCommand();
+        stepCommand.Transaction = transaction;
+        stepCommand.CommandText = """
+            INSERT INTO GuideSteps (GuideId, StepOrder, Selector, Instruction)
+            VALUES ($guideId, $stepOrder, $selector, $instruction);
+            """;
+        stepCommand.Parameters.AddWithValue("$guideId", guideId);
+        stepCommand.Parameters.AddWithValue("$stepOrder", index + 1);
+        stepCommand.Parameters.AddWithValue("$selector", steps[index].Selector);
+        stepCommand.Parameters.AddWithValue("$instruction", steps[index].Instruction);
+        stepCommand.ExecuteNonQuery();
+    }
+
+    transaction.Commit();
 }
 
 static void EnsureDevelopmentAdmin(string databasePath)
