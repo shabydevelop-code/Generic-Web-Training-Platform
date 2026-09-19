@@ -41,10 +41,17 @@ async function loadCase() {
 }
 
 async function saveCase() {
+  clearValidationErrors();
   const payload = { customer: value("case-customer"), site: value("case-site"), category: value("case-category"), assigned: value("case-assigned"), subject: value("case-subject"), notes: value("case-notes") };
   try {
     const response = await fetch("/api/cases/" + CASE_ID, { method: "PUT", headers: { "Content-Type": "application/json", Accept: "application/json" }, body: JSON.stringify(payload) });
-    if (!response.ok) throw new Error("HTTP " + response.status);
+    if (!response.ok) {
+      if (response.status === 400) {
+        showValidationErrors(await response.json());
+        return;
+      }
+      throw new Error("HTTP " + response.status);
+    }
     location.href = location.pathname;
   } catch (error) { console.error("[Demo CRM] Unable to save case.", error); alert("לא ניתן לשמור את הפניה."); }
 }
@@ -66,3 +73,24 @@ function renderCase(data) {
 
 function value(id) { return document.getElementById(id)?.value ?? ""; }
 function setValue(id, nextValue) { const element = document.getElementById(id); if (element) element.value = nextValue ?? ""; }
+
+
+function clearValidationErrors() {
+  document.querySelectorAll(".ps-validation-error").forEach((element) => element.remove());
+  document.querySelectorAll("[aria-invalid='true']").forEach((element) => element.removeAttribute("aria-invalid"));
+}
+
+function showValidationErrors(result) {
+  clearValidationErrors();
+  const errors = result?.errors ?? {};
+  for (const [fieldId, message] of Object.entries(errors)) {
+    const field = document.getElementById(fieldId);
+    if (!field) continue;
+    field.setAttribute("aria-invalid", "true");
+    const error = document.createElement("div");
+    error.className = "ps-validation-error";
+    error.textContent = message;
+    field.insertAdjacentElement("afterend", error);
+  }
+  alert(result?.message ?? "לא ניתן לשמור. יש לתקן את השדות המסומנים.");
+}
