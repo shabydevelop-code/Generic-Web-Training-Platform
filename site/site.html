@@ -50,19 +50,20 @@
         <span id="site-system-id" style="font-size: 11px; color: #475569;"></span>
       </div>
       <div class="ps-panel-body">
-        <form id="form-site">
+        <form id="form-site" method="post" action="/site/type-change">
+          <div id="site-server-message" class="ps-notice" hidden></div>
           <div class="ps-form-grid">
             <div class="ps-form-group">
               <label for="site-code" class="ps-label required">קוד אתר (Site Code)</label>
-              <input type="text" id="site-code" class="ps-input" required>
+              <input type="text" id="site-code" name="code" class="ps-input" required>
             </div>
             <div class="ps-form-group">
               <label for="site-name" class="ps-label required">שם האתר / סניף</label>
-              <input type="text" id="site-name" class="ps-input" required>
+              <input type="text" id="site-name" name="name" class="ps-input" required>
             </div>
             <div class="ps-form-group">
               <label for="site-type" class="ps-label">סוג אתר</label>
-              <select id="site-type" class="ps-select">
+              <select id="site-type" name="type" class="ps-select">
                 <option value="hq">מטה ראשי</option>
                 <option value="branch">סניף מכירות</option>
                 <option value="warehouse">מרלוג והפצה</option>
@@ -70,15 +71,15 @@
             </div>
             <div class="ps-form-group">
               <label for="site-city" class="ps-label">עיר וכתובת</label>
-              <input type="text" id="site-city" class="ps-input">
+              <input type="text" id="site-city" name="city" class="ps-input">
             </div>
             <div class="ps-form-group">
               <label for="site-contact-name" class="ps-label">איש קשר ראשי באתר</label>
-              <input type="text" id="site-contact-name" class="ps-input">
+              <input type="text" id="site-contact-name" name="contactName" class="ps-input">
             </div>
             <div class="ps-form-group">
               <label for="site-phone" class="ps-label">טלפון ישיר</label>
-              <input type="tel" id="site-phone" class="ps-input">
+              <input type="tel" id="site-phone" name="phone" class="ps-input">
             </div>
           </div>
 
