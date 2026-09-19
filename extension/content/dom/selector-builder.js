@@ -73,6 +73,47 @@ function createSelector(element) {
     }
   }
 
+  // Table/grid cells need a selector that survives row reordering.
+  // Prefer a stable table identity + a stable column position + unique cell text.
+  const cell = element.closest("td, th");
+  const table = cell?.closest("table");
+
+  if (cell && table) {
+    const tableSelector = (() => {
+      if (table.id && !looksGenerated(table.id)) {
+        const selector = `#${CSS.escape(table.id)}`;
+        if (isUnique(selector)) return selector;
+      }
+
+      for (const attribute of attributeCandidates) {
+        const value = table.getAttribute(attribute);
+        if (!value || looksGenerated(value)) continue;
+        const selector = `table[${attribute}="${CSS.escape(value)}"]`;
+        if (isUnique(selector)) return selector;
+      }
+
+      const stableClass = [...table.classList].find(
+        (className) => className && !className.startsWith("gwtp-") && !looksGenerated(className)
+      );
+      if (stableClass) {
+        const selector = `table.${CSS.escape(stableClass)}`;
+        if (isUnique(selector)) return selector;
+      }
+
+      return "";
+    })();
+
+    const row = cell.closest("tr");
+    const cellText = (cell.innerText || cell.textContent || "").trim().replace(/\s+/g, " ");
+    const columnIndex = row ? [...row.children].indexOf(cell) + 1 : 0;
+
+    if (tableSelector && cellText && columnIndex > 0) {
+      const escapedText = JSON.stringify(cellText);
+      const gridSelector = `gwtp-grid:${tableSelector}|${columnIndex}|${escapedText}`;
+      return gridSelector;
+    }
+  }
+
   const parts = [];
   let current = element;
 
