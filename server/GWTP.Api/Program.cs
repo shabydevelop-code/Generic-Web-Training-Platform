@@ -552,10 +552,10 @@ app.MapPost("/api/learner/progress/start/{guideId:long}", (long guideId, HttpCon
         VALUES
             ($userId, $guideId, 1, 'Started', 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, NULL)
         ON CONFLICT(UserId, GuideId) DO UPDATE SET
-            CurrentStepOrder = 1,
-            Status = 'Started',
+            Status = CASE WHEN UserProgress.IsCompleted = 1 THEN 'Started' ELSE UserProgress.Status END,
             IsCompleted = 0,
-            StartedAt = CURRENT_TIMESTAMP,
+            CurrentStepOrder = CASE WHEN UserProgress.IsCompleted = 1 THEN 1 ELSE UserProgress.CurrentStepOrder END,
+            StartedAt = CASE WHEN UserProgress.IsCompleted = 1 THEN CURRENT_TIMESTAMP ELSE UserProgress.StartedAt END,
             LastActivityAt = CURRENT_TIMESTAMP,
             CompletedAt = NULL;
         """;
@@ -563,7 +563,13 @@ app.MapPost("/api/learner/progress/start/{guideId:long}", (long guideId, HttpCon
     command.Parameters.AddWithValue("$guideId", guideId);
     command.ExecuteNonQuery();
 
-    return Results.Ok(new { guideId, stepIndex = 0, totalSteps });
+    using var currentStepCommand = connection.CreateCommand();
+    currentStepCommand.CommandText = "SELECT CurrentStepOrder FROM UserProgress WHERE UserId = $userId AND GuideId = $guideId;";
+    currentStepCommand.Parameters.AddWithValue("$userId", userId.Value);
+    currentStepCommand.Parameters.AddWithValue("$guideId", guideId);
+    var currentStepOrder = Convert.ToInt32(currentStepCommand.ExecuteScalar());
+
+    return Results.Ok(new { guideId, stepIndex = currentStepOrder - 1, totalSteps });
 });
 
 app.MapPost("/api/learner/progress/move", (ProgressMoveRequest request, HttpContext httpContext) =>
