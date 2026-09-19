@@ -515,6 +515,131 @@ app.MapGet("/api/learner/guides/{id:long}", (long id, HttpContext httpContext) =
     return Results.Ok(new GuideResponse(guideId, topicId, name, startUrl, isAvailable, steps));
 });
 
+static long? GetAuthenticatedUserId(HttpContext httpContext, Dictionary<string, long> sessions, object sessionLock)
+{
+    var authorization = httpContext.Request.Headers.Authorization.ToString();
+    if (!authorization.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase)) return null;
+
+    var token = authorization["Bearer ".Length..].Trim();
+    lock (sessionLock)
+    {
+        return sessions.TryGetValue(token, out var userId) ? userId : null;
+    }
+}
+
+app.MapPost("/api/learner/progress/start/{guideId:long}", (long guideId, HttpContext httpContext) =>
+{
+    var userId = GetAuthenticatedUserId(httpContext, sessions, sessionLock);
+    if (userId is null) return Results.Unauthorized();
+
+    using var connection = OpenConnection(databasePath);
+
+    using var guideCommand = connection.CreateCommand();
+    guideCommand.CommandText = "SELECT COUNT(*) FROM Guides WHERE Id = $guideId AND IsAvailable = 1;";
+    guideCommand.Parameters.AddWithValue("$guideId", guideId);
+    if (Convert.ToInt32(guideCommand.ExecuteScalar()) == 0) return Results.NotFound();
+
+    using var stepCountCommand = connection.CreateCommand();
+    stepCountCommand.CommandText = "SELECT COUNT(*) FROM GuideSteps WHERE GuideId = $guideId;";
+    stepCountCommand.Parameters.AddWithValue("$guideId", guideId);
+    var totalSteps = Convert.ToInt32(stepCountCommand.ExecuteScalar());
+    if (totalSteps == 0) return Results.BadRequest(new { message = "Guide has no steps." });
+
+    using var command = connection.CreateCommand();
+    command.CommandText = """
+        INSERT INTO UserProgress
+            (UserId, GuideId, CurrentStepOrder, Status, IsCompleted, StartedAt, LastActivityAt, CompletedAt)
+        VALUES
+            ($userId, $guideId, 1, 'Started', 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, NULL)
+        ON CONFLICT(UserId, GuideId) DO UPDATE SET
+            CurrentStepOrder = 1,
+            Status = 'Started',
+            IsCompleted = 0,
+            StartedAt = CURRENT_TIMESTAMP,
+            LastActivityAt = CURRENT_TIMESTAMP,
+            CompletedAt = NULL;
+        """;
+    command.Parameters.AddWithValue("$userId", userId.Value);
+    command.Parameters.AddWithValue("$guideId", guideId);
+    command.ExecuteNonQuery();
+
+    return Results.Ok(new { guideId, stepIndex = 0, totalSteps });
+});
+
+app.MapPost("/api/learner/progress/move", (ProgressMoveRequest request, HttpContext httpContext) =>
+{
+    var userId = GetAuthenticatedUserId(httpContext, sessions, sessionLock);
+    if (userId is null) return Results.Unauthorized();
+    if (request.Direction is not (-1 or 1)) return Results.BadRequest(new { message = "Direction must be -1 or 1." });
+
+    using var connection = OpenConnection(databasePath);
+
+    using var progressCommand = connection.CreateCommand();
+    progressCommand.CommandText = """
+        SELECT CurrentStepOrder
+        FROM UserProgress
+        WHERE UserId = $userId AND GuideId = $guideId AND IsCompleted = 0;
+        """;
+    progressCommand.Parameters.AddWithValue("$userId", userId.Value);
+    progressCommand.Parameters.AddWithValue("$guideId", request.GuideId);
+    var currentValue = progressCommand.ExecuteScalar();
+    if (currentValue is null) return Results.NotFound();
+
+    using var countCommand = connection.CreateCommand();
+    countCommand.CommandText = "SELECT COUNT(*) FROM GuideSteps WHERE GuideId = $guideId;";
+    countCommand.Parameters.AddWithValue("$guideId", request.GuideId);
+    var totalSteps = Convert.ToInt32(countCommand.ExecuteScalar());
+
+    var currentOrder = Convert.ToInt32(currentValue);
+    var nextOrder = Math.Clamp(currentOrder + request.Direction, 1, totalSteps);
+
+    using var updateCommand = connection.CreateCommand();
+    updateCommand.CommandText = """
+        UPDATE UserProgress
+        SET CurrentStepOrder = $stepOrder,
+            Status = 'InProgress',
+            LastActivityAt = CURRENT_TIMESTAMP
+        WHERE UserId = $userId AND GuideId = $guideId;
+        """;
+    updateCommand.Parameters.AddWithValue("$stepOrder", nextOrder);
+    updateCommand.Parameters.AddWithValue("$userId", userId.Value);
+    updateCommand.Parameters.AddWithValue("$guideId", request.GuideId);
+    updateCommand.ExecuteNonQuery();
+
+    return Results.Ok(new { guideId = request.GuideId, stepIndex = nextOrder - 1, totalSteps });
+});
+
+app.MapGet("/api/learner/progress/active", (HttpContext httpContext) =>
+{
+    var userId = GetAuthenticatedUserId(httpContext, sessions, sessionLock);
+    if (userId is null) return Results.Unauthorized();
+
+    using var connection = OpenConnection(databasePath);
+    using var command = connection.CreateCommand();
+    command.CommandText = """
+        SELECT p.GuideId, p.CurrentStepOrder, COUNT(gs.Id)
+        FROM UserProgress p
+        INNER JOIN Guides g ON g.Id = p.GuideId AND g.IsAvailable = 1
+        INNER JOIN GuideSteps gs ON gs.GuideId = p.GuideId
+        WHERE p.UserId = $userId AND p.IsCompleted = 0
+        GROUP BY p.GuideId, p.CurrentStepOrder, p.LastActivityAt
+        ORDER BY p.LastActivityAt DESC
+        LIMIT 1;
+        """;
+    command.Parameters.AddWithValue("$userId", userId.Value);
+
+    using var reader = command.ExecuteReader();
+    if (!reader.Read()) return Results.Ok(new { active = false });
+
+    return Results.Ok(new
+    {
+        active = true,
+        guideId = reader.GetInt64(0),
+        stepIndex = reader.GetInt32(1) - 1,
+        totalSteps = reader.GetInt32(2)
+    });
+});
+
 var editorTopics = app.MapGroup("/api/topics");
 editorTopics.AddEndpointFilter(async (context, next) =>
 {
@@ -1103,7 +1228,7 @@ sealed record LearnerTopicResponse(
     string Name,
     List<LearnerGuideResponse> Guides);
 
-sealed record LoginRequest(string Username, string Password);
+sealed record ProgressMoveRequest(long GuideId, int Direction);\n\nsealed record LoginRequest(string Username, string Password);
 
 sealed record LoginResponse(
     long Id,
