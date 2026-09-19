@@ -855,6 +855,7 @@ editorGuides.MapPost("", (CreateGuideRequest request) =>
             guideId,
             request.TopicId,
             name,
+            request.StartUrl?.Trim(),
             request.IsAvailable,
             request.Steps.Select((step, index) =>
                 new GuideStepResponse(index + 1, step.Selector.Trim(), step.Instruction.Trim()))
