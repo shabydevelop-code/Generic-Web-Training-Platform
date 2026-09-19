@@ -1101,8 +1101,47 @@ function renderSteps() {
       item.classList.add("step-item--active");
     }
 
+    const language = window.i18nService.getLanguage();
     const title = document.createElement("strong");
-    title.textContent = `Step ${step.order}`;
+    title.textContent = window.i18nService.translate("stepLabel", language).replace("{number}", step.order);
+
+    const reorderControls = document.createElement("div");
+    reorderControls.className = "step-item__reorder";
+
+    const moveUpButton = document.createElement("button");
+    moveUpButton.type = "button";
+    moveUpButton.className = "step-item__reorder-button";
+    moveUpButton.textContent = "↑";
+    moveUpButton.title = window.i18nService.translate("moveStepUp", language);
+    moveUpButton.setAttribute("aria-label", moveUpButton.title);
+    moveUpButton.disabled = step.order === 1;
+
+    const moveDownButton = document.createElement("button");
+    moveDownButton.type = "button";
+    moveDownButton.className = "step-item__reorder-button";
+    moveDownButton.textContent = "↓";
+    moveDownButton.title = window.i18nService.translate("moveStepDown", language);
+    moveDownButton.setAttribute("aria-label", moveDownButton.title);
+    moveDownButton.disabled = step.order === steps.length;
+
+    const moveStep = async (direction, event) => {
+      event.stopPropagation();
+      if (!window.trainingService.moveStep(step.id, direction)) return;
+      renderSteps();
+
+      if (editingGuideId) {
+        try {
+          await persistExistingGuide();
+        } catch (error) {
+          setStatus(error.message || window.i18nService.translate("guideSaveError", language), "error");
+          console.error(error);
+        }
+      }
+    };
+
+    moveUpButton.addEventListener("click", (event) => moveStep(-1, event));
+    moveDownButton.addEventListener("click", (event) => moveStep(1, event));
+    reorderControls.append(moveUpButton, moveDownButton);
 
     const instruction = document.createElement("div");
     instruction.className = "step-item__instruction";
@@ -1111,7 +1150,7 @@ function renderSteps() {
     const selector = document.createElement("code");
     selector.textContent = step.selector;
 
-    item.append(title, instruction, selector);
+    item.append(title, reorderControls, instruction, selector);
 
     item.addEventListener("click", () => {
       clearPageTrainingVisuals();
@@ -1412,12 +1451,12 @@ chrome.runtime.onMessage.addListener((message) => {
     selectedElement.hidden = false;
     stepEditor.hidden = false;
     instructionInput.focus();
-    setStatus("Element selected successfully.", "success");
+    setStatus(window.i18nService.translate("elementSelectedSuccess", window.i18nService.getLanguage()), "success");
     return;
   }
 
   if (message?.type === "GWTP_ELEMENT_SELECTION_CANCELLED") {
-    setStatus("Element selection cancelled.");
+    setStatus(window.i18nService.translate("elementSelectionCancelled", window.i18nService.getLanguage()));
   }
 });
 
