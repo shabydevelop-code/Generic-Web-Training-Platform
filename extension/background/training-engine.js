@@ -1,77 +1,88 @@
-const GWTP_TRAINING_STORAGE_KEY = "gwtpActiveTraining";
+const GWTP_AUTH_STORAGE_KEY = "gwtp.auth.user";
 
-async function getTrainingSession() {
-  const result = await chrome.storage.session.get(GWTP_TRAINING_STORAGE_KEY);
-  return result[GWTP_TRAINING_STORAGE_KEY] || null;
+async function getAuthSession() {
+  const stored = await chrome.storage.local.get(GWTP_AUTH_STORAGE_KEY);
+  return stored[GWTP_AUTH_STORAGE_KEY] || null;
 }
 
-async function saveTrainingSession(session) {
-  await chrome.storage.session.set({ [GWTP_TRAINING_STORAGE_KEY]: session });
-  return session;
+async function apiRequest(path, options = {}) {
+  const auth = await getAuthSession();
+  if (!auth?.accessToken) throw new Error("No authenticated learner session.");
+
+  const baseUrl = globalThis.appConfig.api.baseUrl.replace(/\/$/, "");
+  const headers = new Headers(options.headers || {});
+  headers.set("Authorization", `Bearer ${auth.accessToken}`);
+
+  if (options.body && !headers.has("Content-Type")) {
+    headers.set("Content-Type", "application/json");
+  }
+
+  const response = await fetch(baseUrl + path, { ...options, headers });
+  if (!response.ok) throw new Error(`GWTP API request failed with status ${response.status}.`);
+
+  const contentType = response.headers.get("content-type") || "";
+  return contentType.includes("application/json") ? response.json() : response.text();
+}
+
+async function getGuide(guideId) {
+  return apiRequest(`/api/learner/guides/${guideId}`);
 }
 
 async function startTrainingSession(guide) {
-  const firstStep = guide?.steps?.[0];
-
-  if (!guide?.id || !firstStep) {
+  if (!guide?.id || !guide?.steps?.length) {
     throw new Error("A valid guide with at least one step is required.");
   }
 
-  return saveTrainingSession({
-    trainingActive: true,
-    guideId: guide.id,
-    currentStepIndex: 0,
-    steps: guide.steps
+  const progress = await apiRequest(`/api/learner/progress/start/${guide.id}`, {
+    method: "POST"
   });
-}
 
-async function clearTrainingSession() {
-  await chrome.storage.session.remove(GWTP_TRAINING_STORAGE_KEY);
+  return { guide, progress };
 }
 
 async function getCurrentTrainingStep() {
-  const session = await getTrainingSession();
+  const progress = await apiRequest("/api/learner/progress/active");
+  if (!progress?.active) return null;
 
-  if (!session?.trainingActive) return null;
-
-  const step = session.steps?.[session.currentStepIndex];
+  const guide = await getGuide(progress.guideId);
+  const step = guide.steps?.[progress.stepIndex];
   if (!step) return null;
 
   return {
-    guideId: session.guideId,
-    stepIndex: session.currentStepIndex,
+    guideId: progress.guideId,
+    stepIndex: progress.stepIndex,
+    totalSteps: progress.totalSteps,
     step
   };
 }
 
 async function moveTrainingStep(direction) {
-  const session = await getTrainingSession();
+  const current = await getCurrentTrainingStep();
+  if (!current) throw new Error("No active training session.");
 
-  if (!session?.trainingActive) {
-    throw new Error("No active training session.");
-  }
+  const progress = await apiRequest("/api/learner/progress/move", {
+    method: "POST",
+    body: JSON.stringify({
+      guideId: current.guideId,
+      direction
+    })
+  });
 
-  const nextIndex = session.currentStepIndex + direction;
+  const guide = await getGuide(progress.guideId);
+  const step = guide.steps?.[progress.stepIndex];
+  if (!step) throw new Error("The requested guide step was not found.");
 
-  if (nextIndex < 0 || nextIndex >= session.steps.length) {
-    return getCurrentTrainingStep();
-  }
-
-  session.currentStepIndex = nextIndex;
-  await saveTrainingSession(session);
-  return getCurrentTrainingStep();
+  return {
+    guideId: progress.guideId,
+    stepIndex: progress.stepIndex,
+    totalSteps: progress.totalSteps,
+    step
+  };
 }
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (message?.type === "GWTP_TRAINING_START") {
     startTrainingSession(message.guide)
-      .then((session) => sendResponse({ success: true, session }))
-      .catch((error) => sendResponse({ success: false, message: error.message }));
-    return true;
-  }
-
-  if (message?.type === "GWTP_TRAINING_GET_SESSION") {
-    getTrainingSession()
       .then((session) => sendResponse({ success: true, session }))
       .catch((error) => sendResponse({ success: false, message: error.message }));
     return true;
@@ -99,9 +110,6 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   }
 
   if (message?.type === "GWTP_TRAINING_STOP") {
-    clearTrainingSession()
-      .then(() => sendResponse({ success: true }))
-      .catch((error) => sendResponse({ success: false, message: error.message }));
-    return true;
+    sendResponse({ success: true });
   }
 });
