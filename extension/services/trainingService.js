@@ -54,6 +54,20 @@
     return true;
   }
 
+  function moveStep(id, direction) {
+    const index = steps.findIndex((step) => step.id === id);
+    if (index < 0) return false;
+
+    const targetIndex = index + direction;
+    if (targetIndex < 0 || targetIndex >= steps.length) return false;
+
+    [steps[index], steps[targetIndex]] = [steps[targetIndex], steps[index]];
+    steps.forEach((step, stepIndex) => {
+      step.order = stepIndex + 1;
+    });
+    return true;
+  }
+
   function getSteps() {
     return steps.map((step) => ({ ...step }));
   }
@@ -82,6 +96,7 @@
     createStep,
     updateStep,
     deleteStep,
+    moveStep,
     getSteps,
     replaceSteps,
     clearSteps
