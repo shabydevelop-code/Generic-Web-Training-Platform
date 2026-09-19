@@ -53,7 +53,8 @@
             direction: window.i18nService.getLanguage() === "he" ? "rtl" : "ltr",
             labels: {
               previous: window.i18nService.translate("previousButton", window.i18nService.getLanguage()),
-              next: window.i18nService.translate("nextButton", window.i18nService.getLanguage())
+              next: window.i18nService.translate("nextButton", window.i18nService.getLanguage()),
+              finish: window.i18nService.translate("finishButton", window.i18nService.getLanguage())
             }
           }
         });
