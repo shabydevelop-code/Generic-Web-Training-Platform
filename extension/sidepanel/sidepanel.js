@@ -1099,15 +1099,15 @@ function renderSteps() {
 
     item.append(title, instruction, selector);
 
-    item.addEventListener("click", async () => {
+    item.addEventListener("click", () => {
+      clearPageTrainingVisuals();
       openStepEditor(step);
-      await runStep(step);
     });
-    item.addEventListener("keydown", async (event) => {
+    item.addEventListener("keydown", (event) => {
       if (event.key === "Enter" || event.key === " ") {
         event.preventDefault();
+        clearPageTrainingVisuals();
         openStepEditor(step);
-        await runStep(step);
       }
     });
 
@@ -1193,6 +1193,17 @@ function applyInlineFormat(tagName) {
   const range = selection.getRangeAt(0);
   if (!instructionInput.contains(range.commonAncestorContainer)) return;
 
+  const selector = tagName === "strong" ? "strong, b" : tagName;
+  const existing = range.commonAncestorContainer.nodeType === Node.ELEMENT_NODE
+    ? range.commonAncestorContainer.closest(selector)
+    : range.commonAncestorContainer.parentElement?.closest(selector);
+
+  if (existing && instructionInput.contains(existing)) {
+    existing.replaceWith(...existing.childNodes);
+    selection.removeAllRanges();
+    return;
+  }
+
   const element = document.createElement(tagName);
   try {
     range.surroundContents(element);
@@ -1240,14 +1251,6 @@ richTextToolbarButtons.forEach((button) => {
     else if (command === "underline") applyInlineFormat("u");
     else if (command === "insertUnorderedList") applyListFormat("ul");
     else if (command === "insertOrderedList") applyListFormat("ol");
-  });
-});
-
-richTextToolbarButtons.forEach((button) => {
-  button.addEventListener("mousedown", (event) => event.preventDefault());
-  button.addEventListener("click", () => {
-    instructionInput.focus();
-    document.execCommand(button.dataset.richCommand, false);
   });
 });
 
