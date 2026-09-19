@@ -422,12 +422,15 @@ app.MapGet("/api/learner/catalog", (HttpContext httpContext) =>
 
     using var command = connection.CreateCommand();
     command.CommandText = """
-        SELECT t.Id, t.Name, g.Id, g.Name
+        SELECT t.Id, t.Name, g.Id, g.Name, CASE WHEN p.IsCompleted = 1 THEN 'Completed' WHEN p.GuideId IS NOT NULL THEN 'InProgress' ELSE 'NotStarted' END
         FROM Topics t
         INNER JOIN Guides g ON g.TopicId = t.Id
+        LEFT JOIN UserProgress p ON p.GuideId = g.Id AND p.UserId = $userId
         WHERE g.IsAvailable = 1
         ORDER BY t.Name COLLATE NOCASE, g.Name COLLATE NOCASE, g.Id;
         """;
+
+    command.Parameters.AddWithValue("$userId", userId);
 
     using var reader = command.ExecuteReader();
     var topics = new Dictionary<long, LearnerTopicResponse>();
@@ -442,7 +445,7 @@ app.MapGet("/api/learner/catalog", (HttpContext httpContext) =>
             topics.Add(topicId, topic);
         }
 
-        topic.Guides.Add(new LearnerGuideResponse(reader.GetInt64(2), reader.GetString(3)));
+        topic.Guides.Add(new LearnerGuideResponse(reader.GetInt64(2), reader.GetString(3), reader.GetString(4)));
     }
 
     return Results.Ok(topics.Values);
@@ -1280,7 +1283,7 @@ sealed record GuideResponse(
     bool IsAvailable,
     List<GuideStepResponse> Steps);
 
-sealed record LearnerGuideResponse(long Id, string Name);
+sealed record LearnerGuideResponse(long Id, string Name, string ProgressStatus);
 
 sealed record LearnerTopicResponse(
     long Id,
