@@ -268,7 +268,7 @@ app.MapPost("/api/leads/{id:long}/convert", (long id) =>
 
 
 
-app.MapGet("/api/customers/{id:long}", (long id) =>
+app.MapGet("/api/customers/{id:long}", (long id, string? sort, string? direction) =>
 {
     using var connection = new SqliteConnection(connectionString);
     connection.Open();
@@ -279,7 +279,7 @@ app.MapGet("/api/customers/{id:long}", (long id) =>
     if (!reader.Read()) return Results.NotFound();
     var customer = new { accountNumber=reader.GetString(0), companyId=reader.GetString(1), name=reader.GetString(2), tier=reader.GetString(3), mrr=reader.GetString(4), manager=reader.GetString(5), creditRating=reader.GetString(6), status=reader.GetString(7), tenure=reader.GetString(8) };
     reader.Close();
-    var summary = LoadCustomerSummary(connection, id);
+    var summary = LoadCustomerSummary(connection, id, sort, direction);
     return Results.Ok(new { customer.accountNumber, customer.companyId, customer.name, customer.tier, customer.mrr, customer.manager, customer.creditRating, customer.status, customer.tenure, summary });
 });
 
@@ -454,10 +454,21 @@ app.MapPut("/api/sites/{id:long}", (long id, UpdateSiteRequest request) =>
     return Results.Ok(new { id, saved = true });
 });
 
-static List<object> LoadCustomerSummary(SqliteConnection connection, long customerId)
+static List<object> LoadCustomerSummary(SqliteConnection connection, long customerId, string? sort = null, string? direction = null)
 {
+    var sortColumn = sort switch
+    {
+        "referenceNumber" => "ReferenceNumber",
+        "type" => "Type",
+        "service" => "Service",
+        "status" => "Status",
+        "date" => "Date",
+        _ => "Id"
+    };
+    var sortDirection = string.Equals(direction, "desc", StringComparison.OrdinalIgnoreCase) ? "DESC" : "ASC";
+
     using var command = connection.CreateCommand();
-    command.CommandText = "SELECT ReferenceNumber, Type, Service, Status, Date, StatusClass FROM CustomerSummary WHERE CustomerId=$id ORDER BY Id;";
+    command.CommandText = $"SELECT ReferenceNumber, Type, Service, Status, Date, StatusClass FROM CustomerSummary WHERE CustomerId=$id ORDER BY {sortColumn} {sortDirection}, Id ASC;";
     command.Parameters.AddWithValue("$id", customerId);
     using var reader = command.ExecuteReader();
     var items = new List<object>();
