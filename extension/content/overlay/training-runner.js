@@ -52,6 +52,63 @@ function showTrainingStep(step, navigation = {}) {
   overlay.style.boxShadow = "0 10px 28px rgba(15, 23, 42, 0.22), 0 2px 7px rgba(37, 99, 235, 0.12)";
   overlay.style.color = "#172033";
   overlay.style.font = "14px/1.45 system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
+  const dragHandle = document.createElement("div");
+  dragHandle.setAttribute("aria-hidden", "true");
+  dragHandle.style.height = "10px";
+  dragHandle.style.margin = "-10px -10px 8px";
+  dragHandle.style.cursor = "move";
+  dragHandle.style.borderRadius = "6px";
+  dragHandle.style.touchAction = "none";
+  overlay.appendChild(dragHandle);
+
+  let isDragging = false;
+  let dragOffsetX = 0;
+  let dragOffsetY = 0;
+
+  const clampOverlayPosition = (left, top) => {
+    const rect = overlay.getBoundingClientRect();
+    const margin = 8;
+    return {
+      left: Math.max(margin, Math.min(left, window.innerWidth - rect.width - margin)),
+      top: Math.max(margin, Math.min(top, window.innerHeight - rect.height - margin))
+    };
+  };
+
+  dragHandle.addEventListener("pointerdown", (event) => {
+    if (event.button !== 0) return;
+
+    const rect = overlay.getBoundingClientRect();
+    isDragging = true;
+    dragOffsetX = event.clientX - rect.left;
+    dragOffsetY = event.clientY - rect.top;
+    dragHandle.setPointerCapture(event.pointerId);
+    event.preventDefault();
+  });
+
+  dragHandle.addEventListener("pointermove", (event) => {
+    if (!isDragging) return;
+
+    const position = clampOverlayPosition(
+      event.clientX - dragOffsetX,
+      event.clientY - dragOffsetY
+    );
+
+    overlay.style.left = `${position.left}px`;
+    overlay.style.top = `${position.top}px`;
+  });
+
+  const stopDragging = (event) => {
+    if (!isDragging) return;
+    isDragging = false;
+
+    if (dragHandle.hasPointerCapture(event.pointerId)) {
+      dragHandle.releasePointerCapture(event.pointerId);
+    }
+  };
+
+  dragHandle.addEventListener("pointerup", stopDragging);
+  dragHandle.addEventListener("pointercancel", stopDragging);
+
   const instruction = document.createElement("div");
   instruction.style.fontWeight = "500";
   instruction.style.fontSize = "14px";
