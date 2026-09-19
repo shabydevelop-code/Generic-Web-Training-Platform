@@ -13,6 +13,8 @@ var databasePath = Path.Combine(databaseDirectory, "demo-crm.db");
 Directory.CreateDirectory(databaseDirectory);
 
 var SiteFormStates = new Dictionary<string, SiteFormState>();
+var CaseFormStates = new Dictionary<string, CaseFormState>();
+var LeadFormStates = new Dictionary<string, LeadFormState>();
 
 var connectionString = new SqliteConnectionStringBuilder
 {
@@ -260,6 +262,65 @@ app.MapPost("/api/leads/{id:long}/convert", (long id) =>
         : Results.Ok(new { id, converted = true });
 });
 
+
+app.MapPost("/case/field-change", async (HttpRequest request) =>
+{
+    var form = await request.ReadFormAsync();
+    var state = new CaseFormState(
+        form["customer"].ToString(), form["site"].ToString(), form["category"].ToString(),
+        form["assigned"].ToString(), form["subject"].ToString(), form["notes"].ToString());
+    var token = Guid.NewGuid().ToString("N");
+    CaseFormStates[token] = state;
+    return Results.Redirect($"/case.html?state={Uri.EscapeDataString(token)}");
+});
+
+app.MapGet("/api/case-state/{token}", (string token) =>
+{
+    if (!CaseFormStates.TryGetValue(token, out var state)) return Results.NotFound();
+    using var connection = new SqliteConnection(connectionString);
+    connection.Open();
+    using var command = connection.CreateCommand();
+    command.CommandText = "SELECT CaseNumber, Sla, Status, Priority FROM Cases WHERE Id=55891;";
+    using var reader = command.ExecuteReader();
+    if (!reader.Read()) return Results.NotFound();
+    var caseNumber = reader.GetString(0); var sla = reader.GetString(1); var status = reader.GetString(2); var priority = reader.GetString(3);
+    reader.Close();
+    using var hc = connection.CreateCommand();
+    hc.CommandText = "SELECT OccurredAt, Actor, ActionType, Description FROM CaseHistory WHERE CaseId=55891 ORDER BY Id;";
+    using var hr = hc.ExecuteReader(); var history = new List<object>();
+    while (hr.Read()) history.Add(new { occurredAt=hr.GetString(0), actor=hr.GetString(1), actionType=hr.GetString(2), description=hr.GetString(3) });
+    return Results.Ok(new { caseNumber, state.customer, state.site, state.category, state.assigned, sla, state.subject, state.notes, status, priority, history });
+});
+
+app.MapPost("/lead/field-change", async (HttpRequest request) =>
+{
+    var form = await request.ReadFormAsync();
+    var state = new LeadFormState(
+        form["company"].ToString(), form["contactName"].ToString(), form["email"].ToString(),
+        form["source"].ToString(), form["interest"].ToString());
+    var token = Guid.NewGuid().ToString("N");
+    LeadFormStates[token] = state;
+    return Results.Redirect($"/leads.html?state={Uri.EscapeDataString(token)}");
+});
+
+app.MapGet("/api/lead-state/{token}", (string token) =>
+{
+    if (!LeadFormStates.TryGetValue(token, out var state)) return Results.NotFound();
+    using var connection = new SqliteConnection(connectionString);
+    connection.Open();
+    using var command = connection.CreateCommand();
+    command.CommandText = "SELECT LeadNumber, Status, Potential FROM Leads WHERE Id=3094;";
+    using var reader = command.ExecuteReader();
+    if (!reader.Read()) return Results.NotFound();
+    var leadNumber=reader.GetString(0); var status=reader.GetString(1); var potential=reader.GetString(2);
+    reader.Close();
+    using var pc=connection.CreateCommand();
+    pc.CommandText="SELECT LeadNumber, Company, ContactName, SourceLabel, Stage, CreatedAt, StatusClass FROM LeadPipeline ORDER BY Id;";
+    using var pr=pc.ExecuteReader(); var pipeline=new List<object>();
+    while(pr.Read()) pipeline.Add(new { leadNumber=pr.GetString(0), company=pr.GetString(1), contactName=pr.GetString(2), sourceLabel=pr.GetString(3), stage=pr.GetString(4), createdAt=pr.GetString(5), statusClass=pr.GetString(6) });
+    return Results.Ok(new { leadNumber, state.company, state.contactName, state.email, state.source, state.interest, status, potential, pipeline });
+});
+
 app.MapPost("/site/type-change", async (HttpRequest request) =>
 {
     var form = await request.ReadFormAsync();
@@ -480,3 +541,7 @@ sealed record UpdateLeadRequest(
     string Email,
     string? Source,
     string? Interest);
+
+
+sealed record CaseFormState(string Customer, string Site, string Category, string Assigned, string Subject, string Notes);
+sealed record LeadFormState(string Company, string ContactName, string Email, string Source, string Interest);
