@@ -33,3 +33,12 @@ For now, only the minimum extension foundation is implemented.
 5. Open a normal web page and click the extension icon to open the Side Panel.
 
 > Browser-internal pages such as `chrome://` and `edge://` cannot be manipulated by the content script.
+
+
+## UI form conventions
+
+- Every form field must be wrapped in a shared `.form-field` container.
+- Vertical spacing between consecutive fields is controlled by the shared CSS rule `.form-field + .form-field`; do not add one-off margins for individual fields.
+- A label and its input/select/textarea are treated as one visual unit.
+- New form fields must preserve the existing spacing rhythm in both LTR and RTL layouts.
+- Technical values whose natural direction is LTR, such as URLs, must remain LTR in every interface language.
