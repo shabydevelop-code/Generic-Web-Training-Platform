@@ -89,8 +89,21 @@
     if (!startResponse?.success) {
       throw new Error(startResponse?.message || "Could not start the training session.");
     }
+    const stepIndex = Number.isInteger(startResponse.session?.progress?.stepIndex)
+      ? startResponse.session.progress.stepIndex
+      : 0;
+    const step = guide.steps?.[stepIndex];
+
+    if (!step) {
+      throw new Error("The saved guide step was not found.");
+    }
+
     await navigateToStartUrl(guide.startUrl);
-    return showFirstStep(guide);
+    return showFirstStep({
+      steps: [step],
+      stepIndex,
+      totalSteps: startResponse.session?.progress?.totalSteps || guide.steps.length
+    });
   }
 
   async function restoreActiveStep() {
