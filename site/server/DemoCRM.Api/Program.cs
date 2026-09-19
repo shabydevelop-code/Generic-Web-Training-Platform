@@ -129,15 +129,11 @@ app.MapPost("/site/type-change", async (HttpRequest request) =>
     var token = Guid.NewGuid().ToString("N");
     SiteFormStates[token] = state;
 
-    var typeLabel = state.Type switch
-    {
-        "branch" => "סניף מכירות",
-        "warehouse" => "מרלוג והפצה",
-        "hq" => "מטה ראשי",
-        _ => state.Type
-    };
+    var messageQuery = state.Type == "branch"
+        ? $"&message={Uri.EscapeDataString("בחרת ב\"סניף מכירות\"")}"
+        : "";
 
-    return Results.Redirect($"/site.html?state={Uri.EscapeDataString(token)}&message={Uri.EscapeDataString($"בחרת ב\"{typeLabel}\"")}");
+    return Results.Redirect($"/site.html?state={Uri.EscapeDataString(token)}{messageQuery}");
 });
 
 app.MapGet("/api/site-state/{token}", (string token) =>
