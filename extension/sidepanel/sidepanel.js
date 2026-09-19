@@ -10,6 +10,7 @@ const newTopicInput = document.getElementById("newTopicInput");
 const createTopicButton = document.getElementById("createTopicButton");
 const topicStatus = document.getElementById("topicStatus");
 const guideNameInput = document.getElementById("guideNameInput");
+const guideStartUrlInput = document.getElementById("guideStartUrlInput");
 const saveGuideButton = document.getElementById("saveGuideButton");
 const saveGuideStatus = document.getElementById("saveGuideStatus");
 const statusElement = document.getElementById("status");
@@ -399,6 +400,7 @@ async function openExistingGuide(guideId) {
     guideAvailableInput.checked = Boolean(guide.isAvailable);
     topicSelect.value = String(guide.topicId);
     guideNameInput.value = guide.name;
+    guideStartUrlInput.value = guide.startUrl || "";
     window.trainingService.replaceSteps(guide.steps || []);
     activeStepId = null;
     editingStepId = null;
@@ -444,6 +446,7 @@ function openNewGuide() {
   topicsView.hidden = true;
   topicSelect.value = "";
   guideNameInput.value = "";
+  guideStartUrlInput.value = "";
   window.trainingService.clearSteps();
   activeStepId = null;
   editingStepId = null;
@@ -1075,6 +1078,7 @@ saveStepButton.addEventListener("click", () => {
 saveGuideButton.addEventListener("click", async () => {
   const topicId = Number(topicSelect.value);
   const guideName = guideNameInput.value.trim();
+  const startUrl = guideStartUrlInput.value.trim();
   const steps = window.trainingService.getSteps();
   const language = window.i18nService.getLanguage();
 
@@ -1111,6 +1115,7 @@ saveGuideButton.addEventListener("click", async () => {
       body: JSON.stringify({
         topicId,
         name: guideName,
+        startUrl: startUrl || null,
         isAvailable: guideAvailableInput.checked,
         steps: steps.map((step) => ({
           selector: step.selector,
