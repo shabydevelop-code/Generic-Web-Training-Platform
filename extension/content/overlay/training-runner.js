@@ -54,11 +54,28 @@ function showTrainingStep(step, navigation = {}) {
   overlay.style.font = "14px/1.45 system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
   const dragHandle = document.createElement("div");
   dragHandle.setAttribute("aria-hidden", "true");
-  dragHandle.style.height = "10px";
+  dragHandle.style.height = "14px";
   dragHandle.style.margin = "-10px -10px 8px";
   dragHandle.style.cursor = "move";
   dragHandle.style.borderRadius = "6px";
   dragHandle.style.touchAction = "none";
+  dragHandle.style.display = "grid";
+  dragHandle.style.gridTemplateColumns = "repeat(3, 4px)";
+  dragHandle.style.gridTemplateRows = "repeat(2, 4px)";
+  dragHandle.style.justifyContent = "center";
+  dragHandle.style.alignContent = "center";
+  dragHandle.style.gap = "3px";
+
+  for (let index = 0; index < 6; index++) {
+    const dot = document.createElement("span");
+    dot.style.width = "4px";
+    dot.style.height = "4px";
+    dot.style.borderRadius = "50%";
+    dot.style.background = "#94a3b8";
+    dot.style.pointerEvents = "none";
+    dragHandle.appendChild(dot);
+  }
+
   overlay.appendChild(dragHandle);
 
   let isDragging = false;
