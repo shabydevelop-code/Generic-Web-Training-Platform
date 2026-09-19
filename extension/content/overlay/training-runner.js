@@ -98,11 +98,35 @@ function showTrainingStep(step, navigation = {}) {
     "GWTP_TRAINING_PREVIOUS",
     stepIndex === 0
   ));
-  controls.appendChild(createButton(
-    navigation.labels?.next || "",
-    "GWTP_TRAINING_NEXT",
-    stepIndex >= totalSteps - 1
-  ));
+  if (stepIndex >= totalSteps - 1) {
+    const finishButton = document.createElement("button");
+    finishButton.type = "button";
+    finishButton.textContent = navigation.labels?.finish || "";
+    finishButton.style.padding = "6px 10px";
+    finishButton.style.border = "1px solid #d0d5dd";
+    finishButton.style.borderRadius = "7px";
+    finishButton.style.background = "#ffffff";
+    finishButton.style.cursor = "pointer";
+    finishButton.addEventListener("click", () => {
+      finishButton.disabled = true;
+      chrome.runtime.sendMessage({ type: "GWTP_TRAINING_COMPLETE" }).then((response) => {
+        if (response?.success) {
+          clearTrainingStep();
+          clearHighlight();
+          return;
+        }
+
+        finishButton.disabled = false;
+      });
+    });
+    controls.appendChild(finishButton);
+  } else {
+    controls.appendChild(createButton(
+      navigation.labels?.next || "",
+      "GWTP_TRAINING_NEXT",
+      false
+    ));
+  }
   overlay.appendChild(controls);
 
   document.documentElement.appendChild(overlay);
