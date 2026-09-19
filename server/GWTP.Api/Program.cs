@@ -1180,7 +1180,7 @@ static void EnsureDemoSiteGuide(string databasePath)
         ("#case-category", "בחר קטגוריה מתאימה לפניה."),
         ("#case-assigned", "עדכן את הנציג המטפל בפניה."),
         ("#case-subject", "עדכן את נושא הפניה. שים לב שהשרת מבצע ולידציה בעת השמירה."),
-        ("#btn-save-case", "לחץ על <strong>שמור פניה</strong>. אם קיימת שגיאת ולידציה, תקן אותה ושמור שוב."),
+        ("#btn-save-case", "לחץ על <strong>עדכן פניה</strong>. אם קיימת שגיאת ולידציה, תקן אותה ועדכן שוב."),
         ("#nav-leads", "עבור למסך <strong>לידים</strong>."),
         ("#lead-source", "שנה את מקור הליד."),
         ("#lead-interest", "שנה את המוצר המבוקש."),
