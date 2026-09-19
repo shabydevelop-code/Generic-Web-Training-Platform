@@ -1272,7 +1272,9 @@ async function handleLogout() {
     console.info("GWTP page cleanup skipped during logout:", error);
   }
 
-  await window.trainingStateService.clear();
+  await chrome.runtime.sendMessage({
+    type: "GWTP_TRAINING_STOP"
+  });
   await window.authService.logout();
   appView.hidden = true;
   adminModeActive = false;
