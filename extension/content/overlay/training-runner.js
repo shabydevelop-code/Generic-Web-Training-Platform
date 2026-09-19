@@ -111,6 +111,11 @@ function showTrainingStep(step, navigation = {}) {
       finishButton.disabled = true;
       chrome.runtime.sendMessage({ type: "GWTP_TRAINING_COMPLETE" }).then((response) => {
         if (response?.success) {
+          chrome.runtime.sendMessage({
+            type: "GWTP_TRAINING_COMPLETED",
+            guideId: response.result?.guideId
+          }).catch(() => {});
+
           clearTrainingStep();
           clearHighlight();
 
