@@ -148,7 +148,11 @@ app.MapGet("/api/cases/{id:long}", (long id) =>
 
 app.MapPut("/api/cases/{id:long}", (long id, UpdateCaseRequest request) =>
 {
-    if (string.IsNullOrWhiteSpace(request.Customer) || string.IsNullOrWhiteSpace(request.Subject)) return Results.BadRequest(new { message = "Customer and subject are required." });
+    var caseErrors = new Dictionary<string, string>();
+    if (string.IsNullOrWhiteSpace(request.Customer)) caseErrors["case-customer"] = "יש להזין שם לקוח.";
+    if (string.IsNullOrWhiteSpace(request.Category)) caseErrors["case-category"] = "יש לבחור קטגוריית פניה.";
+    if (string.IsNullOrWhiteSpace(request.Subject) || request.Subject.Trim().Length < 10) caseErrors["case-subject"] = "נושא הפניה חייב להכיל לפחות 10 תווים.";
+    if (caseErrors.Count > 0) return Results.BadRequest(new { message = "לא ניתן לשמור את הפניה. יש לתקן את השדות המסומנים.", errors = caseErrors });
     using var connection = new SqliteConnection(connectionString); connection.Open(); using var command = connection.CreateCommand();
     command.CommandText = "UPDATE Cases SET Customer=$customer, Site=$site, Category=$category, Assigned=$assigned, Subject=$subject, Notes=$notes WHERE Id=$id;";
     command.Parameters.AddWithValue("$id", id); command.Parameters.AddWithValue("$customer", request.Customer.Trim()); command.Parameters.AddWithValue("$site", request.Site?.Trim() ?? ""); command.Parameters.AddWithValue("$category", request.Category?.Trim() ?? ""); command.Parameters.AddWithValue("$assigned", request.Assigned?.Trim() ?? ""); command.Parameters.AddWithValue("$subject", request.Subject.Trim()); command.Parameters.AddWithValue("$notes", request.Notes?.Trim() ?? "");
@@ -222,12 +226,11 @@ app.MapGet("/api/leads/{id:long}", (long id) =>
 
 app.MapPut("/api/leads/{id:long}", (long id, UpdateLeadRequest request) =>
 {
-    if (string.IsNullOrWhiteSpace(request.Company) ||
-        string.IsNullOrWhiteSpace(request.ContactName) ||
-        string.IsNullOrWhiteSpace(request.Email))
-    {
-        return Results.BadRequest(new { message = "Company, contact name and email are required." });
-    }
+    var leadErrors = new Dictionary<string, string>();
+    if (string.IsNullOrWhiteSpace(request.Company) || request.Company.Trim().Length < 3) leadErrors["lead-company"] = "שם החברה חייב להכיל לפחות 3 תווים.";
+    if (string.IsNullOrWhiteSpace(request.ContactName)) leadErrors["lead-contact-name"] = "יש להזין שם איש קשר.";
+    if (string.IsNullOrWhiteSpace(request.Email) || !System.Net.Mail.MailAddress.TryCreate(request.Email.Trim(), out _)) leadErrors["lead-email"] = "יש להזין כתובת דוא״ל תקינה.";
+    if (leadErrors.Count > 0) return Results.BadRequest(new { message = "לא ניתן לשמור את הליד. יש לתקן את השדות המסומנים.", errors = leadErrors });
 
     using var connection = new SqliteConnection(connectionString);
     connection.Open();
@@ -352,10 +355,12 @@ app.MapGet("/api/site-state/{token}", (string token) =>
 
 app.MapPut("/api/sites/{id:long}", (long id, UpdateSiteRequest request) =>
 {
-    if (string.IsNullOrWhiteSpace(request.Code) || string.IsNullOrWhiteSpace(request.Name))
-    {
-        return Results.BadRequest(new { message = "Site code and name are required." });
-    }
+    var siteErrors = new Dictionary<string, string>();
+    if (string.IsNullOrWhiteSpace(request.Code) || !request.Code.Trim().StartsWith("TLV-", StringComparison.OrdinalIgnoreCase)) siteErrors["site-code"] = "קוד האתר חייב להתחיל ב־TLV-.";
+    if (string.IsNullOrWhiteSpace(request.Name)) siteErrors["site-name"] = "יש להזין שם אתר.";
+    var phone = request.Phone?.Trim() ?? "";
+    if (string.IsNullOrWhiteSpace(phone) || !System.Text.RegularExpressions.Regex.IsMatch(phone, @"^0\d{1,2}-?\d{7}$")) siteErrors["site-phone"] = "יש להזין מספר טלפון ישראלי תקין.";
+    if (siteErrors.Count > 0) return Results.BadRequest(new { message = "לא ניתן לשמור את האתר. יש לתקן את השדות המסומנים.", errors = siteErrors });
 
     using var connection = new SqliteConnection(connectionString);
     connection.Open();
