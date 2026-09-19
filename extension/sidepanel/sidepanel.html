@@ -296,9 +296,27 @@
 
       <div id="learnModeView" hidden>
         <header class="panel__header">
-          <h1>Learn Mode</h1>
-          <p class="description">Your available training guides will appear here.</p>
+          <h1 data-i18n="learnerTitle">Learning</h1>
+          <p class="description" data-i18n="learnerDescription">Choose a topic and guide to begin.</p>
         </header>
+
+        <section class="card learner-selection-card">
+          <label for="learnerTopicSelect" data-i18n="learnerTopicLabel">Topic</label>
+          <select id="learnerTopicSelect">
+            <option value="" data-i18n="learnerTopicPlaceholder">Select a topic</option>
+          </select>
+
+          <label for="learnerGuideSelect" class="learner-guide-label" data-i18n="learnerGuideLabel">Guide</label>
+          <select id="learnerGuideSelect" disabled>
+            <option value="" data-i18n="learnerGuidePlaceholder">Select a guide</option>
+          </select>
+
+          <button id="startLearningButton" class="button button--primary button--full learner-start-button" type="button" data-i18n="startLearningButton" disabled>
+            Start learning
+          </button>
+
+          <p id="learnerStatus" class="status" aria-live="polite"></p>
+        </section>
       </div>
       </div>
     </main>
