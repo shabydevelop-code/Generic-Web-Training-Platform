@@ -25,6 +25,7 @@ var databasePath = Path.Combine(databaseDirectory, "GWTP.db");
 var schemaPath = Path.Combine(databaseDirectory, "schema.sql");
 
 InitializeDatabase(databasePath, schemaPath);
+ApplyDatabaseMigrations(databasePath);
 EnsureDevelopmentAdmin(databasePath);
 
 var sessions = new Dictionary<string, long>(StringComparer.Ordinal);
@@ -872,6 +873,35 @@ static void InitializeDatabase(string databasePath, string schemaPath)
     using var command = connection.CreateCommand();
     command.CommandText = File.ReadAllText(schemaPath);
     command.ExecuteNonQuery();
+}
+
+static void ApplyDatabaseMigrations(string databasePath)
+{
+    using var connection = OpenConnection(databasePath);
+
+    using var columnsCommand = connection.CreateCommand();
+    columnsCommand.CommandText = "PRAGMA table_info(Guides);";
+
+    using var reader = columnsCommand.ExecuteReader();
+    var hasStartUrl = false;
+
+    while (reader.Read())
+    {
+        if (string.Equals(reader.GetString(1), "StartUrl", StringComparison.OrdinalIgnoreCase))
+        {
+            hasStartUrl = true;
+            break;
+        }
+    }
+
+    reader.Close();
+
+    if (!hasStartUrl)
+    {
+        using var migrationCommand = connection.CreateCommand();
+        migrationCommand.CommandText = "ALTER TABLE Guides ADD COLUMN StartUrl TEXT;";
+        migrationCommand.ExecuteNonQuery();
+    }
 }
 
 static void EnsureDevelopmentAdmin(string databasePath)
