@@ -394,6 +394,59 @@ adminUsers.MapGet("", () =>
 });
 
 
+app.MapGet("/api/learner/catalog", (HttpContext httpContext) =>
+{
+    var authorization = httpContext.Request.Headers.Authorization.ToString();
+
+    if (!authorization.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+        return Results.Unauthorized();
+
+    var token = authorization["Bearer ".Length..].Trim();
+    long userId;
+
+    lock (sessionLock)
+    {
+        if (!sessions.TryGetValue(token, out userId))
+            return Results.Unauthorized();
+    }
+
+    using var connection = OpenConnection(databasePath);
+
+    using var userCommand = connection.CreateCommand();
+    userCommand.CommandText = "SELECT COUNT(*) FROM Users WHERE Id = $userId AND IsActive = 1;";
+    userCommand.Parameters.AddWithValue("$userId", userId);
+
+    if (Convert.ToInt32(userCommand.ExecuteScalar()) == 0)
+        return Results.Unauthorized();
+
+    using var command = connection.CreateCommand();
+    command.CommandText = """
+        SELECT t.Id, t.Name, g.Id, g.Name
+        FROM Topics t
+        INNER JOIN Guides g ON g.TopicId = t.Id
+        WHERE g.IsAvailable = 1
+        ORDER BY t.Name COLLATE NOCASE, g.Name COLLATE NOCASE, g.Id;
+        """;
+
+    using var reader = command.ExecuteReader();
+    var topics = new Dictionary<long, LearnerTopicResponse>();
+
+    while (reader.Read())
+    {
+        var topicId = reader.GetInt64(0);
+
+        if (!topics.TryGetValue(topicId, out var topic))
+        {
+            topic = new LearnerTopicResponse(topicId, reader.GetString(1), []);
+            topics.Add(topicId, topic);
+        }
+
+        topic.Guides.Add(new LearnerGuideResponse(reader.GetInt64(2), reader.GetString(3)));
+    }
+
+    return Results.Ok(topics.Values);
+});
+
 var editorTopics = app.MapGroup("/api/topics");
 editorTopics.AddEndpointFilter(async (context, next) =>
 {
@@ -939,6 +992,13 @@ sealed record GuideResponse(
     string Name,
     bool IsAvailable,
     List<GuideStepResponse> Steps);
+
+sealed record LearnerGuideResponse(long Id, string Name);
+
+sealed record LearnerTopicResponse(
+    long Id,
+    string Name,
+    List<LearnerGuideResponse> Guides);
 
 sealed record LoginRequest(string Username, string Password);
 
