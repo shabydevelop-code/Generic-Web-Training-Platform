@@ -91,16 +91,15 @@ function showTrainingStep(step, navigation = {}) {
   const stepIndex = Number.isInteger(navigation.stepIndex) ? navigation.stepIndex : 0;
   const totalSteps = navigation.totalSteps || 1;
 
-  const isHebrew = chrome.i18n.getUILanguage().toLowerCase().startsWith("he");
-  overlay.dir = isHebrew ? "rtl" : "ltr";
+  overlay.dir = navigation.direction || "ltr";
 
   controls.appendChild(createButton(
-    isHebrew ? "הקודם" : "Previous",
+    navigation.labels?.previous || "",
     "GWTP_TRAINING_PREVIOUS",
     stepIndex === 0
   ));
   controls.appendChild(createButton(
-    isHebrew ? "הבא" : "Next",
+    navigation.labels?.next || "",
     "GWTP_TRAINING_NEXT",
     stepIndex >= totalSteps - 1
   ));
