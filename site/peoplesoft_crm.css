@@ -382,3 +382,19 @@ body {
     gap: 6px;
   }
 }
+
+
+/* Server-side validation */
+.ps-input[aria-invalid="true"],
+.ps-select[aria-invalid="true"],
+.ps-textarea[aria-invalid="true"] {
+  border-color: #b91c1c;
+  box-shadow: 0 0 0 1px #b91c1c;
+}
+
+.ps-validation-error {
+  margin-top: 4px;
+  color: #b91c1c;
+  font-size: 12px;
+  font-weight: 600;
+}
