@@ -1021,12 +1021,23 @@ function openStepEditor(step) {
   instructionInput.focus();
 }
 
-function deleteDraftStep(stepId) {
+async function deleteDraftStep(stepId) {
   window.trainingService.deleteStep(stepId);
   if (activeStepId === stepId) activeStepId = null;
-  if (editingStepId === stepId) closeStepCreator();
   renderSteps();
   updateGuideEditorValidity();
+
+  if (editingGuideId) {
+    try {
+      await persistExistingGuide();
+    } catch (error) {
+      setStatus(error.message || "Could not save the guide.", "error");
+      console.error(error);
+      return;
+    }
+  }
+
+  if (editingStepId === stepId) closeStepCreator();
 }
 
 function setStatus(message, type = "info") {
@@ -1132,7 +1143,35 @@ selectButton.addEventListener("click", async () => {
   }
 });
 
-saveStepButton.addEventListener("click", () => {
+async function persistExistingGuide() {
+  if (!editingGuideId) return;
+
+  const topicId = Number(topicSelect.value);
+  const guideName = guideNameInput.value.trim();
+  const startUrl = guideStartUrlInput.value.trim();
+  const steps = window.trainingService.getSteps();
+
+  if (!topicId || !guideName || !startUrl) {
+    throw new Error("Guide details are incomplete.");
+  }
+
+  await window.apiService.request(`/api/guides/${editingGuideId}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      topicId,
+      name: guideName,
+      startUrl,
+      isAvailable: guideAvailableInput.checked,
+      steps: steps.map((step) => ({
+        selector: step.selector,
+        instruction: step.instruction
+      }))
+    })
+  });
+}
+
+saveStepButton.addEventListener("click", async () => {
   const language = window.i18nService.getLanguage();
 
   if (!topicSelect.value) {
@@ -1176,6 +1215,11 @@ saveStepButton.addEventListener("click", () => {
 
     renderSteps();
     updateGuideEditorValidity();
+
+    if (editingGuideId) {
+      await persistExistingGuide();
+    }
+
     closeStepCreator();
     setStatus(
       window.i18nService.translate(editingStepId ? "updateStepButton" : "saveStepButton", language),
@@ -1490,7 +1534,7 @@ deleteEditedStepButton.addEventListener("click", () => {
   const stepId = editingStepSnapshot.id;
   requestDeleteConfirmation(
     window.i18nService.translate("confirmDeleteStep", window.i18nService.getLanguage()),
-    () => deleteDraftStep(stepId)
+    async () => await deleteDraftStep(stepId)
   );
 });
 
