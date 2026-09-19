@@ -837,7 +837,8 @@ async function handleCreateTopic() {
 function updateGuideEditorValidity() {
   const hasTopic = Boolean(topicSelect.value);
   const hasGuideName = Boolean(guideNameInput.value.trim());
-  const guideIdentityValid = hasTopic && hasGuideName;
+  const hasStartUrl = Boolean(guideStartUrlInput.value.trim());
+  const guideIdentityValid = hasTopic && hasGuideName && hasStartUrl;
 
   // Adding a step depends on the guide identity already being defined.
   // Saving stays clickable so validation can explain any missing required fields.
@@ -1096,6 +1097,13 @@ saveGuideButton.addEventListener("click", async () => {
     return;
   }
 
+  if (!startUrl) {
+    saveGuideStatus.textContent = window.i18nService.translate("guideStartUrlRequired", language);
+    saveGuideStatus.dataset.type = "error";
+    guideStartUrlInput.focus();
+    return;
+  }
+
   if (guideAvailableInput.checked && steps.length === 0) {
     saveGuideStatus.textContent = window.i18nService.translate("availableGuideRequiresStep", language);
     saveGuideStatus.dataset.type = "error";
@@ -1139,6 +1147,12 @@ saveGuideButton.addEventListener("click", async () => {
   } finally {
     saveGuideButton.disabled = false;
   }
+});
+
+guideStartUrlInput.addEventListener("input", () => {
+  saveGuideStatus.textContent = "";
+  saveGuideStatus.removeAttribute("data-type");
+  updateGuideEditorValidity();
 });
 
 guideNameInput.addEventListener("input", () => {
