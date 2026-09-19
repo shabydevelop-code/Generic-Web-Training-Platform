@@ -4,6 +4,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const form = document.getElementById("form-site");
   const refreshButton = document.getElementById("btn-refresh-site");
   const typeSelect = document.getElementById("site-type");
+  const cityInput = document.getElementById("site-city");
 
   form?.addEventListener("submit", async (event) => {
     if (event.submitter?.id === "btn-save-site") {
@@ -12,9 +13,9 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  typeSelect?.addEventListener("change", () => {
-    form?.requestSubmit();
-  });
+  const submitFieldChange = () => form?.requestSubmit();
+  typeSelect?.addEventListener("change", submitFieldChange);
+  cityInput?.addEventListener("change", submitFieldChange);
 
   refreshButton?.addEventListener("click", () => {
     location.reload();
