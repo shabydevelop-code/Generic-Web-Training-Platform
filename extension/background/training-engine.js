@@ -44,6 +44,24 @@ async function getCurrentTrainingStep() {
   };
 }
 
+async function moveTrainingStep(direction) {
+  const session = await getTrainingSession();
+
+  if (!session?.trainingActive) {
+    throw new Error("No active training session.");
+  }
+
+  const nextIndex = session.currentStepIndex + direction;
+
+  if (nextIndex < 0 || nextIndex >= session.steps.length) {
+    return getCurrentTrainingStep();
+  }
+
+  session.currentStepIndex = nextIndex;
+  await saveTrainingSession(session);
+  return getCurrentTrainingStep();
+}
+
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (message?.type === "GWTP_TRAINING_START") {
     startTrainingSession(message.guide)
@@ -54,6 +72,20 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 
   if (message?.type === "GWTP_TRAINING_GET_CURRENT") {
     getCurrentTrainingStep()
+      .then((current) => sendResponse({ success: true, current }))
+      .catch((error) => sendResponse({ success: false, message: error.message }));
+    return true;
+  }
+
+  if (message?.type === "GWTP_TRAINING_NEXT") {
+    moveTrainingStep(1)
+      .then((current) => sendResponse({ success: true, current }))
+      .catch((error) => sendResponse({ success: false, message: error.message }));
+    return true;
+  }
+
+  if (message?.type === "GWTP_TRAINING_PREVIOUS") {
+    moveTrainingStep(-1)
       .then((current) => sendResponse({ success: true, current }))
       .catch((error) => sendResponse({ success: false, message: error.message }));
     return true;
