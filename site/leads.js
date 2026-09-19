@@ -44,6 +44,7 @@ async function loadLead() {
 }
 
 async function saveLead() {
+  clearValidationErrors();
   const payload = {
     company: value("lead-company"),
     contactName: value("lead-contact-name"),
@@ -58,7 +59,13 @@ async function saveLead() {
       headers: { "Content-Type": "application/json", Accept: "application/json" },
       body: JSON.stringify(payload)
     });
-    if (!response.ok) throw new Error("HTTP " + response.status);
+    if (!response.ok) {
+      if (response.status === 400) {
+        showValidationErrors(await response.json());
+        return;
+      }
+      throw new Error("HTTP " + response.status);
+    }
     location.href = location.pathname;
   } catch (error) {
     console.error("[Demo CRM] Unable to save lead.", error);
@@ -131,4 +138,25 @@ function value(id) {
 function setValue(id, nextValue) {
   const element = document.getElementById(id);
   if (element) element.value = nextValue ?? "";
+}
+
+
+function clearValidationErrors() {
+  document.querySelectorAll(".ps-validation-error").forEach((element) => element.remove());
+  document.querySelectorAll("[aria-invalid='true']").forEach((element) => element.removeAttribute("aria-invalid"));
+}
+
+function showValidationErrors(result) {
+  clearValidationErrors();
+  const errors = result?.errors ?? {};
+  for (const [fieldId, message] of Object.entries(errors)) {
+    const field = document.getElementById(fieldId);
+    if (!field) continue;
+    field.setAttribute("aria-invalid", "true");
+    const error = document.createElement("div");
+    error.className = "ps-validation-error";
+    error.textContent = message;
+    field.insertAdjacentElement("afterend", error);
+  }
+  alert(result?.message ?? "לא ניתן לשמור. יש לתקן את השדות המסומנים.");
 }
