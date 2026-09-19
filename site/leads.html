@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>CRM PeopleSoft - מסך לידים</title>
+  <link rel="icon" type="image/png" href="../icons/icon48.png">
+  <link rel="stylesheet" href="peoplesoft_crm.css">
+</head>
+<body>
+  <!-- Splash Screen (Prevent FOUC) -->
+  <div id="splash-screen" class="splash-screen" aria-live="polite">
+    <h2>PeopleSoft CRM</h2>
+    <p>טוען מסך ניהול לידים והזדמנויות...</p>
+    <div class="splash-spinner"></div>
+  </div>
+
+  <!-- PeopleSoft Header -->
+  <header class="ps-header">
+    <div class="ps-header-top">
+      <div class="ps-brand">
+        <span>PeopleSoft Enterprise CRM</span>
+        <span class="ps-brand-badge">מכירות ופיתוח עסקי</span>
+      </div>
+      <div class="ps-user-info">
+        <span>משתמש: <strong>יוסי מנהל (CRM_ADMIN)</strong></span>
+        <span class="ps-version-tag">גרסה 2.1.9</span>
+      </div>
+    </div>
+    <nav class="ps-nav" aria-label="ניווט ראשי">
+      <a href="site.html" class="ps-nav-link" id="nav-site">מסך אתר</a>
+      <a href="ticket.html" class="ps-nav-link" id="nav-ticket">מסך פניה</a>
+      <a href="leads.html" class="ps-nav-link active" id="nav-leads">מסך לידים</a>
+      <a href="customer360.html" class="ps-nav-link" id="nav-360">מסך 360</a>
+    </nav>
+  </header>
+
+  <!-- Page Content Container -->
+  <main class="ps-container">
+    <div class="ps-page-title-bar">
+      <div>
+        <h1 class="ps-page-title" id="page-title">ניהול לידים והזדמנויות מכירה (Lead Qualification)</h1>
+        <div class="ps-breadcrumb">מכירות &gt; צינור מכירות &gt; ליד מס' LD-3094</div>
+      </div>
+      <div>
+        <span class="ps-status-badge ps-status-active" id="lead-status-badge">ליד חם (Hot Lead)</span>
+      </div>
+    </div>
+
+    <!-- Panel: Lead Details Form -->
+    <section class="ps-panel" aria-labelledby="panel-header-lead">
+      <div class="ps-panel-header" id="panel-header-lead">
+        <span>פרטי ליד להזנה (Lead Capture)</span>
+        <span style="font-size: 11px; color: #475569;">פוטנציאל עסקה: ₪45,000</span>
+      </div>
+      <div class="ps-panel-body">
+        <form id="form-lead" onsubmit="event.preventDefault(); alert('הליד עודכן בהצלחה במערכת!');">
+          <div class="ps-form-grid">
+            <div class="ps-form-group">
+              <label for="lead-id" class="ps-label">מספר ליד</label>
+              <input type="text" id="lead-id" class="ps-input" value="LD-3094" readonly>
+            </div>
+            <div class="ps-form-group">
+              <label for="lead-company" class="ps-label required">שם חברה / ארגון</label>
+              <input type="text" id="lead-company" class="ps-input" value="נקסט-ג'ן פתרונות ענן" required>
+            </div>
+            <div class="ps-form-group">
+              <label for="lead-contact-name" class="ps-label required">שם איש קשר</label>
+              <input type="text" id="lead-contact-name" class="ps-input" value="רונית שחם" required>
+            </div>
+            <div class="ps-form-group">
+              <label for="lead-email" class="ps-label required">דוא''ל</label>
+              <input type="email" id="lead-email" class="ps-input" value="ronit@nextgen.co.il" required>
+            </div>
+            <div class="ps-form-group">
+              <label for="lead-source" class="ps-label">מקור הליד (Source)</label>
+              <select id="lead-source" class="ps-select">
+                <option value="web" selected>אתר אינטרנט / קמפיין</option>
+                <option value="referral">המלצת לקוח קיים</option>
+                <option value="conference">כנס טכנולוגי</option>
+                <option value="cold_call">פנייה יזומה</option>
+              </select>
+            </div>
+            <div class="ps-form-group">
+              <label for="lead-interest" class="ps-label">מוצר מבוקש</label>
+              <select id="lead-interest" class="ps-select">
+                <option value="cloud_crm" selected>PeopleSoft CRM Cloud Integration</option>
+                <option value="security">אבטחת מידע וסייבר</option>
+                <option value="connectivity">קווי תמסורת ייעודיים</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="ps-action-bar" style="margin-top: 14px;">
+            <button type="submit" class="ps-btn ps-btn-primary" id="btn-save-lead">שמור ליד</button>
+            <button type="button" class="ps-btn ps-btn-accent" id="btn-convert-lead" onclick="alert('הליד הומר בהצלחה ללקוח קיים!'); location.href='customer360.html';">המר ללקוח (Convert)</button>
+            <a href="site.html" class="ps-btn" id="btn-back-to-site">חזרה למסך אתר &rarr;</a>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <!-- Panel: Leads Pipeline Grid -->
+    <section class="ps-panel" aria-labelledby="panel-header-pipeline">
+      <div class="ps-panel-header" id="panel-header-pipeline">
+        <span>רשימת לידים פתוחים בצוות (Sales Pipeline)</span>
+        <span style="font-size: 11px; color: #475569;">3 לידים בתהליך</span>
+      </div>
+      <div class="ps-panel-body">
+        <div class="ps-table-wrapper">
+          <table class="ps-table" id="leads-table">
+            <thead>
+              <tr>
+                <th>מספר ליד</th>
+                <th>חברה</th>
+                <th>איש קשר</th>
+                <th>מקור</th>
+                <th>סטטוס שלב</th>
+                <th>תאריך יצירה</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>LD-3094</strong></td>
+                <td>נקסט-ג'ן פתרונות ענן</td>
+                <td>רונית שחם</td>
+                <td>קמפיין דיגיטל</td>
+                <td><span class="ps-status-badge ps-status-active">בדיקת היתכנות</span></td>
+                <td>10/09/2026</td>
+              </tr>
+              <tr>
+                <td><strong>LD-3091</strong></td>
+                <td>בנקאות דיגיטלית ישירה</td>
+                <td>עוז לוי</td>
+                <td>כנס פינטק</td>
+                <td><span class="ps-status-badge ps-status-pending">משא ומתן</span></td>
+                <td>08/09/2026</td>
+              </tr>
+              <tr>
+                <td><strong>LD-3085</strong></td>
+                <td>לוגיסטיקה מהירה ארצית</td>
+                <td>מיכל בראל</td>
+                <td>המלצה</td>
+                <td><span class="ps-status-badge ps-status-closed">הצעה נשלחה</span></td>
+                <td>01/09/2026</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script src="peoplesoft_common.js"></script>
+</body>
+</html>

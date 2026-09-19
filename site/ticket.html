@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>CRM PeopleSoft - מסך פניה</title>
+  <link rel="icon" type="image/png" href="../icons/icon48.png">
+  <link rel="stylesheet" href="peoplesoft_crm.css">
+</head>
+<body>
+  <!-- Splash Screen (Prevent FOUC) -->
+  <div id="splash-screen" class="splash-screen" aria-live="polite">
+    <h2>PeopleSoft CRM</h2>
+    <p>טוען נתוני פניה / קריאת שירות...</p>
+    <div class="splash-spinner"></div>
+  </div>
+
+  <!-- PeopleSoft Header -->
+  <header class="ps-header">
+    <div class="ps-header-top">
+      <div class="ps-brand">
+        <span>PeopleSoft Enterprise CRM</span>
+        <span class="ps-brand-badge">שירות לקוחות</span>
+      </div>
+      <div class="ps-user-info">
+        <span>משתמש: <strong>יוסי מנהל (CRM_ADMIN)</strong></span>
+        <span class="ps-version-tag">גרסה 2.1.9</span>
+      </div>
+    </div>
+    <nav class="ps-nav" aria-label="ניווט ראשי">
+      <a href="site.html" class="ps-nav-link" id="nav-site">מסך אתר</a>
+      <a href="ticket.html" class="ps-nav-link active" id="nav-ticket">מסך פניה</a>
+      <a href="leads.html" class="ps-nav-link" id="nav-leads">מסך לידים</a>
+      <a href="customer360.html" class="ps-nav-link" id="nav-360">מסך 360</a>
+    </nav>
+  </header>
+
+  <!-- Page Content Container -->
+  <main class="ps-container">
+    <div class="ps-page-title-bar">
+      <div>
+        <h1 class="ps-page-title" id="page-title">פניית שירות ותמיכה (Case Detail)</h1>
+        <div class="ps-breadcrumb">מוקד תמיכה &gt; ניהול קריאות &gt; פניה מס' CAS-55891</div>
+      </div>
+      <div>
+        <span class="ps-status-badge ps-status-pending" id="ticket-status-badge">בטיפול מומחה</span>
+      </div>
+    </div>
+
+    <!-- Panel: Case Header Info -->
+    <section class="ps-panel" aria-labelledby="panel-header-case">
+      <div class="ps-panel-header" id="panel-header-case">
+        <span>פרטי קריאת שירות (Case Summary)</span>
+        <span style="font-size: 11px; color: #475569;">עדיפות: גבוהה (High)</span>
+      </div>
+      <div class="ps-panel-body">
+        <form id="form-ticket" onsubmit="event.preventDefault(); alert('עדכון הפניה נשמר בהצלחה!');">
+          <div class="ps-form-grid">
+            <div class="ps-form-group">
+              <label for="ticket-id" class="ps-label">מספר פניה</label>
+              <input type="text" id="ticket-id" class="ps-input" value="CAS-55891" readonly>
+            </div>
+            <div class="ps-form-group">
+              <label for="ticket-customer" class="ps-label required">שם לקוח</label>
+              <input type="text" id="ticket-customer" class="ps-input" value="אלפא טכנולוגיות בע''מ" required>
+            </div>
+            <div class="ps-form-group">
+              <label for="ticket-site" class="ps-label">אתר מקושר</label>
+              <input type="text" id="ticket-site" class="ps-input" value="מגדל שלום - תל אביב">
+            </div>
+            <div class="ps-form-group">
+              <label for="ticket-category" class="ps-label required">סיווג תקלה / קטגוריה</label>
+              <select id="ticket-category" class="ps-select">
+                <option value="network" selected>תקלת תקשורת ורשת</option>
+                <option value="billing">בירור חיוב וחשבונית</option>
+                <option value="hardware">תקלת חומרה באתר</option>
+                <option value="other">אחר</option>
+              </select>
+            </div>
+            <div class="ps-form-group">
+              <label for="ticket-assigned" class="ps-label">נציג מטפל (Owner)</label>
+              <input type="text" id="ticket-assigned" class="ps-input" value="דניאל כהן">
+            </div>
+            <div class="ps-form-group">
+              <label for="ticket-sla" class="ps-label">יעד SLA</label>
+              <input type="text" id="ticket-sla" class="ps-input" value="תוך 4 שעות (נותרו שעתיים)" readonly>
+            </div>
+          </div>
+
+          <div class="ps-form-group" style="margin-top: 14px;">
+            <label for="ticket-subject" class="ps-label required">נושא הפניה</label>
+            <input type="text" id="ticket-subject" class="ps-input" value="איטיות בגלישה ונפילות קו תקשורת ראשי" required>
+          </div>
+
+          <div class="ps-form-group" style="margin-top: 14px;">
+            <label for="ticket-notes" class="ps-label">תיאור מפורט והערות טיפול</label>
+            <textarea id="ticket-notes" class="ps-textarea" rows="3">הלקוח מדווח על ניתוקים חוזרים ונשנים בקו העסקי מאז שעות הבוקר. בוצע ריסטרט מרחוק למודם ללא שיפור. נדרש תיאום טכנאי שטח.</textarea>
+          </div>
+
+          <div class="ps-action-bar" style="margin-top: 14px;">
+            <button type="submit" class="ps-btn ps-btn-primary" id="btn-save-ticket">עדכן פניה</button>
+            <button type="button" class="ps-btn ps-btn-accent" id="btn-escalate-ticket" onclick="alert('הפניה הועברה לדרג ב!');">הסלם לדרג ב'</button>
+            <a href="customer360.html" class="ps-btn" id="btn-view-customer-360">מעבר לתיק לקוח 360 &larr;</a>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <!-- Panel: Case Activity History Grid -->
+    <section class="ps-panel" aria-labelledby="panel-header-history">
+      <div class="ps-panel-header" id="panel-header-history">
+        <span>היסטוריית אירועים בפניה (Activity Log)</span>
+        <span style="font-size: 11px; color: #475569;">2 עדכונים</span>
+      </div>
+      <div class="ps-panel-body">
+        <div class="ps-table-wrapper">
+          <table class="ps-table" id="ticket-history-table">
+            <thead>
+              <tr>
+                <th>תאריך ושעה</th>
+                <th>מבצע הפעולה</th>
+                <th>סוג פעולה</th>
+                <th>תיאור</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>12/09/2026 09:30</td>
+                <td>מוקדנית (שירן)</td>
+                <td>פתיחת פניה</td>
+                <td>הקריאה נוצרה עקב פנייה טלפונית מאיש הקשר באתר</td>
+              </tr>
+              <tr>
+                <td>12/09/2026 10:15</td>
+                <td>דניאל כהן</td>
+                <td>בדיקה טכנית</td>
+                <td>נבדק אות בקו מול ספק התשתית - זוהו איבוד חבילות (Packet Loss)</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script src="peoplesoft_common.js"></script>
+</body>
+</html>

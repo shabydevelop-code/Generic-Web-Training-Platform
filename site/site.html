@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>CRM PeopleSoft - מסך אתר</title>
+  <link rel="icon" type="image/png" href="../icons/icon48.png">
+  <link rel="stylesheet" href="peoplesoft_crm.css">
+</head>
+<body>
+  <!-- Splash Screen (Prevent FOUC) -->
+  <div id="splash-screen" class="splash-screen" aria-live="polite">
+    <h2>PeopleSoft CRM</h2>
+    <p>טוען נתוני אתר...</p>
+    <div class="splash-spinner"></div>
+  </div>
+
+  <!-- PeopleSoft Header -->
+  <header class="ps-header">
+    <div class="ps-header-top">
+      <div class="ps-brand">
+        <span>PeopleSoft Enterprise CRM</span>
+        <span class="ps-brand-badge">אתר / סניף</span>
+      </div>
+      <div class="ps-user-info">
+        <span>משתמש: <strong>יוסי מנהל (CRM_ADMIN)</strong></span>
+        <span class="ps-version-tag">גרסה 2.1.9</span>
+      </div>
+    </div>
+    <nav class="ps-nav" aria-label="ניווט ראשי">
+      <a href="site.html" class="ps-nav-link active" id="nav-site">מסך אתר</a>
+      <a href="ticket.html" class="ps-nav-link" id="nav-ticket">מסך פניה</a>
+      <a href="leads.html" class="ps-nav-link" id="nav-leads">מסך לידים</a>
+      <a href="customer360.html" class="ps-nav-link" id="nav-360">מסך 360</a>
+    </nav>
+  </header>
+
+  <!-- Page Content Container -->
+  <main class="ps-container">
+    <div class="ps-page-title-bar">
+      <div>
+        <h1 class="ps-page-title" id="page-title">ניהול אתר לקוח / סניף ראשי</h1>
+        <div class="ps-breadcrumb">ראשי &gt; ניהול נכסים &gt; פרטי אתר</div>
+      </div>
+      <div>
+        <span class="ps-status-badge ps-status-active" id="site-status-badge">פעיל ומחובר</span>
+      </div>
+    </div>
+
+    <!-- Panel: General Information -->
+    <section class="ps-panel" aria-labelledby="panel-header-general">
+      <div class="ps-panel-header" id="panel-header-general">
+        <span>פרטי אתר כלליים (General Information)</span>
+        <span style="font-size: 11px; color: #475569;">מזהה מערכת: SITE-77402</span>
+      </div>
+      <div class="ps-panel-body">
+        <form id="form-site" onsubmit="event.preventDefault(); alert('נתוני אתר נשמרו בהצלחה!');">
+          <div class="ps-form-grid">
+            <div class="ps-form-group">
+              <label for="site-code" class="ps-label required">קוד אתר (Site Code)</label>
+              <input type="text" id="site-code" class="ps-input" value="TLV-CENTER-01" required>
+            </div>
+            <div class="ps-form-group">
+              <label for="site-name" class="ps-label required">שם האתר / סניף</label>
+              <input type="text" id="site-name" class="ps-input" value="מגדל שלום - תל אביב" required>
+            </div>
+            <div class="ps-form-group">
+              <label for="site-type" class="ps-label">סוג אתר</label>
+              <select id="site-type" class="ps-select">
+                <option value="hq" selected>מטה ראשי</option>
+                <option value="branch">סניף מכירות</option>
+                <option value="warehouse">מרלוג והפצה</option>
+              </select>
+            </div>
+            <div class="ps-form-group">
+              <label for="site-city" class="ps-label">עיר וכתובת</label>
+              <input type="text" id="site-city" class="ps-input" value="תל אביב - אחד העם 9">
+            </div>
+            <div class="ps-form-group">
+              <label for="site-contact-name" class="ps-label">איש קשר ראשי באתר</label>
+              <input type="text" id="site-contact-name" class="ps-input" value="ישראל ישראלי">
+            </div>
+            <div class="ps-form-group">
+              <label for="site-phone" class="ps-label">טלפון ישיר</label>
+              <input type="tel" id="site-phone" class="ps-input" value="03-5551234">
+            </div>
+          </div>
+
+          <div class="ps-action-bar" style="margin-top: 14px;">
+            <button type="submit" class="ps-btn ps-btn-primary" id="btn-save-site">שמור שינויים</button>
+            <button type="button" class="ps-btn ps-btn-accent" id="btn-refresh-site" onclick="location.reload();">רענן נתונים</button>
+            <a href="ticket.html" class="ps-btn" id="btn-open-ticket-from-site">פתח פניה לאתר זה &larr;</a>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <!-- Panel: Devices & Infrastructure Grid -->
+    <section class="ps-panel" aria-labelledby="panel-header-devices">
+      <div class="ps-panel-header" id="panel-header-devices">
+        <span>ציוד ותשתיות באתר (Installed Assets)</span>
+        <span style="font-size: 11px; color: #475569;">3 פריטים מותקנים</span>
+      </div>
+      <div class="ps-panel-body">
+        <div class="ps-table-wrapper">
+          <table class="ps-table" id="site-assets-table">
+            <thead>
+              <tr>
+                <th>מספר סידורי</th>
+                <th>דגם / תיאור מוצר</th>
+                <th>כתובת IP</th>
+                <th>סטטוס תפעולי</th>
+                <th>תאריך התקנה</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>SN-99201</strong></td>
+                <td>נתב תקשורת Enterprise Core Router</td>
+                <td>10.120.4.1</td>
+                <td><span class="ps-status-badge ps-status-active">תקין</span></td>
+                <td>12/01/2024</td>
+              </tr>
+              <tr>
+                <td><strong>SN-88142</strong></td>
+                <td>מתג מרכזי PoE Switch 48 Ports</td>
+                <td>10.120.4.2</td>
+                <td><span class="ps-status-badge ps-status-active">תקין</span></td>
+                <td>15/02/2024</td>
+              </tr>
+              <tr>
+                <td><strong>SN-44310</strong></td>
+                <td>מודם גיבוי סלולרי LTE Backup</td>
+                <td>10.120.4.5</td>
+                <td><span class="ps-status-badge ps-status-pending">דורש בדיקה</span></td>
+                <td>01/06/2024</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script src="peoplesoft_common.js"></script>
+</body>
+</html>

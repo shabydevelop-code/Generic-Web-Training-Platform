@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>CRM PeopleSoft - מסך 360</title>
+  <link rel="icon" type="image/png" href="../icons/icon48.png">
+  <link rel="stylesheet" href="peoplesoft_crm.css">
+</head>
+<body>
+  <!-- Splash Screen (Prevent FOUC) -->
+  <div id="splash-screen" class="splash-screen" aria-live="polite">
+    <h2>PeopleSoft CRM</h2>
+    <p>טוען תמונת לקוח 360 מקיפה...</p>
+    <div class="splash-spinner"></div>
+  </div>
+
+  <!-- PeopleSoft Header -->
+  <header class="ps-header">
+    <div class="ps-header-top">
+      <div class="ps-brand">
+        <span>PeopleSoft Enterprise CRM</span>
+        <span class="ps-brand-badge">תמונת לקוח 360°</span>
+      </div>
+      <div class="ps-user-info">
+        <span>משתמש: <strong>יוסי מנהל (CRM_ADMIN)</strong></span>
+        <span class="ps-version-tag">גרסה 2.1.9</span>
+      </div>
+    </div>
+    <nav class="ps-nav" aria-label="ניווט ראשי">
+      <a href="site.html" class="ps-nav-link" id="nav-site">מסך אתר</a>
+      <a href="ticket.html" class="ps-nav-link" id="nav-ticket">מסך פניה</a>
+      <a href="leads.html" class="ps-nav-link" id="nav-leads">מסך לידים</a>
+      <a href="customer360.html" class="ps-nav-link active" id="nav-360">מסך 360</a>
+    </nav>
+  </header>
+
+  <!-- Page Content Container -->
+  <main class="ps-container">
+    <div class="ps-page-title-bar">
+      <div>
+        <h1 class="ps-page-title" id="page-title">תיק לקוח 360° - אלפא טכנולוגיות בע''מ</h1>
+        <div class="ps-breadcrumb">לקוחות &gt; מבט כולל 360 &gt; ח.פ 514892019</div>
+      </div>
+      <div>
+        <span class="ps-status-badge ps-status-active" id="c360-status-badge">לקוח VIP אסטרטגי</span>
+      </div>
+    </div>
+
+    <!-- Panel: 360 Master Profile -->
+    <section class="ps-panel" aria-labelledby="panel-header-c360">
+      <div class="ps-panel-header" id="panel-header-c360">
+        <span>נתוני פרופיל לקוח (Account Profile)</span>
+        <span style="font-size: 11px; color: #475569;">ותק: 4 שנים (משנת 2022)</span>
+      </div>
+      <div class="ps-panel-body">
+        <form id="form-360" onsubmit="event.preventDefault(); alert('תיק לקוח עודכן בהצלחה!');">
+          <div class="ps-form-grid">
+            <div class="ps-form-group">
+              <label for="c360-acc-num" class="ps-label">מספר חשבון CRM</label>
+              <input type="text" id="c360-acc-num" class="ps-input" value="ACC-10082" readonly>
+            </div>
+            <div class="ps-form-group">
+              <label for="c360-name" class="ps-label required">שם תאגיד / עסק</label>
+              <input type="text" id="c360-name" class="ps-input" value="אלפא טכנולוגיות בע''מ" required>
+            </div>
+            <div class="ps-form-group">
+              <label for="c360-tier" class="ps-label">סיווג לקוח (Tier)</label>
+              <select id="c360-tier" class="ps-select">
+                <option value="platinum" selected>Platinum Enterprise</option>
+                <option value="gold">Gold Business</option>
+                <option value="standard">Standard</option>
+              </select>
+            </div>
+            <div class="ps-form-group">
+              <label for="c360-mrr" class="ps-label">מחזור חודשי (MRR)</label>
+              <input type="text" id="c360-mrr" class="ps-input" value="₪38,500 לחודש">
+            </div>
+            <div class="ps-form-group">
+              <label for="c360-manager" class="ps-label">מנהל תיק לקוח (TAM)</label>
+              <input type="text" id="c360-manager" class="ps-input" value="אורן שגיא">
+            </div>
+            <div class="ps-form-group">
+              <label for="c360-credit-rating" class="ps-label">דירוג אשראי</label>
+              <input type="text" id="c360-credit-rating" class="ps-input" value="AAA (ללא חריגות)" readonly>
+            </div>
+          </div>
+
+          <div class="ps-action-bar" style="margin-top: 14px;">
+            <button type="submit" class="ps-btn ps-btn-primary" id="btn-save-360">שמור פרטי לקוח</button>
+            <a href="ticket.html" class="ps-btn ps-btn-accent" id="btn-new-ticket-for-360">פתח קריאה חדשה ללקוח +</a>
+            <a href="site.html" class="ps-btn" id="btn-view-sites">צפה באתרי הלקוח &larr;</a>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <!-- Panel: 360 Related Modules (Open Tickets & Active Contracts) -->
+    <section class="ps-panel" aria-labelledby="panel-header-modules">
+      <div class="ps-panel-header" id="panel-header-modules">
+        <span>קריאות שירות פתוחות והסכמים פעילים</span>
+        <span style="font-size: 11px; color: #475569;">תמונת מצב עדכנית</span>
+      </div>
+      <div class="ps-panel-body">
+        <div class="ps-table-wrapper">
+          <table class="ps-table" id="c360-summary-table">
+            <thead>
+              <tr>
+                <th>מספר פניה / חוזה</th>
+                <th>סוג</th>
+                <th>אתר / שירות</th>
+                <th>סטטוס</th>
+                <th>תאריך תוקף / יצירה</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>CAS-55891</strong></td>
+                <td>פניית שירות</td>
+                <td>מגדל שלום - תל אביב</td>
+                <td><span class="ps-status-badge ps-status-pending">בטיפול מומחה</span></td>
+                <td>12/09/2026</td>
+              </tr>
+              <tr>
+                <td><strong>CTR-88102</strong></td>
+                <td>הסכם SLA פרימיום</td>
+                <td>כלל אתרי הארגון</td>
+                <td><span class="ps-status-badge ps-status-active">בתוקף עד 2028</span></td>
+                <td>01/01/2024</td>
+              </tr>
+              <tr>
+                <td><strong>LD-3094</strong></td>
+                <td>הזדמנות הרחבה</td>
+                <td>אינטגרציית ענן היברידי</td>
+                <td><span class="ps-status-badge ps-status-active">בדיקת היתכנות</span></td>
+                <td>10/09/2026</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script src="peoplesoft_common.js"></script>
+</body>
+</html>

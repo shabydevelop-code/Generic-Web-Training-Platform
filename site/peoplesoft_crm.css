@@ -1,0 +1,374 @@
+/* PeopleSoft Classic CRM Theme Stylesheet */
+@font-face {
+  font-family: 'Assistant';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('../fonts/Assistant-Regular.ttf') format('truetype');
+}
+@font-face {
+  font-family: 'Assistant';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('../fonts/Assistant-SemiBold.ttf') format('truetype');
+}
+@font-face {
+  font-family: 'Assistant';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('../fonts/Assistant-Bold.ttf') format('truetype');
+}
+
+:root {
+  --ps-primary: #1e3a5f;
+  --ps-header-bg: #2d4e76;
+  --ps-accent: #0284c7;
+  --ps-bg: #f4f6f9;
+  --ps-panel-bg: #ffffff;
+  --ps-panel-header: #e2e8f0;
+  --ps-border: #cbd5e1;
+  --ps-dark-border: #94a3b8;
+  --ps-text: #0f172a;
+  --ps-text-muted: #334155;
+  --ps-input-bg: #ffffff;
+  --ps-input-border: #94a3b8;
+  --ps-focus: #0284c7;
+  --ps-btn-bg: #e2e8f0;
+  --ps-btn-border: #94a3b8;
+  --ps-btn-text: #0f172a;
+  --ps-btn-primary-bg: #1e3a5f;
+  --ps-btn-primary-text: #ffffff;
+
+  /* Safe Area */
+  --sat: env(safe-area-inset-top, 0px);
+  --sab: env(safe-area-inset-bottom, 0px);
+  --sal: env(safe-area-inset-left, 0px);
+  --sar: env(safe-area-inset-right, 0px);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  font-family: 'Assistant', sans-serif !important;
+}
+
+body {
+  background-color: var(--ps-bg);
+  color: var(--ps-text);
+  line-height: 1.5;
+  font-size: 14px;
+  direction: rtl;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  padding-top: var(--sat);
+  padding-bottom: var(--sab);
+  padding-left: var(--sal);
+  padding-right: var(--sar);
+  user-select: auto;
+}
+
+/* FOUC Splash Screen */
+.splash-screen {
+  position: fixed;
+  inset: 0;
+  background-color: var(--ps-primary);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 99999;
+  transition: opacity 0.3s ease, visibility 0.3s ease;
+  color: #ffffff;
+}
+.splash-screen.hidden {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+.splash-spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid rgba(255, 255, 255, 0.2);
+  border-top-color: #38bdf8;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin-top: 16px;
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Header & PeopleSoft Portal Bar */
+.ps-header {
+  background-color: var(--ps-primary);
+  color: #ffffff;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+}
+.ps-header-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 16px;
+  background-color: #172e4c;
+  border-bottom: 1px solid #2d4e76;
+}
+.ps-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 700;
+  font-size: 16px;
+}
+.ps-brand-badge {
+  background: #38bdf8;
+  color: #082f49;
+  font-size: 11px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-weight: 800;
+}
+.ps-user-info {
+  font-size: 13px;
+  color: #cbd5e1;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.ps-version-tag {
+  font-size: 11px;
+  background: rgba(255,255,255,0.15);
+  padding: 2px 6px;
+  border-radius: 3px;
+  color: #e2e8f0;
+}
+
+/* Top Navigation Bar */
+.ps-nav {
+  display: flex;
+  background-color: var(--ps-header-bg);
+  border-bottom: 2px solid #0284c7;
+  overflow-x: auto;
+  padding: 0 8px;
+}
+.ps-nav-link {
+  color: #e2e8f0;
+  text-decoration: none;
+  padding: 10px 16px;
+  font-weight: 600;
+  font-size: 14px;
+  border-bottom: 3px solid transparent;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+}
+.ps-nav-link:hover, .ps-nav-link:focus-visible {
+  background-color: rgba(255,255,255,0.1);
+  color: #ffffff;
+  outline: 2px solid #38bdf8;
+}
+.ps-nav-link.active {
+  background-color: #ffffff;
+  color: var(--ps-primary);
+  border-bottom-color: #0284c7;
+  font-weight: 700;
+}
+
+/* Page Container */
+.ps-container {
+  max-width: 1400px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 16px;
+  flex: 1;
+}
+
+/* Page Header & Breadcrumb */
+.ps-page-title-bar {
+  margin-bottom: 14px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid var(--ps-border);
+  padding-bottom: 8px;
+}
+.ps-page-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--ps-primary);
+}
+.ps-breadcrumb {
+  font-size: 12px;
+  color: var(--ps-text-muted);
+}
+
+/* PeopleSoft GroupBox Panel */
+.ps-panel {
+  background: var(--ps-panel-bg);
+  border: 1px solid var(--ps-border);
+  border-radius: 4px;
+  margin-bottom: 16px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+.ps-panel-header {
+  background-color: #e6edf5;
+  border-bottom: 1px solid #cbd5e1;
+  padding: 8px 12px;
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--ps-primary);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.ps-panel-body {
+  padding: 14px 16px;
+}
+
+/* Form Grid */
+.ps-form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 14px 20px;
+}
+.ps-form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.ps-label {
+  font-size: 13px;
+  font-weight: 700;
+  color: #1e293b;
+}
+.ps-label.required::after {
+  content: ' *';
+  color: #dc2626;
+}
+.ps-input, .ps-select, .ps-textarea {
+  background-color: var(--ps-input-bg);
+  border: 1px solid var(--ps-input-border);
+  border-radius: 3px;
+  padding: 6px 10px;
+  font-size: 14px;
+  color: var(--ps-text);
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.ps-input:focus, .ps-select:focus, .ps-textarea:focus {
+  border-color: var(--ps-focus);
+  box-shadow: 0 0 0 2px rgba(2, 132, 199, 0.25);
+}
+.ps-input[readonly] {
+  background-color: #f1f5f9;
+  color: #475569;
+  cursor: not-allowed;
+}
+
+/* PeopleSoft Data Table / Grid */
+.ps-table-wrapper {
+  overflow-x: auto;
+  border: 1px solid var(--ps-border);
+  border-radius: 4px;
+}
+.ps-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: right;
+  font-size: 13px;
+}
+.ps-table th {
+  background-color: #e6edf5;
+  color: #1e3a5f;
+  font-weight: 700;
+  padding: 8px 12px;
+  border-bottom: 2px solid #94a3b8;
+  border-left: 1px solid #cbd5e1;
+  white-space: nowrap;
+}
+.ps-table td {
+  padding: 8px 12px;
+  border-bottom: 1px solid #e2e8f0;
+  border-left: 1px solid #f1f5f9;
+  color: #1e293b;
+}
+.ps-table tr:hover {
+  background-color: #f8fafc;
+}
+
+/* Action Buttons Bar */
+.ps-action-bar {
+  display: flex;
+  gap: 10px;
+  padding: 12px 0;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.ps-btn {
+  background-color: var(--ps-btn-bg);
+  color: var(--ps-btn-text);
+  border: 1px solid var(--ps-btn-border);
+  padding: 6px 16px;
+  border-radius: 4px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.15s ease;
+}
+.ps-btn:hover {
+  background-color: #cbd5e1;
+}
+.ps-btn-primary {
+  background-color: var(--ps-btn-primary-bg);
+  color: var(--ps-btn-primary-text);
+  border-color: #172e4c;
+}
+.ps-btn-primary:hover {
+  background-color: #172e4c;
+}
+.ps-btn-accent {
+  background-color: #0284c7;
+  color: #ffffff;
+  border-color: #0369a1;
+}
+.ps-btn-accent:hover {
+  background-color: #0369a1;
+}
+
+/* Badges */
+.ps-status-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 9999px;
+  font-size: 12px;
+  font-weight: 700;
+}
+.ps-status-active { background: #dcfce7; color: #15803d; }
+.ps-status-pending { background: #fef9c3; color: #854d0e; }
+.ps-status-closed { background: #f1f5f9; color: #475569; }
+
+/* Responsive Mobile S25 Tweaks */
+@media (max-width: 600px) {
+  .ps-container {
+    padding: 10px;
+  }
+  .ps-form-grid {
+    grid-template-columns: 1fr;
+  }
+  .ps-header-top {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+  }
+}
