@@ -17,7 +17,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
 async function initializeCustomer() {
   const token = new URLSearchParams(location.search).get("state");
-  if (token && await loadCustomerState(token)) return;
+  if (token && await loadCustomerState(token)) {
+    history.replaceState(null, "", location.pathname);
+    return;
+  }
   await loadCustomer();
 }
 
