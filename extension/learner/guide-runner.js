@@ -46,7 +46,11 @@
       try {
         const response = await window.messagingService.sendToActivePage({
           type: "GWTP_SHOW_TRAINING_STEP",
-          step: firstStep
+          step: firstStep,
+          navigation: {
+            stepIndex: 0,
+            totalSteps: guide.steps.length
+          }
         });
 
         if (response?.success) return response;
@@ -91,7 +95,14 @@
 
     if (!response?.success || !response.current?.step) return false;
 
-    await showFirstStep({ steps: [response.current.step] });
+    const activeTraining = await chrome.runtime.sendMessage({
+      type: "GWTP_TRAINING_GET_SESSION"
+    });
+
+    await showFirstStep({
+      steps: [response.current.step],
+      totalSteps: activeTraining?.session?.steps?.length || 1
+    });
     return true;
   }
 
