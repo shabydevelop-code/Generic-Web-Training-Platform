@@ -1264,6 +1264,14 @@ async function handleLogin() {
 }
 
 async function handleLogout() {
+  try {
+    await window.messagingService.sendToActivePage({
+      type: "GWTP_CLEAR_HIGHLIGHT"
+    });
+  } catch (error) {
+    console.info("GWTP page cleanup skipped during logout:", error);
+  }
+
   await window.authService.logout();
   appView.hidden = true;
   adminModeActive = false;
