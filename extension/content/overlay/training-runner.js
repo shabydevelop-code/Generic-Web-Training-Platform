@@ -14,7 +14,7 @@ function clearTrainingStep() {
   }
 }
 
-function showTrainingStep(step) {
+function showTrainingStep(step, navigation = {}) {
   clearTrainingStep();
   clearHighlight();
 
@@ -51,7 +51,49 @@ function showTrainingStep(step) {
   overlay.style.boxShadow = "0 8px 24px rgba(16, 24, 40, 0.18)";
   overlay.style.color = "#172033";
   overlay.style.font = "14px/1.45 system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
-  overlay.textContent = step.instruction || `Step ${step.order || ""}`;
+  const instruction = document.createElement("div");
+  instruction.textContent = step.instruction || `Step ${step.order || ""}`;
+  overlay.appendChild(instruction);
+
+  const controls = document.createElement("div");
+  controls.style.display = "flex";
+  controls.style.justifyContent = "space-between";
+  controls.style.gap = "8px";
+  controls.style.marginTop = "12px";
+
+  const createButton = (label, action, disabled) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.textContent = label;
+    button.disabled = disabled;
+    button.style.padding = "6px 10px";
+    button.style.border = "1px solid #d0d5dd";
+    button.style.borderRadius = "7px";
+    button.style.background = disabled ? "#f2f4f7" : "#ffffff";
+    button.style.cursor = disabled ? "default" : "pointer";
+
+    if (!disabled) {
+      button.addEventListener("click", () => {
+        chrome.runtime.sendMessage({ type: action }).then((response) => {
+          if (!response?.success || !response.current?.step) return;
+
+          showTrainingStep(response.current.step, {
+            stepIndex: response.current.stepIndex,
+            totalSteps: navigation.totalSteps
+          });
+        });
+      });
+    }
+
+    return button;
+  };
+
+  const stepIndex = Number.isInteger(navigation.stepIndex) ? navigation.stepIndex : 0;
+  const totalSteps = navigation.totalSteps || 1;
+
+  controls.appendChild(createButton("Previous", "GWTP_TRAINING_PREVIOUS", stepIndex === 0));
+  controls.appendChild(createButton("Next", "GWTP_TRAINING_NEXT", stepIndex >= totalSteps - 1));
+  overlay.appendChild(controls);
 
   document.documentElement.appendChild(overlay);
   gwtpTrainingOverlay = overlay;
