@@ -658,7 +658,7 @@ editorGuides.MapGet("/{id:long}", (long id) =>
 
     using var guideCommand = connection.CreateCommand();
     guideCommand.CommandText = """
-        SELECT Id, TopicId, Name, IsAvailable
+        SELECT Id, TopicId, Name, StartUrl, IsAvailable
         FROM Guides
         WHERE Id = $id;
         """;
@@ -673,7 +673,8 @@ editorGuides.MapGet("/{id:long}", (long id) =>
     var guideId = guideReader.GetInt64(0);
     var topicId = guideReader.GetInt64(1);
     var name = guideReader.GetString(2);
-    var isAvailable = guideReader.GetInt64(3) == 1;
+    var startUrl = guideReader.IsDBNull(3) ? null : guideReader.GetString(3);
+    var isAvailable = guideReader.GetInt64(4) == 1;
     guideReader.Close();
 
     using var stepsCommand = connection.CreateCommand();
@@ -696,7 +697,7 @@ editorGuides.MapGet("/{id:long}", (long id) =>
             stepsReader.GetString(2)));
     }
 
-    return Results.Ok(new GuideResponse(guideId, topicId, name, isAvailable, steps));
+    return Results.Ok(new GuideResponse(guideId, topicId, name, startUrl, isAvailable, steps));
 });
 
 editorGuides.MapPut("/{id:long}", (long id, CreateGuideRequest request) =>
@@ -724,9 +725,10 @@ editorGuides.MapPut("/{id:long}", (long id, CreateGuideRequest request) =>
 
     using var guideCommand = connection.CreateCommand();
     guideCommand.Transaction = transaction;
-    guideCommand.CommandText = "UPDATE Guides SET TopicId = $topicId, Name = $name, IsAvailable = $isAvailable WHERE Id = $id;";
+    guideCommand.CommandText = "UPDATE Guides SET TopicId = $topicId, Name = $name, StartUrl = $startUrl, IsAvailable = $isAvailable WHERE Id = $id;";
     guideCommand.Parameters.AddWithValue("$topicId", request.TopicId);
     guideCommand.Parameters.AddWithValue("$name", name);
+    guideCommand.Parameters.AddWithValue("$startUrl", (object?)request.StartUrl?.Trim() ?? DBNull.Value);
     guideCommand.Parameters.AddWithValue("$isAvailable", request.IsAvailable ? 1 : 0);
     guideCommand.Parameters.AddWithValue("$id", id);
     if (guideCommand.ExecuteNonQuery() == 0)
@@ -763,6 +765,7 @@ editorGuides.MapPut("/{id:long}", (long id, CreateGuideRequest request) =>
         id,
         request.TopicId,
         name,
+        request.StartUrl?.Trim(),
         request.IsAvailable,
         request.Steps.Select((step, index) =>
             new GuideStepResponse(index + 1, step.Selector.Trim(), step.Instruction.Trim()))
@@ -819,8 +822,8 @@ editorGuides.MapPost("", (CreateGuideRequest request) =>
     using var guideCommand = connection.CreateCommand();
     guideCommand.Transaction = transaction;
     guideCommand.CommandText = """
-        INSERT INTO Guides (TopicId, Name, IsAvailable)
-        VALUES ($topicId, $name, $isAvailable);
+        INSERT INTO Guides (TopicId, Name, StartUrl, IsAvailable)
+        VALUES ($topicId, $name, $startUrl, $isAvailable);
         SELECT last_insert_rowid();
         """;
     guideCommand.Parameters.AddWithValue("$topicId", request.TopicId);
@@ -1008,6 +1011,7 @@ sealed record CreateGuideStepRequest(
 sealed record CreateGuideRequest(
     long TopicId,
     string Name,
+    string? StartUrl,
     bool IsAvailable,
     List<CreateGuideStepRequest> Steps);
 
@@ -1020,6 +1024,7 @@ sealed record GuideResponse(
     long Id,
     long TopicId,
     string Name,
+    string? StartUrl,
     bool IsAvailable,
     List<GuideStepResponse> Steps);
 
