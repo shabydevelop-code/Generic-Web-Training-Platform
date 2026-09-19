@@ -121,6 +121,45 @@ app.MapGet("/api/sites/{id:long}", (long id) =>
 
 
 
+app.MapGet("/api/cases/{id:long}", (long id) =>
+{
+    using var connection = new SqliteConnection(connectionString);
+    connection.Open();
+    using var command = connection.CreateCommand();
+    command.CommandText = """
+        SELECT Id, CaseNumber, Customer, Site, Category, Assigned, Sla, Subject, Notes, Status, Priority
+        FROM Cases WHERE Id = $id;
+        """;
+    command.Parameters.AddWithValue("$id", id);
+    using var reader = command.ExecuteReader();
+    if (!reader.Read()) return Results.NotFound();
+    var result = new { id = reader.GetInt64(0), caseNumber = reader.GetString(1), customer = reader.GetString(2), site = reader.GetString(3), category = reader.GetString(4), assigned = reader.GetString(5), sla = reader.GetString(6), subject = reader.GetString(7), notes = reader.GetString(8), status = reader.GetString(9), priority = reader.GetString(10) };
+    reader.Close();
+    using var historyCommand = connection.CreateCommand();
+    historyCommand.CommandText = "SELECT OccurredAt, Actor, ActionType, Description FROM CaseHistory WHERE CaseId = $id ORDER BY Id;";
+    historyCommand.Parameters.AddWithValue("$id", id);
+    using var historyReader = historyCommand.ExecuteReader();
+    var history = new List<object>();
+    while (historyReader.Read()) history.Add(new { occurredAt = historyReader.GetString(0), actor = historyReader.GetString(1), actionType = historyReader.GetString(2), description = historyReader.GetString(3) });
+    return Results.Ok(new { result.id, result.caseNumber, result.customer, result.site, result.category, result.assigned, result.sla, result.subject, result.notes, result.status, result.priority, history });
+});
+
+app.MapPut("/api/cases/{id:long}", (long id, UpdateCaseRequest request) =>
+{
+    if (string.IsNullOrWhiteSpace(request.Customer) || string.IsNullOrWhiteSpace(request.Subject)) return Results.BadRequest(new { message = "Customer and subject are required." });
+    using var connection = new SqliteConnection(connectionString); connection.Open(); using var command = connection.CreateCommand();
+    command.CommandText = "UPDATE Cases SET Customer=$customer, Site=$site, Category=$category, Assigned=$assigned, Subject=$subject, Notes=$notes WHERE Id=$id;";
+    command.Parameters.AddWithValue("$id", id); command.Parameters.AddWithValue("$customer", request.Customer.Trim()); command.Parameters.AddWithValue("$site", request.Site?.Trim() ?? ""); command.Parameters.AddWithValue("$category", request.Category?.Trim() ?? ""); command.Parameters.AddWithValue("$assigned", request.Assigned?.Trim() ?? ""); command.Parameters.AddWithValue("$subject", request.Subject.Trim()); command.Parameters.AddWithValue("$notes", request.Notes?.Trim() ?? "");
+    return command.ExecuteNonQuery() == 0 ? Results.NotFound() : Results.Ok(new { id, saved = true });
+});
+
+app.MapPost("/api/cases/{id:long}/escalate", (long id) =>
+{
+    using var connection = new SqliteConnection(connectionString); connection.Open(); using var command = connection.CreateCommand();
+    command.CommandText = "UPDATE Cases SET Status = 'הוסלם לדרג ב' WHERE Id = $id;"; command.Parameters.AddWithValue("$id", id);
+    return command.ExecuteNonQuery() == 0 ? Results.NotFound() : Results.Ok(new { id, escalated = true });
+});
+
 app.MapPost("/site/type-change", async (HttpRequest request) =>
 {
     var form = await request.ReadFormAsync();
@@ -208,6 +247,18 @@ static void InitializeDatabase(string connectionString)
             Status TEXT NOT NULL
         );
 
+        CREATE TABLE IF NOT EXISTS Cases (
+            Id INTEGER PRIMARY KEY, CaseNumber TEXT NOT NULL, Customer TEXT NOT NULL, Site TEXT NOT NULL,
+            Category TEXT NOT NULL, Assigned TEXT NOT NULL, Sla TEXT NOT NULL, Subject TEXT NOT NULL,
+            Notes TEXT NOT NULL, Status TEXT NOT NULL, Priority TEXT NOT NULL
+        );
+
+        CREATE TABLE IF NOT EXISTS CaseHistory (
+            Id INTEGER PRIMARY KEY AUTOINCREMENT, CaseId INTEGER NOT NULL, OccurredAt TEXT NOT NULL,
+            Actor TEXT NOT NULL, ActionType TEXT NOT NULL, Description TEXT NOT NULL,
+            FOREIGN KEY (CaseId) REFERENCES Cases(Id) ON DELETE CASCADE
+        );
+
         CREATE TABLE IF NOT EXISTS Assets (
             Id INTEGER PRIMARY KEY AUTOINCREMENT,
             SiteId INTEGER NOT NULL,
@@ -218,6 +269,19 @@ static void InitializeDatabase(string connectionString)
             InstallationDate TEXT NOT NULL,
             FOREIGN KEY (SiteId) REFERENCES Sites(Id) ON DELETE CASCADE
         );
+
+        INSERT OR IGNORE INTO Cases (Id, CaseNumber, Customer, Site, Category, Assigned, Sla, Subject, Notes, Status, Priority)
+        VALUES (55891, 'CAS-55891', 'אלפא טכנולוגיות בע''מ', 'מגדל שלום - תל אביב', 'network', 'דניאל כהן',
+                'תוך 4 שעות (נותרו שעתיים)', 'איטיות בגלישה ונפילות קו תקשורת ראשי',
+                'הלקוח מדווח על ניתוקים חוזרים ונשנים בקו העסקי מאז שעות הבוקר. בוצע ריסטרט מרחוק למודם ללא שיפור. נדרש תיאום טכנאי שטח.', 'בטיפול מומחה', 'גבוהה (High)');
+
+        INSERT INTO CaseHistory (CaseId, OccurredAt, Actor, ActionType, Description)
+        SELECT 55891, '12/09/2026 09:30', 'מוקדנית (שירן)', 'פתיחת פניה', 'הקריאה נוצרה עקב פנייה טלפונית מאיש הקשר באתר'
+        WHERE NOT EXISTS (SELECT 1 FROM CaseHistory WHERE CaseId=55891 AND OccurredAt='12/09/2026 09:30');
+
+        INSERT INTO CaseHistory (CaseId, OccurredAt, Actor, ActionType, Description)
+        SELECT 55891, '12/09/2026 10:15', 'דניאל כהן', 'בדיקה טכנית', 'נבדק אות בקו מול ספק התשתית - זוהו איבוד חבילות (Packet Loss)'
+        WHERE NOT EXISTS (SELECT 1 FROM CaseHistory WHERE CaseId=55891 AND OccurredAt='12/09/2026 10:15');
 
         INSERT OR IGNORE INTO Sites
             (Id, SystemId, Code, Name, Type, City, ContactName, Phone, Status)
@@ -257,3 +321,12 @@ sealed record SiteFormState(
     string City,
     string ContactName,
     string Phone);
+
+
+sealed record UpdateCaseRequest(
+    string Customer,
+    string? Site,
+    string? Category,
+    string? Assigned,
+    string Subject,
+    string? Notes);
