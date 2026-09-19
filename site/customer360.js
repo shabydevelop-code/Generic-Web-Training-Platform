@@ -1,4 +1,5 @@
 const CUSTOMER_ID = 10082;
+let currentSort = { field: "referenceNumber", direction: "asc" };
 
 document.addEventListener("DOMContentLoaded", () => {
   const form = document.getElementById("form-360");
@@ -11,6 +12,17 @@ document.addEventListener("DOMContentLoaded", () => {
 
   document.getElementById("c360-tier")?.addEventListener("change", () => form?.requestSubmit());
   document.getElementById("c360-manager")?.addEventListener("change", () => form?.requestSubmit());
+
+  document.querySelectorAll(".ps-grid-sort").forEach((button) => {
+    button.addEventListener("click", async () => {
+      const field = button.dataset.sort;
+      currentSort = {
+        field,
+        direction: currentSort.field === field && currentSort.direction === "asc" ? "desc" : "asc"
+      };
+      await loadCustomer();
+    });
+  });
 
   initializeCustomer();
 });
@@ -38,7 +50,8 @@ async function loadCustomerState(token) {
 
 async function loadCustomer() {
   try {
-    const response = await fetch("/api/customers/" + CUSTOMER_ID, { headers: { Accept: "application/json" } });
+    const query = new URLSearchParams({ sort: currentSort.field, direction: currentSort.direction });
+    const response = await fetch("/api/customers/" + CUSTOMER_ID + "?" + query.toString(), { headers: { Accept: "application/json" } });
     if (!response.ok) throw new Error("HTTP " + response.status);
     renderCustomer(await response.json());
   } catch (error) {
@@ -102,6 +115,8 @@ function renderCustomer(data) {
   const tenure = document.getElementById("c360-tenure");
   if (tenure) tenure.textContent = data.tenure ?? "";
 
+  updateSortIndicators();
+
   const body = document.getElementById("c360-summary-body");
   if (!body) return;
   body.replaceChildren();
@@ -155,4 +170,14 @@ function value(id) {
 function setValue(id, nextValue) {
   const element = document.getElementById(id);
   if (element) element.value = nextValue ?? "";
+}
+
+
+function updateSortIndicators() {
+  document.querySelectorAll(".ps-grid-sort").forEach((button) => {
+    const indicator = button.querySelector(".ps-sort-indicator");
+    const active = button.dataset.sort === currentSort.field;
+    if (indicator) indicator.textContent = active ? (currentSort.direction === "asc" ? " ▲" : " ▼") : "";
+    button.setAttribute("aria-sort", active ? (currentSort.direction === "asc" ? "ascending" : "descending") : "none");
+  });
 }
