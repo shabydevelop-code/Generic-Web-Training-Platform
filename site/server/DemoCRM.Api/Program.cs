@@ -160,6 +160,106 @@ app.MapPost("/api/cases/{id:long}/escalate", (long id) =>
     return command.ExecuteNonQuery() == 0 ? Results.NotFound() : Results.Ok(new { id, escalated = true });
 });
 
+
+app.MapGet("/api/leads/{id:long}", (long id) =>
+{
+    using var connection = new SqliteConnection(connectionString);
+    connection.Open();
+
+    using var command = connection.CreateCommand();
+    command.CommandText = """
+        SELECT Id, LeadNumber, Company, ContactName, Email, Source, Interest, Status, Potential
+        FROM Leads WHERE Id = $id;
+        """;
+    command.Parameters.AddWithValue("$id", id);
+
+    using var reader = command.ExecuteReader();
+    if (!reader.Read()) return Results.NotFound();
+
+    var lead = new
+    {
+        id = reader.GetInt64(0),
+        leadNumber = reader.GetString(1),
+        company = reader.GetString(2),
+        contactName = reader.GetString(3),
+        email = reader.GetString(4),
+        source = reader.GetString(5),
+        interest = reader.GetString(6),
+        status = reader.GetString(7),
+        potential = reader.GetString(8)
+    };
+    reader.Close();
+
+    using var pipelineCommand = connection.CreateCommand();
+    pipelineCommand.CommandText = """
+        SELECT LeadNumber, Company, ContactName, SourceLabel, Stage, CreatedAt, StatusClass
+        FROM LeadPipeline ORDER BY Id;
+        """;
+    using var pipelineReader = pipelineCommand.ExecuteReader();
+    var pipeline = new List<object>();
+    while (pipelineReader.Read())
+    {
+        pipeline.Add(new
+        {
+            leadNumber = pipelineReader.GetString(0),
+            company = pipelineReader.GetString(1),
+            contactName = pipelineReader.GetString(2),
+            sourceLabel = pipelineReader.GetString(3),
+            stage = pipelineReader.GetString(4),
+            createdAt = pipelineReader.GetString(5),
+            statusClass = pipelineReader.GetString(6)
+        });
+    }
+
+    return Results.Ok(new
+    {
+        lead.id, lead.leadNumber, lead.company, lead.contactName, lead.email,
+        lead.source, lead.interest, lead.status, lead.potential, pipeline
+    });
+});
+
+app.MapPut("/api/leads/{id:long}", (long id, UpdateLeadRequest request) =>
+{
+    if (string.IsNullOrWhiteSpace(request.Company) ||
+        string.IsNullOrWhiteSpace(request.ContactName) ||
+        string.IsNullOrWhiteSpace(request.Email))
+    {
+        return Results.BadRequest(new { message = "Company, contact name and email are required." });
+    }
+
+    using var connection = new SqliteConnection(connectionString);
+    connection.Open();
+    using var command = connection.CreateCommand();
+    command.CommandText = """
+        UPDATE Leads
+        SET Company=$company, ContactName=$contactName, Email=$email, Source=$source, Interest=$interest
+        WHERE Id=$id;
+        """;
+    command.Parameters.AddWithValue("$id", id);
+    command.Parameters.AddWithValue("$company", request.Company.Trim());
+    command.Parameters.AddWithValue("$contactName", request.ContactName.Trim());
+    command.Parameters.AddWithValue("$email", request.Email.Trim());
+    command.Parameters.AddWithValue("$source", request.Source?.Trim() ?? "");
+    command.Parameters.AddWithValue("$interest", request.Interest?.Trim() ?? "");
+
+    return command.ExecuteNonQuery() == 0
+        ? Results.NotFound()
+        : Results.Ok(new { id, saved = true });
+});
+
+app.MapPost("/api/leads/{id:long}/convert", (long id) =>
+{
+    using var connection = new SqliteConnection(connectionString);
+    connection.Open();
+    using var command = connection.CreateCommand();
+    command.CommandText = "UPDATE Leads SET Status = 'הומר ללקוח' WHERE Id = $id;";
+    command.Parameters.AddWithValue("$id", id);
+
+    return command.ExecuteNonQuery() == 0
+        ? Results.NotFound()
+        : Results.Ok(new { id, converted = true });
+});
+
 app.MapPost("/site/type-change", async (HttpRequest request) =>
 {
     var form = await request.ReadFormAsync();
@@ -259,6 +359,48 @@ static void InitializeDatabase(string connectionString)
             FOREIGN KEY (CaseId) REFERENCES Cases(Id) ON DELETE CASCADE
         );
 
+
+        CREATE TABLE IF NOT EXISTS Leads (
+            Id INTEGER PRIMARY KEY,
+            LeadNumber TEXT NOT NULL,
+            Company TEXT NOT NULL,
+            ContactName TEXT NOT NULL,
+            Email TEXT NOT NULL,
+            Source TEXT NOT NULL,
+            Interest TEXT NOT NULL,
+            Status TEXT NOT NULL,
+            Potential TEXT NOT NULL
+        );
+
+        CREATE TABLE IF NOT EXISTS LeadPipeline (
+            Id INTEGER PRIMARY KEY AUTOINCREMENT,
+            LeadNumber TEXT NOT NULL,
+            Company TEXT NOT NULL,
+            ContactName TEXT NOT NULL,
+            SourceLabel TEXT NOT NULL,
+            Stage TEXT NOT NULL,
+            CreatedAt TEXT NOT NULL,
+            StatusClass TEXT NOT NULL
+        );
+
+        INSERT OR IGNORE INTO Leads
+            (Id, LeadNumber, Company, ContactName, Email, Source, Interest, Status, Potential)
+        VALUES
+            (3094, 'LD-3094', 'נקסט-ג''ן פתרונות ענן', 'רונית שחם', 'ronit@nextgen.co.il',
+             'web', 'cloud_crm', 'ליד חם (Hot Lead)', '₪45,000');
+
+        INSERT INTO LeadPipeline (LeadNumber, Company, ContactName, SourceLabel, Stage, CreatedAt, StatusClass)
+        SELECT 'LD-3094', 'נקסט-ג''ן פתרונות ענן', 'רונית שחם', 'קמפיין דיגיטל', 'בדיקת היתכנות', '10/09/2026', 'ps-status-active'
+        WHERE NOT EXISTS (SELECT 1 FROM LeadPipeline WHERE LeadNumber='LD-3094');
+
+        INSERT INTO LeadPipeline (LeadNumber, Company, ContactName, SourceLabel, Stage, CreatedAt, StatusClass)
+        SELECT 'LD-3091', 'בנקאות דיגיטלית ישירה', 'עוז לוי', 'כנס פינטק', 'משא ומתן', '08/09/2026', 'ps-status-pending'
+        WHERE NOT EXISTS (SELECT 1 FROM LeadPipeline WHERE LeadNumber='LD-3091');
+
+        INSERT INTO LeadPipeline (LeadNumber, Company, ContactName, SourceLabel, Stage, CreatedAt, StatusClass)
+        SELECT 'LD-3085', 'לוגיסטיקה מהירה ארצית', 'מיכל בראל', 'המלצה', 'הצעה נשלחה', '01/09/2026', 'ps-status-closed'
+        WHERE NOT EXISTS (SELECT 1 FROM LeadPipeline WHERE LeadNumber='LD-3085');
+
         CREATE TABLE IF NOT EXISTS Assets (
             Id INTEGER PRIMARY KEY AUTOINCREMENT,
             SiteId INTEGER NOT NULL,
@@ -330,3 +472,11 @@ sealed record UpdateCaseRequest(
     string? Assigned,
     string Subject,
     string? Notes);
+
+
+sealed record UpdateLeadRequest(
+    string Company,
+    string ContactName,
+    string Email,
+    string? Source,
+    string? Interest);
