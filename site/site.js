@@ -38,13 +38,13 @@ async function initializeSite() {
   if (stateToken) {
     const restored = await loadServerState(stateToken);
     if (restored) {
-      showServerMessage(message);
+      showServerMessageAfterPageLoad(message);
       return;
     }
   }
 
   await loadSite();
-  showServerMessage(message);
+  showServerMessageAfterPageLoad(message);
 }
 
 async function loadServerState(token) {
@@ -82,12 +82,16 @@ async function loadServerState(token) {
   }
 }
 
-function showServerMessage(message) {
+function showServerMessageAfterPageLoad(message) {
   if (!message) {
     return;
   }
 
-  alert(message);
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      alert(message);
+    });
+  });
 }
 
 async function loadSite() {
