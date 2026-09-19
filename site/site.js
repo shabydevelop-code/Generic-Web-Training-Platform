@@ -10,7 +10,7 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   refreshButton?.addEventListener("click", () => {
-    loadSite();
+    location.reload();
   });
 
   loadSite();
@@ -33,7 +33,6 @@ async function loadSite() {
     alert("לא ניתן לטעון את נתוני האתר מהשרת.");
   }
 }
-
 
 async function saveSite() {
   const payload = {
@@ -59,8 +58,7 @@ async function saveSite() {
       throw new Error(`Failed to save site: HTTP ${response.status}`);
     }
 
-    await loadSite();
-    alert("נתוני האתר נשמרו בהצלחה.");
+    location.reload();
   } catch (error) {
     console.error("[Demo CRM] Unable to save site data.", error);
     alert("לא ניתן לשמור את נתוני האתר.");
@@ -139,7 +137,6 @@ function setValue(id, value) {
     element.value = value ?? "";
   }
 }
-
 
 function getValue(id) {
   const element = document.getElementById(id);
