@@ -1190,7 +1190,8 @@ static void EnsureDemoSiteGuide(string databasePath)
         ("#c360-tier", "שנה את סיווג הלקוח."),
         ("#c360-manager", "עדכן את מנהל תיק הלקוח."),
         ("#c360-mrr", "בדוק את המחזור החודשי. השרת דורש שהערך יכיל מספר."),
-        ("#btn-save-360", "לחץ על <strong>שמור פרטי לקוח</strong>. תקן שגיאות ולידציה אם יוצגו.")
+        ("#btn-save-360", "לחץ על <strong>שמור פרטי לקוח</strong>. תקן שגיאות ולידציה אם יוצגו."),
+        ("gwtp-grid:#c360-summary-body|4|\"בטיפול מומחה\"", "בטבלת הסיכום ניתן להתמקד גם בתא מסוים. כאן מסומן הסטטוס <strong>בטיפול מומחה</strong>.")
     };
 
     using var connection = OpenConnection(databasePath);
