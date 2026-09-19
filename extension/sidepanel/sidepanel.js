@@ -1217,6 +1217,7 @@ async function handleLogin() {
   await loadAdminUsers();
   await loadTopics();
   await loadGuides();
+  await loadLearnerCatalog();
 }
 
 async function handleLogout() {
