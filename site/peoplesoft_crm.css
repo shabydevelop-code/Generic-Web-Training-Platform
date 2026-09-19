@@ -398,3 +398,26 @@ body {
   font-size: 12px;
   font-weight: 600;
 }
+
+
+/* Server-sorted grid headers */
+.ps-grid-sort {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: inherit;
+  text-align: right;
+  cursor: pointer;
+  padding: 0;
+}
+.ps-grid-sort:hover,
+.ps-grid-sort:focus-visible {
+  text-decoration: underline;
+}
+.ps-sort-indicator {
+  display: inline-block;
+  min-width: 16px;
+  margin-inline-start: 4px;
+}
