@@ -1261,6 +1261,10 @@ async function handleLogin() {
   await loadTopics();
   await loadGuides();
   await loadLearnerCatalog();
+
+  if (window.authService.getCurrentRole() === "learner") {
+    await window.guideRunner.restoreActiveStep();
+  }
 }
 
 async function handleLogout() {
