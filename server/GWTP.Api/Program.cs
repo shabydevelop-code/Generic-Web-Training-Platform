@@ -615,6 +615,29 @@ app.MapPost("/api/learner/progress/move", (ProgressMoveRequest request, HttpCont
     return Results.Ok(new { guideId = request.GuideId, stepIndex = nextOrder - 1, totalSteps });
 });
 
+app.MapPost("/api/learner/progress/complete/{guideId:long}", (long guideId, HttpContext httpContext) =>
+{
+    var userId = GetAuthenticatedUserId(httpContext, sessions, sessionLock);
+    if (userId is null) return Results.Unauthorized();
+
+    using var connection = OpenConnection(databasePath);
+    using var command = connection.CreateCommand();
+    command.CommandText = """
+        UPDATE UserProgress
+        SET Status = 'Completed',
+            IsCompleted = 1,
+            LastActivityAt = CURRENT_TIMESTAMP,
+            CompletedAt = CURRENT_TIMESTAMP
+        WHERE UserId = $userId AND GuideId = $guideId AND IsCompleted = 0;
+        """;
+    command.Parameters.AddWithValue("$userId", userId.Value);
+    command.Parameters.AddWithValue("$guideId", guideId);
+
+    if (command.ExecuteNonQuery() == 0) return Results.NotFound();
+
+    return Results.Ok(new { guideId, completed = true });
+});
+
 app.MapGet("/api/learner/progress/active", (HttpContext httpContext) =>
 {
     var userId = GetAuthenticatedUserId(httpContext, sessions, sessionLock);
