@@ -27,3 +27,6 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     sendResponse({ success: true });
   }
 });
+
+
+chrome.runtime.sendMessage({ type: "GWTP_PAGE_READY" }).catch(() => {});
