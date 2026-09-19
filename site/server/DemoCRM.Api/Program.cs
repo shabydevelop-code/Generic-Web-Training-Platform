@@ -15,6 +15,7 @@ Directory.CreateDirectory(databaseDirectory);
 var SiteFormStates = new Dictionary<string, SiteFormState>();
 var CaseFormStates = new Dictionary<string, CaseFormState>();
 var LeadFormStates = new Dictionary<string, LeadFormState>();
+var Customer360FormStates = new Dictionary<string, Customer360FormState>();
 
 var connectionString = new SqliteConnectionStringBuilder
 {
@@ -266,6 +267,67 @@ app.MapPost("/api/leads/{id:long}/convert", (long id) =>
 });
 
 
+
+app.MapGet("/api/customers/{id:long}", (long id) =>
+{
+    using var connection = new SqliteConnection(connectionString);
+    connection.Open();
+    using var command = connection.CreateCommand();
+    command.CommandText = "SELECT AccountNumber, CompanyId, Name, Tier, Mrr, Manager, CreditRating, Status, Tenure FROM Customers WHERE Id=$id;";
+    command.Parameters.AddWithValue("$id", id);
+    using var reader = command.ExecuteReader();
+    if (!reader.Read()) return Results.NotFound();
+    var customer = new { accountNumber=reader.GetString(0), companyId=reader.GetString(1), name=reader.GetString(2), tier=reader.GetString(3), mrr=reader.GetString(4), manager=reader.GetString(5), creditRating=reader.GetString(6), status=reader.GetString(7), tenure=reader.GetString(8) };
+    reader.Close();
+    var summary = LoadCustomerSummary(connection, id);
+    return Results.Ok(new { customer.accountNumber, customer.companyId, customer.name, customer.tier, customer.mrr, customer.manager, customer.creditRating, customer.status, customer.tenure, summary });
+});
+
+app.MapPut("/api/customers/{id:long}", (long id, UpdateCustomerRequest request) =>
+{
+    var errors = new Dictionary<string, string>();
+    if (string.IsNullOrWhiteSpace(request.Name) || request.Name.Trim().Length < 3) errors["c360-name"] = "שם התאגיד חייב להכיל לפחות 3 תווים.";
+    if (string.IsNullOrWhiteSpace(request.Tier)) errors["c360-tier"] = "יש לבחור סיווג לקוח.";
+    if (string.IsNullOrWhiteSpace(request.Mrr) || !System.Text.RegularExpressions.Regex.IsMatch(request.Mrr, @"\d")) errors["c360-mrr"] = "יש להזין מחזור חודשי הכולל ערך מספרי.";
+    if (string.IsNullOrWhiteSpace(request.Manager) || request.Manager.Trim().Length < 2) errors["c360-manager"] = "יש להזין מנהל תיק לקוח.";
+    if (errors.Count > 0) return Results.BadRequest(new { message = "לא ניתן לשמור את תיק הלקוח. יש לתקן את השדות המסומנים.", errors });
+
+    using var connection = new SqliteConnection(connectionString);
+    connection.Open();
+    using var command = connection.CreateCommand();
+    command.CommandText = "UPDATE Customers SET Name=$name, Tier=$tier, Mrr=$mrr, Manager=$manager WHERE Id=$id;";
+    command.Parameters.AddWithValue("$id", id);
+    command.Parameters.AddWithValue("$name", request.Name.Trim());
+    command.Parameters.AddWithValue("$tier", request.Tier.Trim());
+    command.Parameters.AddWithValue("$mrr", request.Mrr.Trim());
+    command.Parameters.AddWithValue("$manager", request.Manager.Trim());
+    return command.ExecuteNonQuery() == 0 ? Results.NotFound() : Results.Ok(new { id, saved=true });
+});
+
+app.MapPost("/customer360/field-change", async (HttpRequest request) =>
+{
+    var form = await request.ReadFormAsync();
+    var state = new Customer360FormState(form["name"].ToString(), form["tier"].ToString(), form["mrr"].ToString(), form["manager"].ToString());
+    var token = Guid.NewGuid().ToString("N");
+    Customer360FormStates[token] = state;
+    return Results.Redirect($"/customer360.html?state={Uri.EscapeDataString(token)}");
+});
+
+app.MapGet("/api/customer360-state/{token}", (string token) =>
+{
+    if (!Customer360FormStates.TryGetValue(token, out var state)) return Results.NotFound();
+    using var connection = new SqliteConnection(connectionString);
+    connection.Open();
+    using var command = connection.CreateCommand();
+    command.CommandText = "SELECT AccountNumber, CompanyId, CreditRating, Status, Tenure FROM Customers WHERE Id=10082;";
+    using var reader = command.ExecuteReader();
+    if (!reader.Read()) return Results.NotFound();
+    var accountNumber=reader.GetString(0); var companyId=reader.GetString(1); var creditRating=reader.GetString(2); var status=reader.GetString(3); var tenure=reader.GetString(4);
+    reader.Close();
+    var summary=LoadCustomerSummary(connection, 10082);
+    return Results.Ok(new { accountNumber, companyId, name=state.Name, tier=state.Tier, mrr=state.Mrr, manager=state.Manager, creditRating, status, tenure, summary });
+});
+
 app.MapPost("/case/field-change", async (HttpRequest request) =>
 {
     var form = await request.ReadFormAsync();
@@ -392,6 +454,17 @@ app.MapPut("/api/sites/{id:long}", (long id, UpdateSiteRequest request) =>
     return Results.Ok(new { id, saved = true });
 });
 
+static List<object> LoadCustomerSummary(SqliteConnection connection, long customerId)
+{
+    using var command = connection.CreateCommand();
+    command.CommandText = "SELECT ReferenceNumber, Type, Service, Status, Date, StatusClass FROM CustomerSummary WHERE CustomerId=$id ORDER BY Id;";
+    command.Parameters.AddWithValue("$id", customerId);
+    using var reader = command.ExecuteReader();
+    var items = new List<object>();
+    while (reader.Read()) items.Add(new { referenceNumber=reader.GetString(0), type=reader.GetString(1), service=reader.GetString(2), status=reader.GetString(3), date=reader.GetString(4), statusClass=reader.GetString(5) });
+    return items;
+}
+
 app.Run();
 
 static void InitializeDatabase(string connectionString)
@@ -466,6 +539,32 @@ static void InitializeDatabase(string connectionString)
         INSERT INTO LeadPipeline (LeadNumber, Company, ContactName, SourceLabel, Stage, CreatedAt, StatusClass)
         SELECT 'LD-3085', 'לוגיסטיקה מהירה ארצית', 'מיכל בראל', 'המלצה', 'הצעה נשלחה', '01/09/2026', 'ps-status-closed'
         WHERE NOT EXISTS (SELECT 1 FROM LeadPipeline WHERE LeadNumber='LD-3085');
+
+
+        CREATE TABLE IF NOT EXISTS Customers (
+            Id INTEGER PRIMARY KEY, AccountNumber TEXT NOT NULL, CompanyId TEXT NOT NULL, Name TEXT NOT NULL,
+            Tier TEXT NOT NULL, Mrr TEXT NOT NULL, Manager TEXT NOT NULL, CreditRating TEXT NOT NULL,
+            Status TEXT NOT NULL, Tenure TEXT NOT NULL
+        );
+
+        CREATE TABLE IF NOT EXISTS CustomerSummary (
+            Id INTEGER PRIMARY KEY AUTOINCREMENT, CustomerId INTEGER NOT NULL, ReferenceNumber TEXT NOT NULL,
+            Type TEXT NOT NULL, Service TEXT NOT NULL, Status TEXT NOT NULL, Date TEXT NOT NULL, StatusClass TEXT NOT NULL,
+            FOREIGN KEY (CustomerId) REFERENCES Customers(Id) ON DELETE CASCADE
+        );
+
+        INSERT OR IGNORE INTO Customers (Id, AccountNumber, CompanyId, Name, Tier, Mrr, Manager, CreditRating, Status, Tenure)
+        VALUES (10082, 'ACC-10082', '514892019', 'אלפא טכנולוגיות בע''מ', 'platinum', '₪38,500 לחודש', 'אורן שגיא', 'AAA (ללא חריגות)', 'לקוח VIP אסטרטגי', 'ותק: 4 שנים (משנת 2022)');
+
+        INSERT INTO CustomerSummary (CustomerId, ReferenceNumber, Type, Service, Status, Date, StatusClass)
+        SELECT 10082, 'CAS-55891', 'פניית שירות', 'מגדל שלום - תל אביב', 'בטיפול מומחה', '12/09/2026', 'ps-status-pending'
+        WHERE NOT EXISTS (SELECT 1 FROM CustomerSummary WHERE CustomerId=10082 AND ReferenceNumber='CAS-55891');
+        INSERT INTO CustomerSummary (CustomerId, ReferenceNumber, Type, Service, Status, Date, StatusClass)
+        SELECT 10082, 'CTR-88102', 'הסכם SLA פרימיום', 'כלל אתרי הארגון', 'בתוקף עד 2028', '01/01/2024', 'ps-status-active'
+        WHERE NOT EXISTS (SELECT 1 FROM CustomerSummary WHERE CustomerId=10082 AND ReferenceNumber='CTR-88102');
+        INSERT INTO CustomerSummary (CustomerId, ReferenceNumber, Type, Service, Status, Date, StatusClass)
+        SELECT 10082, 'LD-3094', 'הזדמנות הרחבה', 'אינטגרציית ענן היברידי', 'בדיקת היתכנות', '10/09/2026', 'ps-status-active'
+        WHERE NOT EXISTS (SELECT 1 FROM CustomerSummary WHERE CustomerId=10082 AND ReferenceNumber='LD-3094');
 
         CREATE TABLE IF NOT EXISTS Assets (
             Id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -550,3 +649,6 @@ sealed record UpdateLeadRequest(
 
 sealed record CaseFormState(string Customer, string Site, string Category, string Assigned, string Subject, string Notes);
 sealed record LeadFormState(string Company, string ContactName, string Email, string Source, string Interest);
+
+sealed record UpdateCustomerRequest(string Name, string Tier, string Mrr, string Manager);
+sealed record Customer360FormState(string Name, string Tier, string Mrr, string Manager);
