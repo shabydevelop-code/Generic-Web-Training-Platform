@@ -1258,7 +1258,9 @@ sealed record LearnerTopicResponse(
     string Name,
     List<LearnerGuideResponse> Guides);
 
-sealed record ProgressMoveRequest(long GuideId, int Direction);\n\nsealed record LoginRequest(string Username, string Password);
+sealed record ProgressMoveRequest(long GuideId, int Direction);
+
+sealed record LoginRequest(string Username, string Password);
 
 sealed record LoginResponse(
     long Id,
