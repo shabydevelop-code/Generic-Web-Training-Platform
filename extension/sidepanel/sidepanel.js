@@ -1091,8 +1091,9 @@ function renderSteps() {
     const title = document.createElement("strong");
     title.textContent = `Step ${step.order}`;
 
-    const instruction = document.createElement("p");
-    instruction.textContent = step.instruction;
+    const instruction = document.createElement("div");
+    instruction.className = "step-item__instruction";
+    instruction.innerHTML = sanitizeInstructionHtml(step.instruction || "");
 
     const selector = document.createElement("code");
     selector.textContent = step.selector;
