@@ -1,13 +1,36 @@
 const LEAD_ID = 3094;
 
 document.addEventListener("DOMContentLoaded", () => {
-  document.getElementById("form-lead")?.addEventListener("submit", async (event) => {
-    event.preventDefault();
-    await saveLead();
+  const form = document.getElementById("form-lead");
+  form?.addEventListener("submit", async (event) => {
+    if (event.submitter?.id === "btn-save-lead") {
+      event.preventDefault();
+      await saveLead();
+    }
   });
+  document.getElementById("lead-source")?.addEventListener("change", () => form?.requestSubmit());
+  document.getElementById("lead-interest")?.addEventListener("change", () => form?.requestSubmit());
   document.getElementById("btn-convert-lead")?.addEventListener("click", convertLead);
-  loadLead();
+  initializeLead();
 });
+
+async function initializeLead() {
+  const token = new URLSearchParams(location.search).get("state");
+  if (token && await loadLeadState(token)) return;
+  await loadLead();
+}
+
+async function loadLeadState(token) {
+  try {
+    const response = await fetch("/api/lead-state/" + encodeURIComponent(token), { headers: { Accept: "application/json" } });
+    if (!response.ok) return false;
+    renderLead(await response.json());
+    return true;
+  } catch (error) {
+    console.error("[Demo CRM] Unable to restore lead state.", error);
+    return false;
+  }
+}
 
 async function loadLead() {
   try {
