@@ -501,6 +501,7 @@ async function openExistingGuide(guideId) {
 
     editingGuideId = guide.id;
     editingGuideSnapshot = guide;
+    saveGuideButton.textContent = window.i18nService.translate("updateGuideButton", language);
     guideEditorTitle.textContent = window.i18nService.translate("guideEditorTitle", language);
     guideEditorDescription.textContent = window.i18nService.translate("guideEditorDescription", language);
     editGuideDeleteSection.hidden = false;
@@ -546,6 +547,7 @@ function openNewGuide() {
   const language = window.i18nService.getLanguage();
   editingGuideId = null;
   editingGuideSnapshot = null;
+  saveGuideButton.textContent = window.i18nService.translate("saveGuideButton", language);
   guideEditorTitle.textContent = window.i18nService.translate("newGuideEditorTitle", language);
   guideEditorDescription.textContent = window.i18nService.translate("newGuideEditorDescription", language);
   editGuideDeleteSection.hidden = true;
