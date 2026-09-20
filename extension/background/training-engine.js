@@ -292,6 +292,15 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   }
 
   if (message?.type === "GWTP_TRAINING_STOP") {
-    sendResponse({ success: true });
+    const tabId = _sender?.tab?.id ?? message.tabId ?? null;
+    if (!Number.isInteger(tabId)) {
+      sendResponse({ success: true });
+      return;
+    }
+
+    setPendingNavigation(_sender, null, tabId)
+      .then(() => sendResponse({ success: true }))
+      .catch((error) => sendResponse({ success: false, message: error.message }));
+    return true;
   }
 });
