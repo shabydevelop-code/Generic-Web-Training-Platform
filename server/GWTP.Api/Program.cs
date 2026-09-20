@@ -1223,8 +1223,12 @@ app.Run();
 static bool IsValidStepValidation(ValidationRule? validation)
 {
     if (validation is null) return true;
-    if (!string.Equals(validation.Engine, "regex", StringComparison.OrdinalIgnoreCase)) return false;
     if (string.IsNullOrWhiteSpace(validation.Expression) || string.IsNullOrWhiteSpace(validation.ErrorMessage)) return false;
+
+    if (string.Equals(validation.Engine, "changed", StringComparison.OrdinalIgnoreCase))
+        return string.Equals(validation.Expression, "__changed__", StringComparison.Ordinal);
+
+    if (!string.Equals(validation.Engine, "regex", StringComparison.OrdinalIgnoreCase)) return false;
 
     try
     {
@@ -1432,7 +1436,6 @@ static void EnsureDemoSiteGuide(string databasePath)
             ("#site-phone", "^(?!03-5551235$)(?:05\\d[- ]?\\d{7}|0[2-4,8-9][- ]?\\d{7})$", "יש לשנות את מספר הטלפון למספר אחר ותקין: נייד בן 10 ספרות או נייח בן 9 ספרות. ניתן להשתמש במקף.", "regex", "^(?!03-5551235$)(?:05\\d[- ]?\\d{7}|0[2-4,8-9][- ]?\\d{7})$"),
             ("#site-type", "^branch$", "יש לבחור סניף מכירות לפני המעבר לשלב הבא.", "regex", "^branch$"),
             ("#case-category", "^(?!network$).+$", "יש לבחור קטגוריית פניה שונה לפני המעבר לשלב הבא.", "regex", "^(?!network$).+$"),
-            ("#case-assigned", "^(?!דניאל כהן$)(?=.*\\S).+$", "יש לעדכן את הנציג המטפל לפני המעבר לשלב הבא.", "regex", "^(?!דניאל כהן$)(?=.*\\S).+$"),
             ("#case-subject", "^(?!איטיות בגלישה ונפילות קו תקשורת ראשי$)(?=.{10,}$).+", "יש לעדכן את נושא הפניה לנושא חדש בן 10 תווים לפחות.", "regex", "^(?!איטיות בגלישה ונפילות קו תקשורת ראשי$)(?=.{10,}$).+"),
             ("#lead-source", "^(?!web$).+$", "יש לשנות את מקור הליד לפני המעבר לשלב הבא.", "regex", "^(?!web$).+$"),
             ("#lead-interest", "^(?!cloud_crm$).+$", "יש לשנות את המוצר המבוקש לפני המעבר לשלב הבא.", "regex", "^(?!cloud_crm$).+$"),
@@ -1463,6 +1466,23 @@ static void EnsureDemoSiteGuide(string databasePath)
             validationCommand.Parameters.AddWithValue("$builderType", validation.BuilderType);
             validationCommand.Parameters.AddWithValue("$builderValue", validation.BuilderValue);
             validationCommand.ExecuteNonQuery();
+        }
+
+        using (var changedValidationCommand = connection.CreateCommand())
+        {
+            changedValidationCommand.Transaction = transaction;
+            changedValidationCommand.CommandText = """
+                UPDATE GuideSteps
+                SET ValidationEngine = 'changed',
+                    ValidationExpression = '__changed__',
+                    ValidationErrorMessage = 'יש לשנות את הנציג המטפל לפני המעבר לשלב הבא.',
+                    ValidationBuilderType = 'changed',
+                    ValidationBuilderValue = ''
+                WHERE GuideId = $guideId
+                  AND Selector = '#case-assigned';
+                """;
+            changedValidationCommand.Parameters.AddWithValue("$guideId", existingDemoGuideId);
+            changedValidationCommand.ExecuteNonQuery();
         }
 
         var instructionMigrations = new (string Selector, string OldInstruction, string NewInstruction)[]
