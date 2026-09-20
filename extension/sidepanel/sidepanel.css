@@ -178,6 +178,34 @@ select:focus {
   gap: 10px;
 }
 
+.steps-section__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.steps-section__header h2 {
+  margin: 0;
+}
+
+.steps-save-status {
+  min-height: 18px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #667085;
+  text-align: end;
+}
+
+.steps-save-status[data-type="success"] {
+  color: #067647;
+}
+
+.steps-save-status[data-type="error"] {
+  color: #b42318;
+}
+
 .step-item {
   position: relative;
   padding: 12px 36px 12px 12px;
