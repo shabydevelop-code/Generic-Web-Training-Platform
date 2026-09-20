@@ -3,6 +3,8 @@ const GWTP_GUIDANCE_ACCENT_SHADOW = globalThis.gwtpVisualConfig?.guidanceAccentS
 
 let gwtpTrainingOverlay = null;
 let gwtpTrainingTarget = null;
+let gwtpTrainingStepKey = null;
+let gwtpTrainingInitialValue = null;
 
 function clearTrainingStep() {
   if (gwtpTrainingOverlay) {
@@ -184,7 +186,18 @@ function showTrainingStep(step, navigation = {}) {
     return target.textContent || "";
   };
 
-  const initialTargetValue = getTargetValue();
+  const stepKey = [
+    navigation.mode || "learner",
+    Number.isInteger(navigation.stepIndex) ? navigation.stepIndex : 0,
+    step.selector
+  ].join("|");
+
+  if (gwtpTrainingStepKey !== stepKey) {
+    gwtpTrainingStepKey = stepKey;
+    gwtpTrainingInitialValue = getTargetValue();
+  }
+
+  const initialTargetValue = gwtpTrainingInitialValue;
 
   const validateCurrentStep = () => {
     const validation = step.validation;
@@ -256,6 +269,8 @@ function showTrainingStep(step, navigation = {}) {
             return;
           }
 
+          gwtpTrainingStepKey = null;
+          gwtpTrainingInitialValue = null;
           clearTrainingStep();
           clearHighlight();
 
@@ -303,6 +318,8 @@ function showTrainingStep(step, navigation = {}) {
             guideId: response.result?.guideId
           }).catch(() => {});
 
+          gwtpTrainingStepKey = null;
+          gwtpTrainingInitialValue = null;
           clearTrainingStep();
           clearHighlight();
 
