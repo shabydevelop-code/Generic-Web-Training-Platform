@@ -2120,9 +2120,14 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   }
 
   if (message?.type === "GWTP_PAGE_READY") {
-    window.guideRunner.restoreActiveStep().catch((error) => {
-      console.info("GWTP active step restore skipped:", error);
-    });
+    window.guideRunner.resumePendingNavigation()
+      .then((resumed) => {
+        if (resumed) return;
+        return window.guideRunner.restoreActiveStep();
+      })
+      .catch((error) => {
+        console.info("GWTP active step restore skipped:", error);
+      });
     return;
   }
 
