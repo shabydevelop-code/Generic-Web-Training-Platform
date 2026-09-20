@@ -1476,7 +1476,20 @@ static void EnsureDemoSiteGuide(string databasePath)
             changedPhoneValidationCommand.CommandText = """
                 UPDATE GuideSteps
                 SET ValidationEngine = 'changed_regex',
-                    ValidationExpression = '^(?:05\d[- ]?\d{7}|0[2-4,8-9][- ]?\d{7})
+                    ValidationExpression = $expression,
+                    ValidationErrorMessage = $errorMessage,
+                    ValidationBuilderType = 'regex',
+                    ValidationBuilderValue = $expression
+                WHERE GuideId = $guideId
+                  AND Selector = '#site-phone';
+                """;
+            changedPhoneValidationCommand.Parameters.AddWithValue("$guideId", existingDemoGuideId);
+            changedPhoneValidationCommand.Parameters.AddWithValue("$expression", "^(?:05\\d[- ]?\\d{7}|0[2-4,8-9][- ]?\\d{7})$");
+            changedPhoneValidationCommand.Parameters.AddWithValue("$errorMessage", "יש לשנות את מספר הטלפון למספר אחר ותקין: נייד בן 10 ספרות או נייח בן 9 ספרות. ניתן להשתמש במקף.");
+            changedPhoneValidationCommand.ExecuteNonQuery();
+        }
+
+        using (var changedValidationCommand = connection.CreateCommand())
         {
             changedValidationCommand.Transaction = transaction;
             changedValidationCommand.CommandText = """
