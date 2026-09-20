@@ -1134,7 +1134,7 @@ function renderSelectedFrame(element) {
 }
 
 function escapeRegexValue(value) {
-  return value.replace(/[.*+?^$()|[\]\\{}]/g, "\\function updateStepSaveValidity() {");
+  return value.replace(/[.*+?^$()|[\]\\{}]/g, (match) => "\\" + match);
 }
 
 function updateValidationBuilder() {
