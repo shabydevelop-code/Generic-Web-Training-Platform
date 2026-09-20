@@ -1658,7 +1658,7 @@ static void EnsureDemoSiteGuide(string databasePath)
         ("#site-phone", "שנה את מספר הטלפון למספר חדש."),
         ("#site-type", "שנה את סוג האתר ל<strong>סניף מכירות</strong>."),
         ("#btn-save-site", "לחץ על <strong>שמור שינויים</strong> כדי לשמור את נתוני האתר. אם השמירה הסתיימה ללא שגיאות, לחץ על <strong>הבא</strong>."),
-        ("#nav-case", "כעת עבור למסך <strong>פניה</strong>."),
+        ("#btn-open-case-from-site", "לחץ על <strong>פתח פניה לאתר זה</strong>."),
         ("#case-category", "בחר קטגוריה מתאימה לפנייה, שאינה <strong>תקלות תקשורת ורשת</strong>."),
         ("#case-assigned", "עדכן את הנציג המטפל בפניה."),
         ("#case-subject", "עדכן את נושא הפניה. שים לב שהשרת מבצע ולידציה בעת השמירה."),
@@ -1779,6 +1779,23 @@ static void EnsureDemoSiteGuide(string databasePath)
             validationCommand.Parameters.AddWithValue("$builderType", validation.BuilderType);
             validationCommand.Parameters.AddWithValue("$builderValue", validation.BuilderValue);
             validationCommand.ExecuteNonQuery();
+        }
+
+        using (var caseNavigationMigration = connection.CreateCommand())
+        {
+            caseNavigationMigration.Transaction = transaction;
+            caseNavigationMigration.CommandText = """
+                UPDATE GuideSteps
+                SET Selector = '#btn-open-case-from-site',
+                    Instruction = 'לחץ על <strong>פתח פניה לאתר זה</strong>.',
+                    FrameTarget = $contentFrame
+                WHERE GuideId = $guideId
+                  AND Selector = '#nav-case';
+                """;
+            caseNavigationMigration.Parameters.AddWithValue("$guideId", existingDemoGuideId);
+            caseNavigationMigration.Parameters.AddWithValue("$contentFrame", JsonSerializer.Serialize(
+                new FrameTarget(false, null, "TargetContent", "ptifrmtgtframe", "TargetContent", "Main Content")));
+            caseNavigationMigration.ExecuteNonQuery();
         }
 
         var instructionMigrations = new (string Selector, string OldInstruction, string NewInstruction)[]
