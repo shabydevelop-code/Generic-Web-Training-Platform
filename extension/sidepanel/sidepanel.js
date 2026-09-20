@@ -83,6 +83,7 @@ const retryLearningButton = document.getElementById("retryLearningButton");
 const recoveryRestartLearningButton = document.getElementById("recoveryRestartLearningButton");
 const recoveryExitLearningButton = document.getElementById("recoveryExitLearningButton");
 let learnerSessionActive = false;
+let learnerRecoveryCurrentStep = null;
 const learnerStatus = document.getElementById("learnerStatus");
 let learnerCatalog = [];
 const createModeView = document.getElementById("createModeView");
@@ -399,6 +400,7 @@ function refreshSelectedLearnerGuideUi() {
 function hideLearnerRecovery() {
   learnerRecoveryPanel.hidden = true;
   learnerRecoveryMessage.textContent = "";
+  learnerRecoveryCurrentStep = null;
 
   if (!learnerSessionActive) {
     startLearningButton.hidden = false;
@@ -409,7 +411,8 @@ function hideLearnerRecovery() {
   }
 }
 
-function showLearnerRecovery() {
+function showLearnerRecovery(current = null) {
+  learnerRecoveryCurrentStep = current;
   const language = window.i18nService.getLanguage();
   learnerRecoveryMessage.textContent = window.i18nService.translate("resumeElementNotFound", language);
   startLearningButton.hidden = true;
@@ -418,6 +421,27 @@ function showLearnerRecovery() {
   learnerRecoveryPanel.hidden = false;
   learnerStatus.textContent = "";
   learnerStatus.removeAttribute("data-type");
+}
+
+async function handleRetryLearning() {
+  const current = learnerRecoveryCurrentStep;
+  if (!current) return;
+
+  retryLearningButton.disabled = true;
+  try {
+    const result = await window.guideRunner.retryCurrentStep(current);
+    if (!result?.success) return;
+
+    learnerRecoveryPanel.hidden = true;
+    learnerRecoveryMessage.textContent = "";
+    learnerRecoveryCurrentStep = null;
+    learnerSessionActive = true;
+    handleLearnerGuideChange();
+  } catch (error) {
+    console.error("Could not retry learner step.", error);
+  } finally {
+    retryLearningButton.disabled = false;
+  }
 }
 
 async function handleRestartLearning() {
@@ -476,7 +500,7 @@ async function handleStartLearning() {
     if (isInProgress) {
       const resumeResult = await window.guideRunner.resume(guide);
       if (!resumeResult?.success && resumeResult?.reason === "element-not-found") {
-        showLearnerRecovery();
+        showLearnerRecovery(resumeResult.current);
         return;
       }
       if (!resumeResult?.success) {
@@ -2073,7 +2097,7 @@ learnerGuideSelect.addEventListener("change", handleLearnerGuideChange);
 startLearningButton.addEventListener("click", handleStartLearning);
 restartLearningButton.addEventListener("click", handleRestartLearning);
 exitLearningButton.addEventListener("click", handleExitLearning);
-retryLearningButton.addEventListener("click", handleStartLearning);
+retryLearningButton.addEventListener("click", handleRetryLearning);
 recoveryRestartLearningButton.addEventListener("click", handleRestartLearning);
 recoveryExitLearningButton.addEventListener("click", handleExitLearning);
 openTopicsButton.addEventListener("click", openTopics);
