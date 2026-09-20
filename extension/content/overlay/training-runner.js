@@ -195,37 +195,53 @@ async function showTrainingStep(step, navigation = {}) {
     step.selector
   ].join("|");
 
+  let validationState = null;
+  const usesChangedValidation =
+    step.validation?.engine === "changed" || step.validation?.engine === "changed_regex";
+  const validationStateKey = `gwtp:validation-state:${stepKey}`;
+
   if (gwtpTrainingStepKey !== stepKey) {
     gwtpTrainingStepKey = stepKey;
 
-    if (step.validation?.engine === "changed" || step.validation?.engine === "changed_regex") {
-      const storageKey = `gwtp:validation-baseline:${stepKey}`;
-      const baselineResponse = await chrome.runtime.sendMessage({
-        type: "GWTP_VALIDATION_BASELINE_GET_OR_CREATE",
-        key: storageKey,
-        value: getTargetValue()
+    if (usesChangedValidation) {
+      const stateResponse = await chrome.runtime.sendMessage({
+        type: "GWTP_VALIDATION_STATE_GET_OR_CREATE",
+        key: validationStateKey,
+        baseline: getTargetValue()
       });
-      gwtpTrainingInitialValue = baselineResponse?.value ?? getTargetValue();
+      validationState = stateResponse?.state || {
+        baseline: getTargetValue(),
+        satisfied: false
+      };
+      gwtpTrainingInitialValue = validationState.baseline;
     } else {
       gwtpTrainingInitialValue = getTargetValue();
     }
+  } else if (usesChangedValidation) {
+    const stateResponse = await chrome.runtime.sendMessage({
+      type: "GWTP_VALIDATION_STATE_GET_OR_CREATE",
+      key: validationStateKey,
+      baseline: gwtpTrainingInitialValue ?? getTargetValue()
+    });
+    validationState = stateResponse?.state || {
+      baseline: gwtpTrainingInitialValue ?? getTargetValue(),
+      satisfied: false
+    };
   }
 
   const initialTargetValue = gwtpTrainingInitialValue;
 
-  const clearValidationBaseline = async () => {
-    if (step.validation?.engine !== "changed" && step.validation?.engine !== "changed_regex") return;
-    await chrome.runtime.sendMessage({
-      type: "GWTP_VALIDATION_BASELINE_REMOVE",
-      key: `gwtp:validation-baseline:${stepKey}`
-    });
-  };
-
-  const validateCurrentStep = () => {
+  const validateCurrentStep = async () => {
     const validation = step.validation;
     if (!validation?.expression) return true;
 
-    if (validation.engine === "changed" || validation.engine === "changed_regex") {
+    if (usesChangedValidation) {
+      if (validationState?.satisfied) {
+        validationError.style.display = "none";
+        validationError.textContent = "";
+        return true;
+      }
+
       const currentValue = getTargetValue();
       const changed = currentValue !== initialTargetValue;
       let formatValid = true;
@@ -241,8 +257,18 @@ async function showTrainingStep(step, navigation = {}) {
       const isValid = changed && formatValid;
       validationError.style.display = isValid ? "none" : "block";
       validationError.textContent = isValid ? "" : (validation.errorMessage || "");
-      if (!isValid) target.focus?.();
-      return isValid;
+      if (!isValid) {
+        target.focus?.();
+        return false;
+      }
+
+      const satisfiedResponse = await chrome.runtime.sendMessage({
+        type: "GWTP_VALIDATION_STATE_SATISFY",
+        key: validationStateKey
+      });
+      if (!satisfiedResponse?.success) return false;
+      validationState = satisfiedResponse.state;
+      return true;
     }
 
     if (validation.engine && validation.engine !== "regex") return true;
@@ -281,8 +307,8 @@ async function showTrainingStep(step, navigation = {}) {
     button.style.cursor = disabled ? "default" : "pointer";
 
     if (!disabled) {
-      button.addEventListener("click", () => {
-        if ((action === "GWTP_TRAINING_NEXT" || action === "GWTP_PREVIEW_NEXT") && !validateCurrentStep()) return;
+      button.addEventListener("click", async () => {
+        if ((action === "GWTP_TRAINING_NEXT" || action === "GWTP_PREVIEW_NEXT") && !(await validateCurrentStep())) return;
         button.disabled = true;
 
         chrome.runtime.sendMessage({ type: action }).then((response) => {
@@ -290,8 +316,6 @@ async function showTrainingStep(step, navigation = {}) {
             button.disabled = false;
             return;
           }
-
-          clearValidationBaseline().catch(() => {});
           gwtpTrainingStepKey = null;
           gwtpTrainingInitialValue = null;
           clearTrainingStep();
@@ -331,8 +355,8 @@ async function showTrainingStep(step, navigation = {}) {
     finishButton.style.borderRadius = "7px";
     finishButton.style.background = "#ffffff";
     finishButton.style.cursor = "pointer";
-    finishButton.addEventListener("click", () => {
-      if (!validateCurrentStep()) return;
+    finishButton.addEventListener("click", async () => {
+      if (!(await validateCurrentStep())) return;
       finishButton.disabled = true;
       chrome.runtime.sendMessage({ type: isPreview ? "GWTP_PREVIEW_COMPLETE" : "GWTP_TRAINING_COMPLETE" }).then((response) => {
         if (response?.success) {
@@ -340,8 +364,6 @@ async function showTrainingStep(step, navigation = {}) {
             type: isPreview ? "GWTP_PREVIEW_COMPLETED" : "GWTP_TRAINING_COMPLETED",
             guideId: response.result?.guideId
           }).catch(() => {});
-
-          clearValidationBaseline().catch(() => {});
           gwtpTrainingStepKey = null;
           gwtpTrainingInitialValue = null;
           clearTrainingStep();
