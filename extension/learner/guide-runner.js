@@ -134,6 +134,17 @@
     });
   }
 
+  async function showCurrentStep(current) {
+    if (!current?.step) return false;
+
+    await showFirstStep({
+      steps: [current.step],
+      stepIndex: current.stepIndex,
+      totalSteps: current.totalSteps || 1
+    });
+    return true;
+  }
+
   async function restoreActiveStep() {
     const response = await chrome.runtime.sendMessage({
       type: "GWTP_TRAINING_GET_CURRENT"
@@ -141,16 +152,12 @@
 
     if (!response?.success || !response.current?.step) return false;
 
-    await showFirstStep({
-      steps: [response.current.step],
-      stepIndex: response.current.stepIndex,
-      totalSteps: response.current.totalSteps || 1
-    });
-    return true;
+    return showCurrentStep(response.current);
   }
 
   window.guideRunner = {
     start,
-    restoreActiveStep
+    restoreActiveStep,
+    showCurrentStep
   };
 })();
