@@ -159,14 +159,18 @@ async function showTrainingStep(step, navigation = {}) {
   dragHandle.addEventListener("pointerup", stopDragging);
   dragHandle.addEventListener("pointercancel", stopDragging);
 
+  const instructionHost = document.createElement("div");
+  instructionHost.style.display = "block";
+  instructionHost.style.minHeight = "1px";
+
+  const instructionRoot = instructionHost.attachShadow({ mode: "closed" });
   const instruction = document.createElement("div");
-  instruction.style.setProperty("color", "#172033", "important");
-  instruction.style.setProperty("font-family", "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif", "important");
-  instruction.style.setProperty("font-weight", "500", "important");
-  instruction.style.setProperty("font-size", "14px", "important");
-  instruction.style.setProperty("line-height", "1.55", "important");
-  instruction.style.setProperty("visibility", "visible", "important");
-  instruction.style.setProperty("opacity", "1", "important");
+  instruction.style.color = "#172033";
+  instruction.style.fontFamily = "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
+  instruction.style.fontWeight = "500";
+  instruction.style.fontSize = "14px";
+  instruction.style.lineHeight = "1.55";
+  instruction.style.direction = navigation.direction || "ltr";
 
   const sanitizeInstructionHtml = (html) => {
     const template = document.createElement("template");
@@ -189,12 +193,15 @@ async function showTrainingStep(step, navigation = {}) {
     return template.innerHTML;
   };
 
-  if (step.instruction) {
-    instruction.innerHTML = sanitizeInstructionHtml(step.instruction);
+  const instructionHtml = String(step.instruction || "").trim();
+  if (instructionHtml) {
+    instruction.innerHTML = sanitizeInstructionHtml(instructionHtml);
   } else {
     instruction.textContent = `Step ${step.order || ""}`;
   }
-  overlay.appendChild(instruction);
+
+  instructionRoot.appendChild(instruction);
+  overlay.appendChild(instructionHost);
 
   const validationError = document.createElement("div");
   validationError.setAttribute("role", "alert");
