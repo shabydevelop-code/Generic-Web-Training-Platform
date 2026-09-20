@@ -369,12 +369,19 @@ async function showTrainingStep(step, navigation = {}) {
           button.disabled = false;
         });
 
-        if (action !== "GWTP_TRAINING_NEXT") {
+        const guardedLearnerAction =
+          action === "GWTP_TRAINING_NEXT" || action === "GWTP_TRAINING_PREVIOUS";
+
+        if (!guardedLearnerAction) {
           moveStep();
           return;
         }
 
-        chrome.runtime.sendMessage({ type: "GWTP_TRAINING_PEEK_NEXT" }).then(async (peekResponse) => {
+        const peekType = action === "GWTP_TRAINING_NEXT"
+          ? "GWTP_TRAINING_PEEK_NEXT"
+          : "GWTP_TRAINING_PEEK_PREVIOUS";
+
+        chrome.runtime.sendMessage({ type: peekType }).then(async (peekResponse) => {
           if (!peekResponse?.success || !peekResponse.current?.step) {
             button.disabled = false;
             return;
