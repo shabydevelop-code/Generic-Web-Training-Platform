@@ -3,7 +3,7 @@
 
   async function beginValidationSession(mode, guideId) {
     const stored = await chrome.storage.session.get(null);
-    const keys = Object.keys(stored).filter((key) => key.startsWith("gwtp:validation-baseline:"));
+    const keys = Object.keys(stored).filter((key) => key.startsWith("gwtp:validation-state:") || key.startsWith("gwtp:validation-baseline:"));
     if (keys.length) await chrome.storage.session.remove(keys);
 
     const sessionId = [mode, guideId || "draft", Date.now(), crypto.randomUUID()].join(":");
