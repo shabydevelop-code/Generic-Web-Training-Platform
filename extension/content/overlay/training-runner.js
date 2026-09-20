@@ -201,7 +201,6 @@ async function showTrainingStep(step, navigation = {}) {
   }
 
   instructionRoot.appendChild(instruction);
-  overlay.appendChild(instructionHost);
 
   const validationError = document.createElement("div");
   validationError.setAttribute("role", "alert");
@@ -229,6 +228,7 @@ async function showTrainingStep(step, navigation = {}) {
   const sessionResponse = await chrome.runtime.sendMessage({ type: "GWTP_VALIDATION_SESSION_GET" });
   const validationContext = sessionResponse?.context;
   if (!validationContext) {
+    clearTrainingStep();
     return { success: false, message: "Validation session context was not found." };
   }
 
@@ -277,6 +277,10 @@ async function showTrainingStep(step, navigation = {}) {
   }
 
   const initialTargetValue = gwtpTrainingInitialValue;
+
+  // Only attach visible training UI after the validation context is fully ready.
+  // This prevents partial/empty bubbles when a page transition interrupts setup.
+  overlay.appendChild(instructionHost);
 
   const validateCurrentStep = async () => {
     const validation = step.validation;
