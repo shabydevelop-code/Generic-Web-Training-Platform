@@ -226,7 +226,10 @@ async function startGuidePreview() {
 
 async function exitGuidePreview() {
   try {
-    await window.messagingService.sendToAllFrames({ type: "GWTP_CLEAR_TRAINING_STEP" });
+    await window.messagingService.sendToAllFrames(
+      { type: "GWTP_CLEAR_TRAINING_STEP" },
+      { restoreConnection: false }
+    );
   } catch (error) {
     console.info("GWTP preview cleanup skipped:", error);
   }
@@ -531,7 +534,10 @@ async function handleStartLearning() {
 
 async function handleExitLearning() {
   try {
-    await window.messagingService.sendToAllFrames({ type: "GWTP_CLEAR_TRAINING_STEP" });
+    await window.messagingService.sendToAllFrames(
+      { type: "GWTP_CLEAR_TRAINING_STEP" },
+      { restoreConnection: false }
+    );
   } catch (error) {
     console.info("GWTP learner overlay cleanup skipped:", error);
   }
