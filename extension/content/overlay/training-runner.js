@@ -160,9 +160,13 @@ async function showTrainingStep(step, navigation = {}) {
   dragHandle.addEventListener("pointercancel", stopDragging);
 
   const instruction = document.createElement("div");
-  instruction.style.fontWeight = "500";
-  instruction.style.fontSize = "14px";
-  instruction.style.lineHeight = "1.55";
+  instruction.style.setProperty("color", "#172033", "important");
+  instruction.style.setProperty("font-family", "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif", "important");
+  instruction.style.setProperty("font-weight", "500", "important");
+  instruction.style.setProperty("font-size", "14px", "important");
+  instruction.style.setProperty("line-height", "1.55", "important");
+  instruction.style.setProperty("visibility", "visible", "important");
+  instruction.style.setProperty("opacity", "1", "important");
 
   const sanitizeInstructionHtml = (html) => {
     const template = document.createElement("template");
