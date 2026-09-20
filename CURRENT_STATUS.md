@@ -93,5 +93,7 @@ Reset was verified to delete both guide and step progress as intended.
 - Navigation continuity was extended for highlighted native links: before a learner follows a highlighted `<a href>` target, GWTP persists forward pending-navigation. The destination `PAGE_READY` still checks that the next step target exists before DB progress moves; GWTP does not replay the business action or use arbitrary waits. This covers the Demo CRM `#btn-open-case-from-site` Site -> Case transition.
 - Closing the step editor now re-renders the step list after clearing `editingStepId`, so the editing selection is removed immediately.
 
+- Cross-screen Previous/Next intent is now preserved when the adjacent step target is absent from the current screen. GWTP leaves business navigation to the learner, shows a localized message explaining that the requested step is on another screen, and `PAGE_READY` completes the pending move once that target becomes available. This works in both forward and backward directions without replay or arbitrary waits.
+
 ## Immediate next tasks
 1. Review remaining editor/learner UX gaps before adding new capabilities.
