@@ -83,3 +83,5 @@ Reset was verified to delete both guide and step progress as intended.
 2. Resolve the authoring/API discrepancy for `changed_regex`: runtime supports it, but the normal editor/backend validation path does not yet expose/accept it.
 
 - Messaging connection restoration is now frame-idempotent: all-frame recovery probes each frame and injects the content bundle only into frames where GWTP is not already ready.
+
+- Temporary `[GWTP debug]` logging in `training-runner.js` was removed after the Ynet/Google frame-recovery regression passed without duplicate-injection errors.
