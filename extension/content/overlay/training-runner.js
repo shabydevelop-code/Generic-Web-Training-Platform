@@ -29,6 +29,14 @@ async function showTrainingStep(step, navigation = {}) {
   clearTrainingStep();
   clearHighlight();
 
+  console.info("[GWTP debug] showTrainingStep input", {
+    selector: step?.selector,
+    instruction: step?.instruction,
+    instructionType: typeof step?.instruction,
+    stepOrder: step?.order,
+    navigation
+  });
+
   if (!step?.selector) {
     return { success: false, message: "Step selector is missing." };
   }
@@ -194,6 +202,12 @@ async function showTrainingStep(step, navigation = {}) {
   };
 
   const instructionHtml = String(step.instruction || "").trim();
+  console.info("[GWTP debug] instruction render", {
+    raw: step?.instruction,
+    html: instructionHtml,
+    sanitized: instructionHtml ? sanitizeInstructionHtml(instructionHtml) : "",
+    selector: step?.selector
+  });
   if (instructionHtml) {
     instruction.innerHTML = sanitizeInstructionHtml(instructionHtml);
   } else {
