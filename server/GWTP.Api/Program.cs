@@ -40,46 +40,6 @@ app.MapGet("/api/health", () => Results.Ok(new
     status = "ok"
 }));
 
-app.MapGet("/validation-test", () => Results.Content("""
-<!doctype html>
-<html lang="he" dir="rtl">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>GWTP Validation Test</title>
-  <style>
-    body { font-family: Arial, sans-serif; max-width: 720px; margin: 40px auto; padding: 0 20px; }
-    label { display: block; margin: 24px 0; font-weight: 600; }
-    input { display: block; width: 100%; box-sizing: border-box; margin-top: 8px; padding: 10px; font: inherit; }
-    small { display: block; margin-top: 6px; font-weight: 400; }
-  </style>
-</head>
-<body>
-  <h1>בדיקת Validation של GWTP</h1>
-  <label>Required
-    <input id="required-field" type="text" value="">
-    <small>יש להזין ערך כלשהו.</small>
-  </label>
-  <label>Equals
-    <input id="equals-field" type="text" value="">
-    <small>הערך התקין: GWTP</small>
-  </label>
-  <label>Not Equals
-    <input id="not-equals-field" type="text" value="BLOCKED">
-    <small>יש לשנות לכל ערך שאינו BLOCKED.</small>
-  </label>
-  <label>Contains
-    <input id="contains-field" type="text" value="">
-    <small>הערך חייב להכיל TRAINING.</small>
-  </label>
-  <label>Changed
-    <input id="changed-field" type="text" value="ORIGINAL">
-    <small>יש לשנות את הערך המקורי.</small>
-  </label>
-</body>
-</html>
-""", "text/html; charset=utf-8"));
-
 app.MapGet("/api/health/database", () =>
 {
     using var connection = OpenConnection(databasePath);
