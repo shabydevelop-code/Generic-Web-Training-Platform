@@ -178,13 +178,23 @@ function showTrainingStep(step, navigation = {}) {
 
     if (!disabled) {
       button.addEventListener("click", () => {
-        chrome.runtime.sendMessage({ type: action }).then((response) => {
-          if (!response?.success || !response.current?.step) return;
+        button.disabled = true;
 
-          showTrainingStep(response.current.step, {
-            ...navigation,
-            stepIndex: response.current.stepIndex
-          });
+        chrome.runtime.sendMessage({ type: action }).then((response) => {
+          if (!response?.success || !response.current?.step) {
+            button.disabled = false;
+            return;
+          }
+
+          clearTrainingStep();
+          clearHighlight();
+
+          chrome.runtime.sendMessage({
+            type: "GWTP_TRAINING_STEP_CHANGED",
+            current: response.current
+          }).catch(() => {});
+        }).catch(() => {
+          button.disabled = false;
         });
       });
     }
