@@ -578,6 +578,45 @@ app.MapPost("/api/learner/progress/start/{guideId:long}", (long guideId, HttpCon
     return Results.Ok(new { guideId, stepIndex = currentStepOrder - 1, totalSteps });
 });
 
+app.MapPost("/api/learner/progress/restart/{guideId:long}", (long guideId, HttpContext httpContext) =>
+{
+    var userId = GetAuthenticatedUserId(httpContext, sessions, sessionLock);
+    if (userId is null) return Results.Unauthorized();
+
+    using var connection = OpenConnection(databasePath);
+
+    using var guideCommand = connection.CreateCommand();
+    guideCommand.CommandText = "SELECT COUNT(*) FROM Guides WHERE Id = $guideId AND IsAvailable = 1;";
+    guideCommand.Parameters.AddWithValue("$guideId", guideId);
+    if (Convert.ToInt32(guideCommand.ExecuteScalar()) == 0) return Results.NotFound();
+
+    using var stepCountCommand = connection.CreateCommand();
+    stepCountCommand.CommandText = "SELECT COUNT(*) FROM GuideSteps WHERE GuideId = $guideId;";
+    stepCountCommand.Parameters.AddWithValue("$guideId", guideId);
+    var totalSteps = Convert.ToInt32(stepCountCommand.ExecuteScalar());
+    if (totalSteps == 0) return Results.BadRequest(new { message = "Guide has no steps." });
+
+    using var command = connection.CreateCommand();
+    command.CommandText = """
+        INSERT INTO UserProgress
+            (UserId, GuideId, CurrentStepOrder, Status, IsCompleted, StartedAt, LastActivityAt, CompletedAt)
+        VALUES
+            ($userId, $guideId, 1, 'Started', 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, NULL)
+        ON CONFLICT(UserId, GuideId) DO UPDATE SET
+            CurrentStepOrder = 1,
+            Status = 'Started',
+            IsCompleted = 0,
+            StartedAt = CURRENT_TIMESTAMP,
+            LastActivityAt = CURRENT_TIMESTAMP,
+            CompletedAt = NULL;
+        """;
+    command.Parameters.AddWithValue("$userId", userId.Value);
+    command.Parameters.AddWithValue("$guideId", guideId);
+    command.ExecuteNonQuery();
+
+    return Results.Ok(new { guideId, stepIndex = 0, totalSteps });
+});
+
 app.MapPost("/api/learner/progress/move", (ProgressMoveRequest request, HttpContext httpContext) =>
 {
     var userId = GetAuthenticatedUserId(httpContext, sessions, sessionLock);
