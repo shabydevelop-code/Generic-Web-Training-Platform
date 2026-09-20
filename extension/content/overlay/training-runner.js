@@ -243,12 +243,6 @@ async function showTrainingStep(step, navigation = {}) {
     if (!validation?.expression) return true;
 
     if (usesChangedValidation) {
-      if (validationState?.satisfied) {
-        validationError.style.display = "none";
-        validationError.textContent = "";
-        return true;
-      }
-
       const currentValue = getTargetValue();
       const changed = currentValue !== initialTargetValue;
       let formatValid = true;
@@ -269,12 +263,14 @@ async function showTrainingStep(step, navigation = {}) {
         return false;
       }
 
-      const satisfiedResponse = await chrome.runtime.sendMessage({
-        type: "GWTP_VALIDATION_STATE_SATISFY",
-        key: validationStateKey
-      });
-      if (!satisfiedResponse?.success) return false;
-      validationState = satisfiedResponse.state;
+      if (!validationState?.satisfied) {
+        const satisfiedResponse = await chrome.runtime.sendMessage({
+          type: "GWTP_VALIDATION_STATE_SATISFY",
+          key: validationStateKey
+        });
+        if (!satisfiedResponse?.success) return false;
+        validationState = satisfiedResponse.state;
+      }
       return true;
     }
 
