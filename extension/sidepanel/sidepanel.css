@@ -104,6 +104,18 @@ select:focus {
   margin-top: 12px;
 }
 
+/* Global vertical action group: full-width actions with consistent spacing. */
+.actions--stacked {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.actions--stacked .button {
+  width: 100%;
+  flex: none;
+}
+
 .button {
   flex: 1;
   padding: 10px 12px;
@@ -922,13 +934,6 @@ select:focus {
   margin-top: 18px;
   padding-top: 16px;
   border-top: 1px solid #eaecf0;
-}
-.edit-user__delete-section .button {
-  width: 100%;
-}
-
-.edit-user__delete-section .button + .button {
-  margin-top: 12px;
 }
 
 /* Keep the user editor fully reachable in the Side Panel. */
