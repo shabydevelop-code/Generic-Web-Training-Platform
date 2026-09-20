@@ -480,9 +480,14 @@ async function showTrainingStep(step, navigation = {}) {
             // Keep the pending learning intent. The live application owns navigation;
             // when the learner reaches a page where the requested step exists,
             // GWTP_PAGE_READY will resume the move in the requested direction.
+            validationError.style.display = "block";
+            validationError.textContent = availability?.message || "";
             button.disabled = false;
             return;
           }
+
+          validationError.style.display = "none";
+          validationError.textContent = "";
 
           moveStep();
         }).catch(() => {
