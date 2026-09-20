@@ -1398,6 +1398,7 @@ async function persistStepChanges() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(
         steps.map((step) => ({
+          id: step.persistedId || null,
           selector: step.selector,
           instruction: step.instruction,
           frame: step.element?.frame || null,
@@ -1609,6 +1610,7 @@ async function persistExistingGuide() {
       startUrl,
       isAvailable: guideAvailableInput.checked,
       steps: steps.map((step) => ({
+        id: step.persistedId || null,
         selector: step.selector,
         instruction: step.instruction,
         frame: step.element?.frame || null,
@@ -1827,6 +1829,7 @@ saveGuideButton.addEventListener("click", async () => {
         startUrl: startUrl || null,
         isAvailable: guideAvailableInput.checked,
         steps: steps.map((step) => ({
+          id: step.persistedId || null,
           selector: step.selector,
           instruction: step.instruction,
           frame: step.element?.frame || null,
