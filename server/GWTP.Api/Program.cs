@@ -652,6 +652,24 @@ app.MapPost("/api/learner/progress/move", (ProgressMoveRequest request, HttpCont
     var currentOrder = Convert.ToInt32(currentValue);
     var nextOrder = Math.Clamp(currentOrder + request.Direction, 1, totalSteps);
 
+    // A forward move means the learner successfully completed the current training step.
+    // Repeating the same step is idempotent because UserStepProgress has a unique key.
+    if (request.Direction == 1 && nextOrder > currentOrder)
+    {
+        using var completeStepCommand = connection.CreateCommand();
+        completeStepCommand.CommandText = """
+            INSERT INTO UserStepProgress (UserId, GuideId, GuideStepId, CompletedAt)
+            SELECT $userId, $guideId, Id, CURRENT_TIMESTAMP
+            FROM GuideSteps
+            WHERE GuideId = $guideId AND StepOrder = $currentOrder
+            ON CONFLICT(UserId, GuideStepId) DO NOTHING;
+            """;
+        completeStepCommand.Parameters.AddWithValue("$userId", userId.Value);
+        completeStepCommand.Parameters.AddWithValue("$guideId", request.GuideId);
+        completeStepCommand.Parameters.AddWithValue("$currentOrder", currentOrder);
+        completeStepCommand.ExecuteNonQuery();
+    }
+
     using var updateCommand = connection.CreateCommand();
     updateCommand.CommandText = """
         UPDATE UserProgress
@@ -674,6 +692,23 @@ app.MapPost("/api/learner/progress/complete/{guideId:long}", (long guideId, Http
     if (userId is null) return Results.Unauthorized();
 
     using var connection = OpenConnection(databasePath);
+
+    using (var completeStepCommand = connection.CreateCommand())
+    {
+        completeStepCommand.CommandText = """
+            INSERT INTO UserStepProgress (UserId, GuideId, GuideStepId, CompletedAt)
+            SELECT p.UserId, p.GuideId, gs.Id, CURRENT_TIMESTAMP
+            FROM UserProgress p
+            INNER JOIN GuideSteps gs
+                ON gs.GuideId = p.GuideId AND gs.StepOrder = p.CurrentStepOrder
+            WHERE p.UserId = $userId AND p.GuideId = $guideId AND p.IsCompleted = 0
+            ON CONFLICT(UserId, GuideStepId) DO NOTHING;
+            """;
+        completeStepCommand.Parameters.AddWithValue("$userId", userId.Value);
+        completeStepCommand.Parameters.AddWithValue("$guideId", guideId);
+        completeStepCommand.ExecuteNonQuery();
+    }
+
     using var command = connection.CreateCommand();
     command.CommandText = """
         UPDATE UserProgress
@@ -689,6 +724,36 @@ app.MapPost("/api/learner/progress/complete/{guideId:long}", (long guideId, Http
     if (command.ExecuteNonQuery() == 0) return Results.NotFound();
 
     return Results.Ok(new { guideId, completed = true });
+});
+
+app.MapGet("/api/learner/progress/steps/{guideId:long}", (long guideId, HttpContext httpContext) =>
+{
+    var userId = GetAuthenticatedUserId(httpContext, sessions, sessionLock);
+    if (userId is null) return Results.Unauthorized();
+
+    using var connection = OpenConnection(databasePath);
+    using var command = connection.CreateCommand();
+    command.CommandText = """
+        SELECT GuideStepId, CompletedAt
+        FROM UserStepProgress
+        WHERE UserId = $userId AND GuideId = $guideId
+        ORDER BY CompletedAt, GuideStepId;
+        """;
+    command.Parameters.AddWithValue("$userId", userId.Value);
+    command.Parameters.AddWithValue("$guideId", guideId);
+
+    using var reader = command.ExecuteReader();
+    var completedSteps = new List<object>();
+    while (reader.Read())
+    {
+        completedSteps.Add(new
+        {
+            guideStepId = reader.GetInt64(0),
+            completedAt = reader.GetString(1)
+        });
+    }
+
+    return Results.Ok(new { guideId, completedSteps });
 });
 
 app.MapGet("/api/learner/progress/active", (HttpContext httpContext) =>
@@ -1390,6 +1455,25 @@ static void ApplyDatabaseMigrations(string databasePath)
         using var migrationCommand = connection.CreateCommand();
         migrationCommand.CommandText = migration.Value;
         migrationCommand.ExecuteNonQuery();
+    }
+
+    using (var stepProgressMigration = connection.CreateCommand())
+    {
+        stepProgressMigration.CommandText = """
+            CREATE TABLE IF NOT EXISTS UserStepProgress (
+                UserId INTEGER NOT NULL,
+                GuideId INTEGER NOT NULL,
+                GuideStepId INTEGER NOT NULL,
+                CompletedAt TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (UserId, GuideStepId),
+                FOREIGN KEY (UserId) REFERENCES Users(Id) ON DELETE CASCADE,
+                FOREIGN KEY (GuideId) REFERENCES Guides(Id) ON DELETE CASCADE,
+                FOREIGN KEY (GuideStepId) REFERENCES GuideSteps(Id) ON DELETE CASCADE
+            );
+            CREATE INDEX IF NOT EXISTS IX_UserStepProgress_UserGuide
+                ON UserStepProgress(UserId, GuideId);
+            """;
+        stepProgressMigration.ExecuteNonQuery();
     }
 
     using var normalizeProgress = connection.CreateCommand();
