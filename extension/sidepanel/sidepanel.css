@@ -286,6 +286,16 @@ select:focus {
   color: #2563eb;
 }
 
+.step-item--editing {
+  border-color: #2563eb;
+  background: #eff6ff;
+  box-shadow: 0 0 0 1px #2563eb;
+}
+
+.step-item--editing::after {
+  color: #2563eb;
+}
+
 .step-item:hover::after,
 .step-item:focus-visible::after {
   color: #2563eb;
