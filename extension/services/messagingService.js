@@ -22,11 +22,29 @@
     "content/content-script.js"
   ];
 
-  async function restorePageConnection(tabId, allFrames = false) {
+  async function isContentReady(tabId, frameId = null) {
+    try {
+      const results = await chrome.scripting.executeScript({
+        target: frameId == null ? { tabId } : { tabId, frameIds: [frameId] },
+        func: () => globalThis.__GWTP_CONTENT_READY__ === true
+      });
+      return results.some((item) => item.result === true);
+    } catch {
+      return false;
+    }
+  }
+
+  async function restorePageConnection(tabId, allFrames = false, frameId = null) {
+    if (frameId != null && await isContentReady(tabId, frameId)) return false;
+    if (frameId == null && !allFrames && await isContentReady(tabId)) return false;
+
     await chrome.scripting.executeScript({
-      target: { tabId, allFrames },
+      target: frameId != null
+        ? { tabId, frameIds: [frameId] }
+        : { tabId, allFrames },
       files: contentFiles
     });
+    return true;
   }
 
   async function sendToActivePage(message, options = {}) {
@@ -77,10 +95,7 @@
         results.push({ frameId: frame.frameId, frameInfo: frame.result, response });
       } catch (error) {
         if (isMissingReceiverError(error) && options.restoreConnection !== false) {
-          await chrome.scripting.executeScript({
-            target: { tabId: tab.id, frameIds: [frame.frameId] },
-            files: contentFiles
-          });
+          await restorePageConnection(tab.id, false, frame.frameId);
           const response = await chrome.tabs.sendMessage(tab.id, message, { frameId: frame.frameId });
           results.push({ frameId: frame.frameId, response });
         } else {
@@ -108,10 +123,7 @@
     } catch (error) {
       if (!isMissingReceiverError(error)) throw error;
 
-      await chrome.scripting.executeScript({
-        target: { tabId: tab.id, frameIds: [frame.frameId] },
-        files: contentFiles
-      });
+      await restorePageConnection(tab.id, false, frame.frameId);
 
       return chrome.tabs.sendMessage(tab.id, message, { frameId: frame.frameId });
     }
