@@ -350,11 +350,12 @@ async function showTrainingStep(step, navigation = {}) {
         if ((action === "GWTP_TRAINING_NEXT" || action === "GWTP_PREVIEW_NEXT") && !(await validateCurrentStep())) return;
         button.disabled = true;
 
-        chrome.runtime.sendMessage({ type: action }).then((response) => {
+        const moveStep = () => chrome.runtime.sendMessage({ type: action }).then((response) => {
           if (!response?.success || !response.current?.step) {
             button.disabled = false;
             return;
           }
+
           gwtpTrainingStepKey = null;
           gwtpTrainingInitialValue = null;
           clearTrainingStep();
@@ -364,6 +365,32 @@ async function showTrainingStep(step, navigation = {}) {
             type: isPreview ? "GWTP_PREVIEW_STEP_CHANGED" : "GWTP_TRAINING_STEP_CHANGED",
             current: response.current
           }).catch(() => {});
+        }).catch(() => {
+          button.disabled = false;
+        });
+
+        if (action !== "GWTP_TRAINING_NEXT") {
+          moveStep();
+          return;
+        }
+
+        chrome.runtime.sendMessage({ type: "GWTP_TRAINING_PEEK_NEXT" }).then(async (peekResponse) => {
+          if (!peekResponse?.success || !peekResponse.current?.step) {
+            button.disabled = false;
+            return;
+          }
+
+          const availability = await chrome.runtime.sendMessage({
+            type: "GWTP_CHECK_NEXT_STEP_AVAILABLE",
+            current: peekResponse.current
+          });
+
+          if (!availability?.success) {
+            button.disabled = false;
+            return;
+          }
+
+          moveStep();
         }).catch(() => {
           button.disabled = false;
         });
