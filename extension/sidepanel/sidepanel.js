@@ -1238,7 +1238,18 @@ async function persistStepChanges() {
   setStepsSaveStatus("stepsSaving", "info");
 
   try {
-    await persistExistingGuide();
+    const steps = window.trainingService.getSteps();
+    await window.apiService.request(`/api/guides/${editingGuideId}/steps`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(
+        steps.map((step) => ({
+          selector: step.selector,
+          instruction: step.instruction,
+          frame: step.element?.frame || null
+        }))
+      )
+    });
     setStepsSaveStatus("stepsSaved", "success", true);
     return true;
   } catch (error) {
