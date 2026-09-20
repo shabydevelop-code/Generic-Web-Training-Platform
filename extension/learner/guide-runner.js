@@ -134,6 +134,28 @@
     });
   }
 
+  async function restart(guide) {
+    if (!guide?.startUrl || !guide?.steps?.length) {
+      throw new Error("A valid guide with a start URL and at least one step is required.");
+    }
+
+    const restartResponse = await chrome.runtime.sendMessage({
+      type: "GWTP_TRAINING_RESTART",
+      guide
+    });
+
+    if (!restartResponse?.success) {
+      throw new Error(restartResponse?.message || "Could not restart the training session.");
+    }
+
+    await navigateToStartUrl(guide.startUrl);
+    return showFirstStep({
+      steps: [guide.steps[0]],
+      stepIndex: 0,
+      totalSteps: restartResponse.session?.progress?.totalSteps || guide.steps.length
+    });
+  }
+
   async function showCurrentStep(current) {
     if (!current?.step) return false;
 
@@ -157,6 +179,7 @@
 
   window.guideRunner = {
     start,
+    restart,
     restoreActiveStep,
     showCurrentStep
   };
