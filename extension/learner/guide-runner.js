@@ -248,14 +248,18 @@
   }
 
   async function resumePendingNavigation() {
-    const pendingResponse = await chrome.runtime.sendMessage({ type: "GWTP_TRAINING_PENDING_GET" });
+    const tabId = await getActiveTabId();
+    const pendingResponse = await chrome.runtime.sendMessage({
+      type: "GWTP_TRAINING_PENDING_GET",
+      tabId
+    });
     const pending = pendingResponse?.pending;
     if (!pending || (pending.direction !== 1 && pending.direction !== -1)) return false;
 
     const currentResponse = await chrome.runtime.sendMessage({ type: "GWTP_TRAINING_GET_CURRENT" });
     const current = currentResponse?.current;
     if (!current?.step || current.stepIndex !== pending.stepIndex) {
-      await chrome.runtime.sendMessage({ type: "GWTP_TRAINING_PENDING_CLEAR" });
+      await chrome.runtime.sendMessage({ type: "GWTP_TRAINING_PENDING_CLEAR", tabId });
       return false;
     }
 
@@ -268,7 +272,7 @@
 
     const peekResponse = await chrome.runtime.sendMessage({ type: peekType });
     if (!peekResponse?.success || !peekResponse.current?.step) {
-      await chrome.runtime.sendMessage({ type: "GWTP_TRAINING_PENDING_CLEAR" });
+      await chrome.runtime.sendMessage({ type: "GWTP_TRAINING_PENDING_CLEAR", tabId });
       return false;
     }
 
@@ -277,7 +281,7 @@
     const moveResponse = await chrome.runtime.sendMessage({ type: moveType });
     if (!moveResponse?.success || !moveResponse.current?.step) return false;
 
-    await chrome.runtime.sendMessage({ type: "GWTP_TRAINING_PENDING_CLEAR" });
+    await chrome.runtime.sendMessage({ type: "GWTP_TRAINING_PENDING_CLEAR", tabId });
     await showCurrentStep(moveResponse.current);
     return true;
   }
