@@ -68,6 +68,23 @@ async function getCurrentTrainingStep() {
   };
 }
 
+async function peekTrainingStep(direction) {
+  const current = await getCurrentTrainingStep();
+  if (!current) throw new Error("No active training session.");
+
+  const guide = await getGuide(current.guideId);
+  const stepIndex = current.stepIndex + direction;
+  const step = guide.steps?.[stepIndex];
+  if (!step) throw new Error("The requested guide step was not found.");
+
+  return {
+    guideId: current.guideId,
+    stepIndex,
+    totalSteps: current.totalSteps,
+    step
+  };
+}
+
 async function moveTrainingStep(direction) {
   const current = await getCurrentTrainingStep();
   if (!current) throw new Error("No active training session.");
@@ -185,6 +202,13 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 
   if (message?.type === "GWTP_TRAINING_GET_CURRENT") {
     getCurrentTrainingStep()
+      .then((current) => sendResponse({ success: true, current }))
+      .catch((error) => sendResponse({ success: false, message: error.message }));
+    return true;
+  }
+
+  if (message?.type === "GWTP_TRAINING_PEEK_NEXT") {
+    peekTrainingStep(1)
       .then((current) => sendResponse({ success: true, current }))
       .catch((error) => sendResponse({ success: false, message: error.message }));
     return true;
