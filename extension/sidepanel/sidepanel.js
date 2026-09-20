@@ -116,6 +116,7 @@ const saveUserButton = document.getElementById("saveUserButton");
 const cancelEditUserButton = document.getElementById("cancelEditUserButton");
 const editUserStatus = document.getElementById("editUserStatus");
 const editUserDeleteSection = document.getElementById("editUserDeleteSection");
+const resetUserLearningButton = document.getElementById("resetUserLearningButton");
 const deleteEditedUserButton = document.getElementById("deleteEditedUserButton");
 let editingUserSnapshot = null;
 const topicsView = document.getElementById("topicsView");
@@ -2072,6 +2073,30 @@ deleteEditedStepButton.addEventListener("click", () => {
     window.i18nService.translate("confirmDeleteStep", window.i18nService.getLanguage()),
     async () => await deleteDraftStep(stepId)
   );
+});
+
+resetUserLearningButton.addEventListener("click", () => {
+  if (!editingUserSnapshot) return;
+  const language = window.i18nService.getLanguage();
+  const name = editingUserSnapshot.displayName || editingUserSnapshot.username;
+  const message = window.i18nService.translate("confirmResetLearningActivity", language).replace("{name}", name);
+
+  requestDeleteConfirmation(message, async () => {
+    resetUserLearningButton.disabled = true;
+    try {
+      await window.apiService.request(`/api/users/${editingUserSnapshot.id}/learning-activity`, {
+        method: "DELETE"
+      });
+      editUserStatus.textContent = window.i18nService.translate("learningActivityReset", language);
+      editUserStatus.dataset.type = "success";
+    } catch (error) {
+      editUserStatus.textContent = window.i18nService.translate("learningActivityResetError", language);
+      editUserStatus.dataset.type = "error";
+      console.error(error);
+    } finally {
+      resetUserLearningButton.disabled = false;
+    }
+  });
 });
 
 deleteEditedUserButton.addEventListener("click", () => {
