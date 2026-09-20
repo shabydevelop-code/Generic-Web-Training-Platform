@@ -1426,6 +1426,11 @@ static void EnsureDemoSiteGuide(string databasePath)
         stepCommand.Parameters.AddWithValue("$selector", steps[index].Selector);
         stepCommand.Parameters.AddWithValue("$instruction", steps[index].Instruction);
         stepCommand.Parameters.AddWithValue("$frameTarget", DBNull.Value);
+        stepCommand.Parameters.AddWithValue("$validationEngine", DBNull.Value);
+        stepCommand.Parameters.AddWithValue("$validationExpression", DBNull.Value);
+        stepCommand.Parameters.AddWithValue("$validationErrorMessage", DBNull.Value);
+        stepCommand.Parameters.AddWithValue("$validationBuilderType", DBNull.Value);
+        stepCommand.Parameters.AddWithValue("$validationBuilderValue", DBNull.Value);
         stepCommand.ExecuteNonQuery();
     }
 
