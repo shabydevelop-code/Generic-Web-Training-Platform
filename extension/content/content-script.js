@@ -1,4 +1,18 @@
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+  if (message?.type === "GWTP_VALIDATE_ELEMENT") {
+    if (!message.selector) {
+      sendResponse({ success: false });
+      return;
+    }
+
+    try {
+      sendResponse({ success: Boolean(document.querySelector(message.selector)) });
+    } catch {
+      sendResponse({ success: false });
+    }
+    return;
+  }
+
   if (message?.type === "GWTP_HIGHLIGHT_ELEMENT") {
     sendResponse(highlightElement(message.selector));
     return;
