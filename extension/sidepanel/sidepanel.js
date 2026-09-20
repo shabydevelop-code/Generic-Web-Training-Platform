@@ -17,6 +17,7 @@ const statusElement = document.getElementById("status");
 const selectedElement = document.getElementById("selectedElement");
 const selectedTag = document.getElementById("selectedTag");
 const selectedSelector = document.getElementById("selectedSelector");
+const removeSelectedElementButton = document.getElementById("removeSelectedElementButton");
 const stepEditor = document.getElementById("stepEditor");
 const instructionInput = document.getElementById("instructionInput");
 const richTextToolbarButtons = document.querySelectorAll("[data-rich-command]");
@@ -1042,6 +1043,35 @@ function updateGuideEditorValidity() {
   return guideIdentityValid;
 }
 
+function updateStepSaveValidity() {
+  saveStepButton.disabled = !currentSelectedElement || !selectorInput.value.trim() || !hasInstructionContent();
+}
+
+async function validateSelectedStepElement() {
+  if (!currentSelectedElement || !selectorInput.value.trim()) return false;
+
+  const message = {
+    type: "GWTP_VALIDATE_ELEMENT",
+    selector: selectorInput.value.trim()
+  };
+  const stepFrame = currentSelectedElement.frame || null;
+
+  try {
+    if (stepFrame) {
+      const response = await window.messagingService.sendToMatchingFrame(
+        message,
+        (frameInfo) => frameMatchesStep(frameInfo, stepFrame)
+      );
+      return response?.success === true;
+    }
+
+    const responses = await window.messagingService.sendToAllFrames(message);
+    return responses.some((item) => item.response?.success === true);
+  } catch {
+    return false;
+  }
+}
+
 function clearPageTrainingVisuals() {
   window.messagingService.sendToAllFrames({ type: "GWTP_CLEAR_HIGHLIGHT" }).catch((error) => {
     console.debug("Could not clear page training visuals.", error);
@@ -1126,6 +1156,7 @@ function openStepCreator() {
   addStepButton.hidden = true;
   statusElement.textContent = "";
   statusElement.removeAttribute("data-type");
+  updateStepSaveValidity();
 }
 
 function openStepEditor(step) {
@@ -1150,6 +1181,7 @@ function openStepEditor(step) {
   addStepButton.hidden = true;
   statusElement.textContent = "";
   statusElement.removeAttribute("data-type");
+  updateStepSaveValidity();
   instructionInput.focus();
 }
 
@@ -1432,6 +1464,11 @@ saveStepButton.addEventListener("click", async () => {
     return;
   }
 
+  if (!(await validateSelectedStepElement())) {
+    setStatus(window.i18nService.translate("stepElementInvalid", language), "error");
+    return;
+  }
+
   try {
     const step = editingStepId
       ? window.trainingService.updateStep(editingStepId, {
@@ -1518,6 +1555,18 @@ function applyListFormat(tagName) {
   range.insertNode(list);
   selection.removeAllRanges();
 }
+
+instructionInput.addEventListener("input", updateStepSaveValidity);
+
+removeSelectedElementButton.addEventListener("click", () => {
+  currentSelectedElement = null;
+  selectorInput.value = "";
+  selectedTag.textContent = "";
+  selectedSelector.textContent = "";
+  selectedElement.hidden = true;
+  updateStepSaveValidity();
+  setStatus(window.i18nService.translate("stepElementRequired", window.i18nService.getLanguage()), "error");
+});
 
 richTextToolbarButtons.forEach((button) => {
   button.addEventListener("mousedown", (event) => {
@@ -1648,6 +1697,7 @@ chrome.runtime.onMessage.addListener((message) => {
     selectedSelector.textContent = element.selector;
     selectedElement.hidden = false;
     stepEditor.hidden = false;
+    updateStepSaveValidity();
     instructionInput.focus();
     setStatus(window.i18nService.translate("elementSelectedSuccess", window.i18nService.getLanguage()), "success");
     return;
