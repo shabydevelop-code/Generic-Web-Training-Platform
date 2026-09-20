@@ -1364,7 +1364,7 @@ static void EnsureDemoSiteGuide(string databasePath)
         ("#site-type", "שנה את סוג האתר ל<strong>סניף מכירות</strong>."),
         ("#btn-save-site", "לחץ על <strong>שמור שינויים</strong> כדי לשמור את נתוני האתר. אם השמירה הסתיימה ללא שגיאות, לחץ על <strong>הבא</strong>."),
         ("#nav-case", "כעת עבור למסך <strong>פניה</strong>."),
-        ("#case-category", "בחר קטגוריה מתאימה לפניה."),
+        ("#case-category", "בחר קטגוריה מתאימה לפנייה, שאינה <strong>תקלות תקשורת ורשת</strong>."),
         ("#case-assigned", "עדכן את הנציג המטפל בפניה."),
         ("#case-subject", "עדכן את נושא הפניה. שים לב שהשרת מבצע ולידציה בעת השמירה."),
         ("#btn-save-case", "לחץ על <strong>עדכן פניה</strong>. אם קיימת שגיאת ולידציה, תקן אותה ועדכן שוב. אם העדכון הסתיים ללא שגיאות, לחץ על <strong>הבא</strong>."),
@@ -1437,7 +1437,7 @@ static void EnsureDemoSiteGuide(string databasePath)
         var demoValidations = new (string Selector, string Expression, string ErrorMessage, string BuilderType, string BuilderValue)[]
         {
             ("#site-type", "^branch$", "יש לבחור סניף מכירות לפני המעבר לשלב הבא.", "regex", "^branch$"),
-            ("#case-category", "^(?!network$).+$", "יש לבחור קטגוריית פניה שונה לפני המעבר לשלב הבא.", "regex", "^(?!network$).+$"),
+            ("#case-category", "^(?!network$).+$", "לא ניתן לבחור ב״תקלות תקשורת ורשת״. יש לבחור קטגוריה אחרת.", "regex", "^(?!network$).+$"),
             ("#case-subject", "^(?!איטיות בגלישה ונפילות קו תקשורת ראשי$)(?=.{10,}$).+", "יש לעדכן את נושא הפניה לנושא חדש בן 10 תווים לפחות.", "regex", "^(?!איטיות בגלישה ונפילות קו תקשורת ראשי$)(?=.{10,}$).+"),
             ("#lead-source", "^(?!web$).+$", "יש לשנות את מקור הליד לפני המעבר לשלב הבא.", "regex", "^(?!web$).+$"),
             ("#lead-interest", "^(?!cloud_crm$).+$", "יש לשנות את המוצר המבוקש לפני המעבר לשלב הבא.", "regex", "^(?!cloud_crm$).+$"),
@@ -1508,6 +1508,9 @@ static void EnsureDemoSiteGuide(string databasePath)
 
         var instructionMigrations = new (string Selector, string OldInstruction, string NewInstruction)[]
         {
+            ("#case-category",
+                "בחר קטגוריה מתאימה לפניה.",
+                "בחר קטגוריה מתאימה לפנייה, שאינה <strong>תקלות תקשורת ורשת</strong>."),
             ("#btn-save-site",
                 "לחץ על <strong>שמור שינויים</strong> כדי לשמור את נתוני האתר.",
                 "לחץ על <strong>שמור שינויים</strong> כדי לשמור את נתוני האתר. אם השמירה הסתיימה ללא שגיאות, לחץ על <strong>הבא</strong>."),
