@@ -135,6 +135,11 @@ const guideAvailableInput = document.getElementById("guideAvailableInput");
 const guideEditorTitle = document.getElementById("guideEditorTitle");
 const guideEditorDescription = document.getElementById("guideEditorDescription");
 const editGuideDeleteSection = document.getElementById("editGuideDeleteSection");
+const previewGuideButton = document.getElementById("previewGuideButton");
+const previewActiveControls = document.getElementById("previewActiveControls");
+const previewProgress = document.getElementById("previewProgress");
+const exitPreviewButton = document.getElementById("exitPreviewButton");
+let previewSession = null;
 const deleteEditedGuideButton = document.getElementById("deleteEditedGuideButton");
 let editingGuideSnapshot = null;
 const editStepDeleteSection = document.getElementById("editStepDeleteSection");
@@ -152,6 +157,69 @@ let adminModeActive = false;
 let editingUserId = null;
 let editingStepId = null;
 let editingGuideId = null;
+
+
+function updatePreviewUi() {
+  const active = Boolean(previewSession);
+  previewGuideButton.hidden = active;
+  previewActiveControls.hidden = !active;
+
+  if (active) {
+    const language = window.i18nService.getLanguage();
+    previewProgress.textContent = window.i18nService
+      .translate("previewActiveStatus", language)
+      .replace("{current}", String(previewSession.stepIndex + 1))
+      .replace("{total}", String(previewSession.steps.length));
+  }
+}
+
+function buildPreviewGuide() {
+  return {
+    id: editingGuideId,
+    name: guideNameInput.value.trim(),
+    startUrl: guideStartUrlInput.value.trim(),
+    steps: window.trainingService.getSteps().map((step) => ({
+      ...step,
+      frame: step.element?.frame || step.frame || null
+    }))
+  };
+}
+
+async function startGuidePreview() {
+  const guide = buildPreviewGuide();
+  const language = window.i18nService.getLanguage();
+
+  if (!guide.startUrl || guide.steps.length === 0) {
+    saveGuideStatus.textContent = window.i18nService.translate("previewStartError", language);
+    saveGuideStatus.dataset.type = "error";
+    return;
+  }
+
+  previewGuideButton.disabled = true;
+  try {
+    previewSession = { ...guide, stepIndex: 0 };
+    updatePreviewUi();
+    await window.guideRunner.preview(guide);
+  } catch (error) {
+    previewSession = null;
+    updatePreviewUi();
+    saveGuideStatus.textContent = window.i18nService.translate("previewStartError", language);
+    saveGuideStatus.dataset.type = "error";
+    console.error(error);
+  } finally {
+    previewGuideButton.disabled = false;
+  }
+}
+
+async function exitGuidePreview() {
+  try {
+    await window.messagingService.sendToAllFrames({ type: "GWTP_CLEAR_TRAINING_STEP" });
+  } catch (error) {
+    console.info("GWTP preview cleanup skipped:", error);
+  }
+  previewSession = null;
+  updatePreviewUi();
+}
 
 function updateAuthenticatedView() {
   const role = window.authService.getCurrentRole();
@@ -643,6 +711,7 @@ function openNewGuide() {
 }
 
 function showGuideLibrary() {
+  exitGuidePreview();
   closeStepCreator();
   topicsView.hidden = true;
   guideEditorView.hidden = true;
@@ -1819,6 +1888,8 @@ deleteConfirmOverlay.addEventListener("click", (event) => {
   if (event.target === deleteConfirmOverlay) closeDeleteConfirmation();
 });
 openNewGuideButton.addEventListener("click", openNewGuide);
+previewGuideButton.addEventListener("click", startGuidePreview);
+exitPreviewButton.addEventListener("click", exitGuidePreview);
 backToGuidesButton.addEventListener("click", showGuideLibrary);
 addStepButton.addEventListener("click", openStepCreator);
 cancelStepButton.addEventListener("click", closeStepCreator);
@@ -1886,8 +1957,59 @@ passwordInput.addEventListener("keydown", (event) => {
   }
 });
 
-chrome.runtime.onMessage.addListener((message) => {
-  if (window.authService.getCurrentRole() !== "learner") return;
+chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+  const role = window.authService.getCurrentRole();
+
+  if (role === "editor" && previewSession) {
+    if (message?.type === "GWTP_PAGE_READY") {
+      const current = {
+        step: previewSession.steps[previewSession.stepIndex],
+        stepIndex: previewSession.stepIndex,
+        totalSteps: previewSession.steps.length,
+        mode: "preview"
+      };
+      window.guideRunner.showCurrentStep(current).catch((error) => {
+        console.info("GWTP preview restore skipped:", error);
+      });
+      return;
+    }
+
+    if (message?.type === "GWTP_PREVIEW_NEXT" || message?.type === "GWTP_PREVIEW_PREVIOUS") {
+      const direction = message.type === "GWTP_PREVIEW_NEXT" ? 1 : -1;
+      previewSession.stepIndex = Math.max(0, Math.min(previewSession.steps.length - 1, previewSession.stepIndex + direction));
+      updatePreviewUi();
+      sendResponse({
+        success: true,
+        current: {
+          step: previewSession.steps[previewSession.stepIndex],
+          stepIndex: previewSession.stepIndex,
+          totalSteps: previewSession.steps.length,
+          mode: "preview"
+        }
+      });
+      return;
+    }
+
+    if (message?.type === "GWTP_PREVIEW_COMPLETE") {
+      sendResponse({ success: true, result: { preview: true } });
+      return;
+    }
+
+    if (message?.type === "GWTP_PREVIEW_COMPLETED") {
+      previewSession = null;
+      updatePreviewUi();
+      return;
+    }
+
+    if (message?.type === "GWTP_TRAINING_STEP_CHANGED" && message.current?.mode === "preview") {
+      window.guideRunner.showCurrentStep(message.current).catch((error) => {
+        console.info("GWTP preview step change skipped:", error);
+      });
+      return;
+    }
+  }
+
+  if (role !== "learner") return;
 
   if (message?.type === "GWTP_PAGE_READY") {
     window.guideRunner.restoreActiveStep().catch((error) => {
