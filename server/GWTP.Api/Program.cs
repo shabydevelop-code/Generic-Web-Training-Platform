@@ -1430,7 +1430,7 @@ static void EnsureDemoSiteGuide(string databasePath)
         var demoValidations = new (string Selector, string Expression, string ErrorMessage, string BuilderType, string BuilderValue)[]
         {
             ("#site-phone", "^(?!03-5551235$)(?:05\\d[- ]?\\d{7}|0[2-4,8-9][- ]?\\d{7})$", "יש לשנות את מספר הטלפון למספר אחר ותקין: נייד בן 10 ספרות או נייח בן 9 ספרות. ניתן להשתמש במקף.", "regex", "^(?!03-5551235$)(?:05\\d[- ]?\\d{7}|0[2-4,8-9][- ]?\\d{7})$"),
-            ("#site-type", "^(?!main$).+$", "יש לשנות את סוג האתר לערך אחר לפני המעבר לשלב הבא.", "regex", "^(?!main$).+$"),
+            ("#site-type", "^branch$", "יש לבחור סניף מכירות לפני המעבר לשלב הבא.", "regex", "^branch$"),
             ("#case-category", "^(?!network$).+$", "יש לבחור קטגוריית פניה שונה לפני המעבר לשלב הבא.", "regex", "^(?!network$).+$"),
             ("#case-assigned", "^(?!דניאל כהן$)(?=.*\\S).+$", "יש לעדכן את הנציג המטפל לפני המעבר לשלב הבא.", "regex", "^(?!דניאל כהן$)(?=.*\\S).+$"),
             ("#case-subject", "^(?!איטיות בגלישה ונפילות קו תקשורת ראשי$)(?=.{10,}$).+", "יש לעדכן את נושא הפניה לנושא חדש בן 10 תווים לפחות.", "regex", "^(?!איטיות בגלישה ונפילות קו תקשורת ראשי$)(?=.{10,}$).+"),
@@ -1498,7 +1498,7 @@ static void EnsureDemoSiteGuide(string databasePath)
         var seedValidation = steps[index].Selector switch
         {
             "#site-phone" => new ValidationRule("regex", "^(?!03-5551235$)(?:05\\d[- ]?\\d{7}|0[2-4,8-9][- ]?\\d{7})$", "יש לשנות את מספר הטלפון למספר אחר ותקין: נייד בן 10 ספרות או נייח בן 9 ספרות. ניתן להשתמש במקף.", "regex", "^(?!03-5551235$)(?:05\\d[- ]?\\d{7}|0[2-4,8-9][- ]?\\d{7})$"),
-            "#site-type" => new ValidationRule("regex", "^(?!main$).+$", "יש לשנות את סוג האתר לערך אחר לפני המעבר לשלב הבא.", "regex", "^(?!main$).+$"),
+            "#site-type" => new ValidationRule("regex", "^branch$", "יש לבחור סניף מכירות לפני המעבר לשלב הבא.", "regex", "^branch$"),
             "#case-category" => new ValidationRule("regex", "^(?!network$).+$", "יש לבחור קטגוריית פניה שונה לפני המעבר לשלב הבא.", "regex", "^(?!network$).+$"),
             "#case-assigned" => new ValidationRule("regex", "^(?!דניאל כהן$)(?=.*\\S).+$", "יש לעדכן את הנציג המטפל לפני המעבר לשלב הבא.", "regex", "^(?!דניאל כהן$)(?=.*\\S).+$"),
             "#case-subject" => new ValidationRule("regex", "^(?!איטיות בגלישה ונפילות קו תקשורת ראשי$)(?=.{10,}$).+", "יש לעדכן את נושא הפניה לנושא חדש בן 10 תווים לפחות.", "regex", "^(?!איטיות בגלישה ונפילות קו תקשורת ראשי$)(?=.{10,}$).+"),
