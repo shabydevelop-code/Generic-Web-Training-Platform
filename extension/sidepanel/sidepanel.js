@@ -321,9 +321,7 @@ function handleLearnerTopicChange() {
     option.value = String(guide.id);
     const statusKey = guide.progressStatus === "Completed"
       ? "guideStatusCompleted"
-      : guide.progressStatus === "InProgress"
-        ? "guideStatusInProgress"
-        : null;
+      : null;
     option.textContent = statusKey
       ? `${guide.name} — ${window.i18nService.translate(statusKey, language)}`
       : guide.name;
