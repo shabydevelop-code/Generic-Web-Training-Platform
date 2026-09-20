@@ -18,7 +18,8 @@
       element: element
         ? {
             tagName: element.tagName || "",
-            text: element.text || ""
+            text: element.text || "",
+            frame: element.frame ? { ...element.frame } : null
           }
         : null
     };
@@ -38,7 +39,7 @@
       selector: selector.trim(),
       instruction: instruction.trim(),
       element: element
-        ? { tagName: element.tagName || "", text: element.text || "" }
+        ? { tagName: element.tagName || "", text: element.text || "", frame: element.frame ? { ...element.frame } : null }
         : steps[index].element
     };
     return { ...steps[index] };
@@ -81,7 +82,11 @@
         order: index + 1,
         selector: step.selector.trim(),
         instruction: step.instruction.trim(),
-        element: null
+        element: {
+          tagName: "",
+          text: "",
+          frame: step.frame ? { ...step.frame } : null
+        }
       });
     });
 
