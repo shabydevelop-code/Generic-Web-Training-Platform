@@ -190,8 +190,20 @@ function showTrainingStep(step, navigation = {}) {
     const validation = step.validation;
     if (!validation?.expression) return true;
 
-    if (validation.engine === "changed") {
-      const isValid = getTargetValue() !== initialTargetValue;
+    if (validation.engine === "changed" || validation.engine === "changed_regex") {
+      const currentValue = getTargetValue();
+      const changed = currentValue !== initialTargetValue;
+      let formatValid = true;
+
+      if (validation.engine === "changed_regex") {
+        try {
+          formatValid = new RegExp(validation.expression).test(currentValue);
+        } catch {
+          formatValid = false;
+        }
+      }
+
+      const isValid = changed && formatValid;
       validationError.style.display = isValid ? "none" : "block";
       validationError.textContent = isValid ? "" : (validation.errorMessage || "");
       if (!isValid) target.focus?.();
