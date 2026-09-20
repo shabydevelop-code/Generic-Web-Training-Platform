@@ -217,6 +217,23 @@
     return { success: shown, current };
   }
 
+  async function retryCurrentStep(current) {
+    if (!current?.step) {
+      return { success: false, reason: "element-not-found", current: null };
+    }
+
+    if (!(await canShowStep(current))) {
+      return { success: false, reason: "element-not-found", current };
+    }
+
+    const shown = await showCurrentStep(current);
+    return {
+      success: shown,
+      reason: shown ? null : "element-not-found",
+      current
+    };
+  }
+
   async function restart(guide) {
     await beginValidationSession("learner", guide?.id);
     if (!guide?.startUrl || !guide?.steps?.length) {
@@ -344,6 +361,7 @@
   window.guideRunner = {
     start,
     resume,
+    retryCurrentStep,
     restart,
     preview,
     restoreActiveStep,
