@@ -1,10 +1,14 @@
 (function () {
-  async function clearValidationBaselines() {
+  const VALIDATION_SESSION_KEY = "gwtp.validation.session";
+
+  async function beginValidationSession(mode, guideId) {
     const stored = await chrome.storage.session.get(null);
     const keys = Object.keys(stored).filter((key) => key.startsWith("gwtp:validation-baseline:"));
-    if (keys.length) {
-      await chrome.storage.session.remove(keys);
-    }
+    if (keys.length) await chrome.storage.session.remove(keys);
+
+    const sessionId = [mode, guideId || "draft", Date.now(), crypto.randomUUID()].join(":");
+    await chrome.storage.session.set({ [VALIDATION_SESSION_KEY]: sessionId });
+    return sessionId;
   }
 
   function waitForTabComplete(tabId) {
@@ -108,7 +112,7 @@
   }
 
   async function start(guide) {
-    await clearValidationBaselines();
+    await beginValidationSession("learner", guide?.id);
     if (!guide?.startUrl) {
       throw new Error("The guide start URL is missing.");
     }
@@ -145,7 +149,7 @@
   }
 
   async function restart(guide) {
-    await clearValidationBaselines();
+    await beginValidationSession("learner", guide?.id);
     if (!guide?.startUrl || !guide?.steps?.length) {
       throw new Error("A valid guide with a start URL and at least one step is required.");
     }
@@ -180,7 +184,7 @@
   }
 
   async function preview(guide) {
-    await clearValidationBaselines();
+    await beginValidationSession("preview", guide?.id);
     if (!guide?.startUrl || !guide?.steps?.length) {
       throw new Error("A valid guide with a start URL and at least one step is required.");
     }
