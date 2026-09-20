@@ -30,7 +30,6 @@ InitializeDatabase(databasePath, schemaPath);
 ApplyDatabaseMigrations(databasePath);
 EnsureDevelopmentAdmin(databasePath);
 EnsureDemoSiteGuide(databasePath);
-EnsureValidationTestGuide(databasePath);
 
 var sessions = new Dictionary<string, long>(StringComparer.Ordinal);
 var sessionLock = new object();
@@ -1405,6 +1404,34 @@ static void InitializeDatabase(string databasePath, string schemaPath)
     command.ExecuteNonQuery();
 }
 
+static void ApplyOneTimeMigration(SqliteConnection connection, string migrationId, Action migration)
+{
+    using (var tableCommand = connection.CreateCommand())
+    {
+        tableCommand.CommandText = """
+            CREATE TABLE IF NOT EXISTS SchemaMigrations (
+                Id TEXT PRIMARY KEY,
+                AppliedAt TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+            );
+            """;
+        tableCommand.ExecuteNonQuery();
+    }
+
+    using (var existsCommand = connection.CreateCommand())
+    {
+        existsCommand.CommandText = "SELECT 1 FROM SchemaMigrations WHERE Id = $id LIMIT 1;";
+        existsCommand.Parameters.AddWithValue("$id", migrationId);
+        if (existsCommand.ExecuteScalar() is not null) return;
+    }
+
+    migration();
+
+    using var markCommand = connection.CreateCommand();
+    markCommand.CommandText = "INSERT INTO SchemaMigrations (Id) VALUES ($id);";
+    markCommand.Parameters.AddWithValue("$id", migrationId);
+    markCommand.ExecuteNonQuery();
+}
+
 static void ApplyDatabaseMigrations(string databasePath)
 {
     using var connection = OpenConnection(databasePath);
@@ -1508,6 +1535,108 @@ static void ApplyDatabaseMigrations(string databasePath)
             """;
         stepProgressMigration.ExecuteNonQuery();
     }
+
+    ApplyOneTimeMigration(connection, "20260920_validation_regression_guide", () =>
+    {
+        const string topicName = "Demo CRM";
+        const string guideName = "בדיקת כל חוקי הוולידציה";
+
+        using var transaction = connection.BeginTransaction();
+
+        using var topicCommand = connection.CreateCommand();
+        topicCommand.Transaction = transaction;
+        topicCommand.CommandText = """
+            INSERT INTO Topics (Name)
+            SELECT $name
+            WHERE NOT EXISTS (SELECT 1 FROM Topics WHERE Name = $name COLLATE NOCASE);
+            SELECT Id FROM Topics WHERE Name = $name COLLATE NOCASE ORDER BY Id LIMIT 1;
+            """;
+        topicCommand.Parameters.AddWithValue("$name", topicName);
+        var topicId = Convert.ToInt64(topicCommand.ExecuteScalar());
+
+        using var existingGuideCommand = connection.CreateCommand();
+        existingGuideCommand.Transaction = transaction;
+        existingGuideCommand.CommandText = """
+            SELECT Id FROM Guides
+            WHERE TopicId = $topicId AND Name = $guideName COLLATE NOCASE
+            LIMIT 1;
+            """;
+        existingGuideCommand.Parameters.AddWithValue("$topicId", topicId);
+        existingGuideCommand.Parameters.AddWithValue("$guideName", guideName);
+        var existingGuideId = existingGuideCommand.ExecuteScalar();
+
+        long guideId;
+        if (existingGuideId is null)
+        {
+            using var guideCommand = connection.CreateCommand();
+            guideCommand.Transaction = transaction;
+            guideCommand.CommandText = """
+                INSERT INTO Guides (TopicId, Name, StartUrl, IsAvailable)
+                VALUES ($topicId, $name, $startUrl, 1);
+                SELECT last_insert_rowid();
+                """;
+            guideCommand.Parameters.AddWithValue("$topicId", topicId);
+            guideCommand.Parameters.AddWithValue("$name", guideName);
+            guideCommand.Parameters.AddWithValue("$startUrl", "http://localhost:5100/site.html");
+            guideId = Convert.ToInt64(guideCommand.ExecuteScalar());
+        }
+        else
+        {
+            guideId = Convert.ToInt64(existingGuideId);
+            using var clearSteps = connection.CreateCommand();
+            clearSteps.Transaction = transaction;
+            clearSteps.CommandText = "DELETE FROM GuideSteps WHERE GuideId = $guideId;";
+            clearSteps.Parameters.AddWithValue("$guideId", guideId);
+            clearSteps.ExecuteNonQuery();
+        }
+
+        var contentFrame = JsonSerializer.Serialize(
+            new FrameTarget(false, null, "TargetContent", "ptifrmtgtframe", "TargetContent", "Main Content"));
+
+        var steps = new (string Selector, string Instruction, ValidationRule Validation)[]
+        {
+            ("#site-name", "בדיקת שדה חובה: מחק את שם האתר ונסה לעבור הלאה. לאחר החסימה הזן ערך כלשהו.",
+                new ValidationRule("required", "__required__", "יש להזין שם אתר לפני המעבר לשלב הבא.", "required", "")),
+            ("#site-type", "בדיקת שווה לערך: בחר ערך שאינו סניף מכירות ונסה לעבור הלאה. לאחר מכן בחר סניף מכירות.",
+                new ValidationRule("regex", "^branch$", "יש לבחור סניף מכירות לפני המעבר לשלב הבא.", "equals", "branch")),
+            ("#site-type", "בדיקת שונה מערך: סניף מכירות צריך להיחסם. בחר סוג אתר אחר.",
+                new ValidationRule("regex", "^(?!branch$).+$", "יש לבחור סוג אתר שאינו סניף מכירות.", "not_equals", "branch")),
+            ("#site-name", "בדיקת מכיל: הזן שם שאינו מכיל TEST ונסה לעבור הלאה. לאחר מכן הזן שם שמכיל TEST.",
+                new ValidationRule("regex", ".*TEST.*", "שם האתר חייב להכיל TEST.", "contains", "TEST")),
+            ("#site-phone", "בדיקת שינוי: נסה לעבור הלאה בלי לשנות את מספר הטלפון. לאחר החסימה שנה את המספר.",
+                new ValidationRule("changed", "__changed__", "יש לשנות את מספר הטלפון לפני המעבר לשלב הבא.", "changed", "")),
+            ("#site-phone", "שנה את מספר הטלפון למספר חדש ותקין.",
+                new ValidationRule("changed_regex", "^0\\d{1,2}-?\\d{7}$", "יש להזין מספר טלפון חדש ותקין.", "changed_regex", "^0\\d{1,2}-?\\d{7}$"))
+        };
+
+        for (var index = 0; index < steps.Length; index++)
+        {
+            using var stepCommand = connection.CreateCommand();
+            stepCommand.Transaction = transaction;
+            stepCommand.CommandText = """
+                INSERT INTO GuideSteps
+                    (GuideId, StepOrder, Selector, Instruction, FrameTarget,
+                     ValidationEngine, ValidationExpression, ValidationErrorMessage,
+                     ValidationBuilderType, ValidationBuilderValue)
+                VALUES
+                    ($guideId, $stepOrder, $selector, $instruction, $frameTarget,
+                     $engine, $expression, $errorMessage, $builderType, $builderValue);
+                """;
+            stepCommand.Parameters.AddWithValue("$guideId", guideId);
+            stepCommand.Parameters.AddWithValue("$stepOrder", index + 1);
+            stepCommand.Parameters.AddWithValue("$selector", steps[index].Selector);
+            stepCommand.Parameters.AddWithValue("$instruction", steps[index].Instruction);
+            stepCommand.Parameters.AddWithValue("$frameTarget", contentFrame);
+            stepCommand.Parameters.AddWithValue("$engine", steps[index].Validation.Engine);
+            stepCommand.Parameters.AddWithValue("$expression", steps[index].Validation.Expression);
+            stepCommand.Parameters.AddWithValue("$errorMessage", steps[index].Validation.ErrorMessage);
+            stepCommand.Parameters.AddWithValue("$builderType", steps[index].Validation.BuilderType ?? "");
+            stepCommand.Parameters.AddWithValue("$builderValue", steps[index].Validation.BuilderValue ?? "");
+            stepCommand.ExecuteNonQuery();
+        }
+
+        transaction.Commit();
+    });
 
     using var normalizeProgress = connection.CreateCommand();
     normalizeProgress.CommandText = "UPDATE UserProgress SET StartedAt = COALESCE(StartedAt, CURRENT_TIMESTAMP), LastActivityAt = COALESCE(LastActivityAt, CURRENT_TIMESTAMP);";
@@ -1741,106 +1870,6 @@ static void EnsureDemoSiteGuide(string databasePath)
         stepCommand.Parameters.AddWithValue("$validationErrorMessage", (object?)seedValidation?.ErrorMessage ?? DBNull.Value);
         stepCommand.Parameters.AddWithValue("$validationBuilderType", (object?)seedValidation?.BuilderType ?? DBNull.Value);
         stepCommand.Parameters.AddWithValue("$validationBuilderValue", (object?)seedValidation?.BuilderValue ?? DBNull.Value);
-        stepCommand.ExecuteNonQuery();
-    }
-
-    transaction.Commit();
-}
-
-static void EnsureValidationTestGuide(string databasePath)
-{
-    const string topicName = "Demo CRM";
-    const string guideName = "בדיקת כל חוקי הוולידציה";
-
-    using var connection = OpenConnection(databasePath);
-
-    using var existingCommand = connection.CreateCommand();
-    existingCommand.CommandText = """
-        SELECT COUNT(*)
-        FROM Guides g
-        INNER JOIN Topics t ON t.Id = g.TopicId
-        WHERE t.Name = $topicName COLLATE NOCASE
-          AND g.Name = $guideName COLLATE NOCASE;
-        """;
-    existingCommand.Parameters.AddWithValue("$topicName", topicName);
-    existingCommand.Parameters.AddWithValue("$guideName", guideName);
-
-    if (Convert.ToInt32(existingCommand.ExecuteScalar()) > 0)
-        return;
-
-    using var transaction = connection.BeginTransaction();
-
-    using var topicCommand = connection.CreateCommand();
-    topicCommand.Transaction = transaction;
-    topicCommand.CommandText = """
-        INSERT INTO Topics (Name)
-        SELECT $name
-        WHERE NOT EXISTS (SELECT 1 FROM Topics WHERE Name = $name COLLATE NOCASE);
-        SELECT Id FROM Topics WHERE Name = $name COLLATE NOCASE ORDER BY Id LIMIT 1;
-        """;
-    topicCommand.Parameters.AddWithValue("$name", topicName);
-    var topicId = Convert.ToInt64(topicCommand.ExecuteScalar());
-
-    using var guideCommand = connection.CreateCommand();
-    guideCommand.Transaction = transaction;
-    guideCommand.CommandText = """
-        INSERT INTO Guides (TopicId, Name, StartUrl, IsAvailable)
-        VALUES ($topicId, $name, $startUrl, 1);
-        SELECT last_insert_rowid();
-        """;
-    guideCommand.Parameters.AddWithValue("$topicId", topicId);
-    guideCommand.Parameters.AddWithValue("$name", guideName);
-    guideCommand.Parameters.AddWithValue("$startUrl", "http://localhost:5100/site.html");
-    var guideId = Convert.ToInt64(guideCommand.ExecuteScalar());
-
-    var contentFrame = JsonSerializer.Serialize(
-        new FrameTarget(false, null, "TargetContent", "ptifrmtgtframe", "TargetContent", "Main Content"));
-
-    var steps = new (string Selector, string Instruction, ValidationRule Validation)[]
-    {
-        ("#site-name",
-            "בדיקת שדה חובה: מחק את שם האתר ונסה לעבור הלאה. לאחר החסימה הזן ערך כלשהו.",
-            new ValidationRule("required", "__required__", "יש להזין שם אתר לפני המעבר לשלב הבא.", "required", "")),
-        ("#site-type",
-            "בדיקת שווה לערך: בחר ערך שאינו סניף מכירות ונסה לעבור הלאה. לאחר מכן בחר סניף מכירות.",
-            new ValidationRule("regex", "^branch$", "יש לבחור סניף מכירות לפני המעבר לשלב הבא.", "equals", "branch")),
-        ("#site-type",
-            "בדיקת שונה מערך: סניף מכירות צריך להיחסם. בחר סוג אתר אחר.",
-            new ValidationRule("regex", "^(?!branch$).+$", "יש לבחור סוג אתר שאינו סניף מכירות.", "not_equals", "branch")),
-        ("#site-name",
-            "בדיקת מכיל: הזן שם שאינו מכיל TEST ונסה לעבור הלאה. לאחר מכן הזן שם שמכיל TEST.",
-            new ValidationRule("regex", ".*TEST.*", "שם האתר חייב להכיל TEST.", "contains", "TEST")),
-        ("#site-phone",
-            "בדיקת שינוי: נסה לעבור הלאה בלי לשנות את מספר הטלפון. לאחר החסימה שנה את המספר.",
-            new ValidationRule("changed", "__changed__", "יש לשנות את מספר הטלפון לפני המעבר לשלב הבא.", "changed", "")),
-        ("#site-phone",
-            "שנה את מספר הטלפון למספר חדש ותקין.",
-            new ValidationRule("changed_regex", "^0\\d{1,2}-?\\d{7}$", "יש להזין מספר טלפון חדש ותקין.", "changed_regex", "^0\\d{1,2}-?\\d{7}$"))
-    };
-
-    for (var index = 0; index < steps.Length; index++)
-    {
-        using var stepCommand = connection.CreateCommand();
-        stepCommand.Transaction = transaction;
-        stepCommand.CommandText = """
-            INSERT INTO GuideSteps
-                (GuideId, StepOrder, Selector, Instruction, FrameTarget,
-                 ValidationEngine, ValidationExpression, ValidationErrorMessage,
-                 ValidationBuilderType, ValidationBuilderValue)
-            VALUES
-                ($guideId, $stepOrder, $selector, $instruction, $frameTarget,
-                 $engine, $expression, $errorMessage, $builderType, $builderValue);
-            """;
-        stepCommand.Parameters.AddWithValue("$guideId", guideId);
-        stepCommand.Parameters.AddWithValue("$stepOrder", index + 1);
-        stepCommand.Parameters.AddWithValue("$selector", steps[index].Selector);
-        stepCommand.Parameters.AddWithValue("$instruction", steps[index].Instruction);
-        stepCommand.Parameters.AddWithValue("$frameTarget", contentFrame);
-        stepCommand.Parameters.AddWithValue("$engine", steps[index].Validation.Engine);
-        stepCommand.Parameters.AddWithValue("$expression", steps[index].Validation.Expression);
-        stepCommand.Parameters.AddWithValue("$errorMessage", steps[index].Validation.ErrorMessage);
-        stepCommand.Parameters.AddWithValue("$builderType", steps[index].Validation.BuilderType ?? "");
-        stepCommand.Parameters.AddWithValue("$builderValue", steps[index].Validation.BuilderValue ?? "");
         stepCommand.ExecuteNonQuery();
     }
 
