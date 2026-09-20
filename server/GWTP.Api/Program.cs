@@ -1228,7 +1228,10 @@ static bool IsValidStepValidation(ValidationRule? validation)
     if (string.Equals(validation.Engine, "changed", StringComparison.OrdinalIgnoreCase))
         return string.Equals(validation.Expression, "__changed__", StringComparison.Ordinal);
 
-    if (!string.Equals(validation.Engine, "regex", StringComparison.OrdinalIgnoreCase)) return false;
+    var isRegexValidation =
+        string.Equals(validation.Engine, "regex", StringComparison.OrdinalIgnoreCase) ||
+        string.Equals(validation.Engine, "changed_regex", StringComparison.OrdinalIgnoreCase);
+    if (!isRegexValidation) return false;
 
     try
     {
@@ -1433,7 +1436,6 @@ static void EnsureDemoSiteGuide(string databasePath)
 
         var demoValidations = new (string Selector, string Expression, string ErrorMessage, string BuilderType, string BuilderValue)[]
         {
-            ("#site-phone", "^(?!03-5551235$)(?:05\\d[- ]?\\d{7}|0[2-4,8-9][- ]?\\d{7})$", "יש לשנות את מספר הטלפון למספר אחר ותקין: נייד בן 10 ספרות או נייח בן 9 ספרות. ניתן להשתמש במקף.", "regex", "^(?!03-5551235$)(?:05\\d[- ]?\\d{7}|0[2-4,8-9][- ]?\\d{7})$"),
             ("#site-type", "^branch$", "יש לבחור סניף מכירות לפני המעבר לשלב הבא.", "regex", "^branch$"),
             ("#case-category", "^(?!network$).+$", "יש לבחור קטגוריית פניה שונה לפני המעבר לשלב הבא.", "regex", "^(?!network$).+$"),
             ("#case-subject", "^(?!איטיות בגלישה ונפילות קו תקשורת ראשי$)(?=.{10,}$).+", "יש לעדכן את נושא הפניה לנושא חדש בן 10 תווים לפחות.", "regex", "^(?!איטיות בגלישה ונפילות קו תקשורת ראשי$)(?=.{10,}$).+"),
@@ -1466,6 +1468,553 @@ static void EnsureDemoSiteGuide(string databasePath)
             validationCommand.Parameters.AddWithValue("$builderType", validation.BuilderType);
             validationCommand.Parameters.AddWithValue("$builderValue", validation.BuilderValue);
             validationCommand.ExecuteNonQuery();
+        }
+
+        using (var changedPhoneValidationCommand = connection.CreateCommand())
+        {
+            changedPhoneValidationCommand.Transaction = transaction;
+            changedPhoneValidationCommand.CommandText = """
+                UPDATE GuideSteps
+                SET ValidationEngine = 'changed_regex',
+                    ValidationExpression = '^(?:05\d[- ]?\d{7}|0[2-4,8-9][- ]?\d{7})
+        {
+            changedValidationCommand.Transaction = transaction;
+            changedValidationCommand.CommandText = """
+                UPDATE GuideSteps
+                SET ValidationEngine = 'changed',
+                    ValidationExpression = '__changed__',
+                    ValidationErrorMessage = 'יש לשנות את הנציג המטפל לפני המעבר לשלב הבא.',
+                    ValidationBuilderType = 'changed',
+                    ValidationBuilderValue = ''
+                WHERE GuideId = $guideId
+                  AND Selector = '#case-assigned';
+                """;
+            changedValidationCommand.Parameters.AddWithValue("$guideId", existingDemoGuideId);
+            changedValidationCommand.ExecuteNonQuery();
+        }
+
+        var instructionMigrations = new (string Selector, string OldInstruction, string NewInstruction)[]
+        {
+            ("#btn-save-site",
+                "לחץ על <strong>שמור שינויים</strong> כדי לשמור את נתוני האתר.",
+                "לחץ על <strong>שמור שינויים</strong> כדי לשמור את נתוני האתר. אם השמירה הסתיימה ללא שגיאות, לחץ על <strong>הבא</strong>."),
+            ("#btn-save-case",
+                "לחץ על <strong>עדכן פניה</strong>. אם קיימת שגיאת ולידציה, תקן אותה ועדכן שוב.",
+                "לחץ על <strong>עדכן פניה</strong>. אם קיימת שגיאת ולידציה, תקן אותה ועדכן שוב. אם העדכון הסתיים ללא שגיאות, לחץ על <strong>הבא</strong>."),
+            ("#btn-save-lead",
+                "לחץ על <strong>שמור ליד</strong>. אם השמירה נדחית, תקן את השדה המסומן ונסה שוב.",
+                "לחץ על <strong>שמור ליד</strong>. אם השמירה נדחית, תקן את השדה המסומן ונסה שוב. אם השמירה הסתיימה ללא שגיאות, לחץ על <strong>הבא</strong>."),
+            ("#btn-save-360",
+                "לחץ על <strong>שמור פרטי לקוח</strong>. תקן שגיאות ולידציה אם יוצגו.",
+                "לחץ על <strong>שמור פרטי לקוח</strong>. תקן שגיאות ולידציה אם יוצגו. אם השמירה הסתיימה ללא שגיאות, לחץ על <strong>הבא</strong>.")
+        };
+
+        foreach (var migration in instructionMigrations)
+        {
+            using var instructionCommand = connection.CreateCommand();
+            instructionCommand.Transaction = transaction;
+            instructionCommand.CommandText = """
+                UPDATE GuideSteps
+                SET Instruction = $newInstruction
+                WHERE GuideId = $guideId
+                  AND Selector = $selector
+                  AND Instruction = $oldInstruction;
+                """;
+            instructionCommand.Parameters.AddWithValue("$guideId", existingDemoGuideId);
+            instructionCommand.Parameters.AddWithValue("$selector", migration.Selector);
+            instructionCommand.Parameters.AddWithValue("$oldInstruction", migration.OldInstruction);
+            instructionCommand.Parameters.AddWithValue("$newInstruction", migration.NewInstruction);
+            instructionCommand.ExecuteNonQuery();
+        }
+
+        transaction.Commit();
+        return;
+    }
+
+    using var guideCommand = connection.CreateCommand();
+    guideCommand.Transaction = transaction;
+    guideCommand.CommandText = """
+        INSERT INTO Guides (TopicId, Name, StartUrl, IsAvailable)
+        VALUES ($topicId, $name, $startUrl, 1);
+        SELECT last_insert_rowid();
+        """;
+    guideCommand.Parameters.AddWithValue("$topicId", topicId);
+    guideCommand.Parameters.AddWithValue("$name", guideName);
+    guideCommand.Parameters.AddWithValue("$startUrl", "http://localhost:5100/site.html");
+    var guideId = Convert.ToInt64(guideCommand.ExecuteScalar());
+
+    for (var index = 0; index < steps.Length; index++)
+    {
+        using var stepCommand = connection.CreateCommand();
+        stepCommand.Transaction = transaction;
+        stepCommand.CommandText = """
+            INSERT INTO GuideSteps (GuideId, StepOrder, Selector, Instruction, FrameTarget, ValidationEngine, ValidationExpression, ValidationErrorMessage, ValidationBuilderType, ValidationBuilderValue)
+            VALUES ($guideId, $stepOrder, $selector, $instruction, $frameTarget, $validationEngine, $validationExpression, $validationErrorMessage, $validationBuilderType, $validationBuilderValue);
+            """;
+        stepCommand.Parameters.AddWithValue("$guideId", guideId);
+        stepCommand.Parameters.AddWithValue("$stepOrder", index + 1);
+        stepCommand.Parameters.AddWithValue("$selector", steps[index].Selector);
+        stepCommand.Parameters.AddWithValue("$instruction", steps[index].Instruction);
+        stepCommand.Parameters.AddWithValue("$frameTarget", DBNull.Value);
+
+        var seedValidation = steps[index].Selector switch
+        {
+            "#site-phone" => new ValidationRule("changed_regex", "^(?:05\\d[- ]?\\d{7}|0[2-4,8-9][- ]?\\d{7})$", "יש לשנות את מספר הטלפון למספר אחר ותקין: נייד בן 10 ספרות או נייח בן 9 ספרות. ניתן להשתמש במקף.", "regex", "^(?:05\\d[- ]?\\d{7}|0[2-4,8-9][- ]?\\d{7})$"),
+            "#site-type" => new ValidationRule("regex", "^branch$", "יש לבחור סניף מכירות לפני המעבר לשלב הבא.", "regex", "^branch$"),
+            "#case-category" => new ValidationRule("regex", "^(?!network$).+$", "יש לבחור קטגוריית פניה שונה לפני המעבר לשלב הבא.", "regex", "^(?!network$).+$"),
+            "#case-assigned" => new ValidationRule("changed", "__changed__", "יש לשנות את הנציג המטפל לפני המעבר לשלב הבא.", "changed", ""),
+            "#case-subject" => new ValidationRule("regex", "^(?!איטיות בגלישה ונפילות קו תקשורת ראשי$)(?=.{10,}$).+", "יש לעדכן את נושא הפניה לנושא חדש בן 10 תווים לפחות.", "regex", "^(?!איטיות בגלישה ונפילות קו תקשורת ראשי$)(?=.{10,}$).+"),
+            "#lead-source" => new ValidationRule("regex", "^(?!web$).+$", "יש לשנות את מקור הליד לפני המעבר לשלב הבא.", "regex", "^(?!web$).+$"),
+            "#lead-interest" => new ValidationRule("regex", "^(?!cloud_crm$).+$", "יש לשנות את המוצר המבוקש לפני המעבר לשלב הבא.", "regex", "^(?!cloud_crm$).+$"),
+            "#lead-email" => new ValidationRule("regex", "^(?!ronit@nextgen\\.co\\.il$)[^\\s@]+@[^\\s@]+\\.[^\\s@]+$", "יש לעדכן את כתובת הדוא״ל לכתובת תקינה ושונה מהכתובת המקורית.", "regex", "^(?!ronit@nextgen\\.co\\.il$)[^\\s@]+@[^\\s@]+\\.[^\\s@]+$"),
+            "#c360-tier" => new ValidationRule("regex", "^(?!platinum$).+$", "יש לשנות את סיווג הלקוח לפני המעבר לשלב הבא.", "regex", "^(?!platinum$).+$"),
+            "#c360-manager" => new ValidationRule("regex", "^(?!אורן שגיא$)(?=.*\\S).+$", "יש לעדכן את מנהל תיק הלקוח לפני המעבר לשלב הבא.", "regex", "^(?!אורן שגיא$)(?=.*\\S).+$"),
+            "#c360-mrr" => new ValidationRule("regex", "^\\d+(?:[.,]\\d+)?$", "יש להזין מחזור חודשי כמספר.", "regex", "^\\d+(?:[.,]\\d+)?$"),
+            _ => null
+        };
+
+        stepCommand.Parameters.AddWithValue("$validationEngine", (object?)seedValidation?.Engine ?? DBNull.Value);
+        stepCommand.Parameters.AddWithValue("$validationExpression", (object?)seedValidation?.Expression ?? DBNull.Value);
+        stepCommand.Parameters.AddWithValue("$validationErrorMessage", (object?)seedValidation?.ErrorMessage ?? DBNull.Value);
+        stepCommand.Parameters.AddWithValue("$validationBuilderType", (object?)seedValidation?.BuilderType ?? DBNull.Value);
+        stepCommand.Parameters.AddWithValue("$validationBuilderValue", (object?)seedValidation?.BuilderValue ?? DBNull.Value);
+        stepCommand.ExecuteNonQuery();
+    }
+
+    transaction.Commit();
+}
+
+static void EnsureDevelopmentAdmin(string databasePath)
+{
+    const string username = "admin";
+
+    using var connection = OpenConnection(databasePath);
+
+    using var existsCommand = connection.CreateCommand();
+    existsCommand.CommandText = "SELECT Id FROM Users WHERE Username = $username;";
+    existsCommand.Parameters.AddWithValue("$username", username);
+
+    if (existsCommand.ExecuteScalar() is not null)
+    {
+        return;
+    }
+
+    var passwordHasher = new PasswordHasher<object>();
+    var passwordHash = passwordHasher.HashPassword(new object(), "admin");
+
+    using var transaction = connection.BeginTransaction();
+
+    using var userCommand = connection.CreateCommand();
+    userCommand.Transaction = transaction;
+    userCommand.CommandText = """
+        INSERT INTO Users (Username, DisplayName, PasswordHash, IsActive)
+        VALUES ($username, $displayName, $passwordHash, 1);
+        SELECT last_insert_rowid();
+        """;
+    userCommand.Parameters.AddWithValue("$username", username);
+    userCommand.Parameters.AddWithValue("$displayName", "GWTP Admin");
+    userCommand.Parameters.AddWithValue("$passwordHash", passwordHash);
+
+    var userId = Convert.ToInt64(userCommand.ExecuteScalar());
+
+    using var roleCommand = connection.CreateCommand();
+    roleCommand.Transaction = transaction;
+    roleCommand.CommandText = "INSERT INTO UserRoles (UserId, Role) VALUES ($userId, 'admin');";
+    roleCommand.Parameters.AddWithValue("$userId", userId);
+    roleCommand.ExecuteNonQuery();
+
+    transaction.Commit();
+}
+
+static SqliteConnection OpenConnection(string databasePath)
+{
+    var connection = new SqliteConnection($"Data Source={databasePath}");
+    connection.Open();
+
+    using var command = connection.CreateCommand();
+    command.CommandText = "PRAGMA foreign_keys = ON;";
+    command.ExecuteNonQuery();
+
+    return connection;
+}
+
+static string FindProjectRoot(string startPath)
+{
+    var directory = new DirectoryInfo(startPath);
+
+    while (directory is not null)
+    {
+        if (Directory.Exists(Path.Combine(directory.FullName, "database")) &&
+            Directory.Exists(Path.Combine(directory.FullName, "extension")))
+        {
+            return directory.FullName;
+        }
+
+        directory = directory.Parent;
+    }
+
+    throw new DirectoryNotFoundException("Could not locate the GWTP project root.");
+}
+
+sealed record UserResponse(
+    long Id,
+    string Username,
+    string? DisplayName,
+    bool IsActive,
+    List<string> Roles);
+
+sealed record CreateUserRequest(
+    string Username,
+    string? DisplayName,
+    string Password,
+    string Role);
+
+sealed record UpdateUserRequest(
+    string? DisplayName,
+    string Role,
+    bool IsActive,
+    string? NewPassword);
+
+sealed record CreateTopicRequest(string Name);
+
+sealed record TopicResponse(
+    long Id,
+    string Name);
+
+sealed record FrameTarget(
+    bool IsTop,
+    string? Url,
+    string? Name,
+    string? ElementId,
+    string? ElementName,
+    string? ElementTitle);
+
+sealed record ValidationRule(
+    string Engine,
+    string Expression,
+    string ErrorMessage,
+    string? BuilderType,
+    string? BuilderValue);
+
+sealed record CreateGuideStepRequest(
+    string Selector,
+    string Instruction,
+    FrameTarget? Frame,
+    ValidationRule? Validation);
+
+sealed record CreateGuideRequest(
+    long TopicId,
+    string Name,
+    string? StartUrl,
+    bool IsAvailable,
+    List<CreateGuideStepRequest> Steps);
+
+sealed record GuideStepResponse(
+    int StepOrder,
+    string Selector,
+    string Instruction,
+    FrameTarget? Frame,
+    ValidationRule? Validation);
+
+sealed record GuideResponse(
+    long Id,
+    long TopicId,
+    string Name,
+    string? StartUrl,
+    bool IsAvailable,
+    List<GuideStepResponse> Steps);
+
+sealed record LearnerGuideResponse(long Id, string Name, string ProgressStatus);
+
+sealed record LearnerTopicResponse(
+    long Id,
+    string Name,
+    List<LearnerGuideResponse> Guides);
+
+sealed record ProgressMoveRequest(long GuideId, int Direction);
+
+sealed record LoginRequest(string Username, string Password);
+
+sealed record LoginResponse(
+    long Id,
+    string Username,
+    string? DisplayName,
+    List<string> Roles,
+    string AccessToken);
+,
+                    ValidationErrorMessage = 'יש לשנות את מספר הטלפון למספר אחר ותקין: נייד בן 10 ספרות או נייח בן 9 ספרות. ניתן להשתמש במקף.',
+                    ValidationBuilderType = 'regex',
+                    ValidationBuilderValue = '^(?:05\d[- ]?\d{7}|0[2-4,8-9][- ]?\d{7})
+        {
+            changedValidationCommand.Transaction = transaction;
+            changedValidationCommand.CommandText = """
+                UPDATE GuideSteps
+                SET ValidationEngine = 'changed',
+                    ValidationExpression = '__changed__',
+                    ValidationErrorMessage = 'יש לשנות את הנציג המטפל לפני המעבר לשלב הבא.',
+                    ValidationBuilderType = 'changed',
+                    ValidationBuilderValue = ''
+                WHERE GuideId = $guideId
+                  AND Selector = '#case-assigned';
+                """;
+            changedValidationCommand.Parameters.AddWithValue("$guideId", existingDemoGuideId);
+            changedValidationCommand.ExecuteNonQuery();
+        }
+
+        var instructionMigrations = new (string Selector, string OldInstruction, string NewInstruction)[]
+        {
+            ("#btn-save-site",
+                "לחץ על <strong>שמור שינויים</strong> כדי לשמור את נתוני האתר.",
+                "לחץ על <strong>שמור שינויים</strong> כדי לשמור את נתוני האתר. אם השמירה הסתיימה ללא שגיאות, לחץ על <strong>הבא</strong>."),
+            ("#btn-save-case",
+                "לחץ על <strong>עדכן פניה</strong>. אם קיימת שגיאת ולידציה, תקן אותה ועדכן שוב.",
+                "לחץ על <strong>עדכן פניה</strong>. אם קיימת שגיאת ולידציה, תקן אותה ועדכן שוב. אם העדכון הסתיים ללא שגיאות, לחץ על <strong>הבא</strong>."),
+            ("#btn-save-lead",
+                "לחץ על <strong>שמור ליד</strong>. אם השמירה נדחית, תקן את השדה המסומן ונסה שוב.",
+                "לחץ על <strong>שמור ליד</strong>. אם השמירה נדחית, תקן את השדה המסומן ונסה שוב. אם השמירה הסתיימה ללא שגיאות, לחץ על <strong>הבא</strong>."),
+            ("#btn-save-360",
+                "לחץ על <strong>שמור פרטי לקוח</strong>. תקן שגיאות ולידציה אם יוצגו.",
+                "לחץ על <strong>שמור פרטי לקוח</strong>. תקן שגיאות ולידציה אם יוצגו. אם השמירה הסתיימה ללא שגיאות, לחץ על <strong>הבא</strong>.")
+        };
+
+        foreach (var migration in instructionMigrations)
+        {
+            using var instructionCommand = connection.CreateCommand();
+            instructionCommand.Transaction = transaction;
+            instructionCommand.CommandText = """
+                UPDATE GuideSteps
+                SET Instruction = $newInstruction
+                WHERE GuideId = $guideId
+                  AND Selector = $selector
+                  AND Instruction = $oldInstruction;
+                """;
+            instructionCommand.Parameters.AddWithValue("$guideId", existingDemoGuideId);
+            instructionCommand.Parameters.AddWithValue("$selector", migration.Selector);
+            instructionCommand.Parameters.AddWithValue("$oldInstruction", migration.OldInstruction);
+            instructionCommand.Parameters.AddWithValue("$newInstruction", migration.NewInstruction);
+            instructionCommand.ExecuteNonQuery();
+        }
+
+        transaction.Commit();
+        return;
+    }
+
+    using var guideCommand = connection.CreateCommand();
+    guideCommand.Transaction = transaction;
+    guideCommand.CommandText = """
+        INSERT INTO Guides (TopicId, Name, StartUrl, IsAvailable)
+        VALUES ($topicId, $name, $startUrl, 1);
+        SELECT last_insert_rowid();
+        """;
+    guideCommand.Parameters.AddWithValue("$topicId", topicId);
+    guideCommand.Parameters.AddWithValue("$name", guideName);
+    guideCommand.Parameters.AddWithValue("$startUrl", "http://localhost:5100/site.html");
+    var guideId = Convert.ToInt64(guideCommand.ExecuteScalar());
+
+    for (var index = 0; index < steps.Length; index++)
+    {
+        using var stepCommand = connection.CreateCommand();
+        stepCommand.Transaction = transaction;
+        stepCommand.CommandText = """
+            INSERT INTO GuideSteps (GuideId, StepOrder, Selector, Instruction, FrameTarget, ValidationEngine, ValidationExpression, ValidationErrorMessage, ValidationBuilderType, ValidationBuilderValue)
+            VALUES ($guideId, $stepOrder, $selector, $instruction, $frameTarget, $validationEngine, $validationExpression, $validationErrorMessage, $validationBuilderType, $validationBuilderValue);
+            """;
+        stepCommand.Parameters.AddWithValue("$guideId", guideId);
+        stepCommand.Parameters.AddWithValue("$stepOrder", index + 1);
+        stepCommand.Parameters.AddWithValue("$selector", steps[index].Selector);
+        stepCommand.Parameters.AddWithValue("$instruction", steps[index].Instruction);
+        stepCommand.Parameters.AddWithValue("$frameTarget", DBNull.Value);
+
+        var seedValidation = steps[index].Selector switch
+        {
+            "#site-phone" => new ValidationRule("regex", "^(?!03-5551235$)(?:05\\d[- ]?\\d{7}|0[2-4,8-9][- ]?\\d{7})$", "יש לשנות את מספר הטלפון למספר אחר ותקין: נייד בן 10 ספרות או נייח בן 9 ספרות. ניתן להשתמש במקף.", "regex", "^(?!03-5551235$)(?:05\\d[- ]?\\d{7}|0[2-4,8-9][- ]?\\d{7})$"),
+            "#site-type" => new ValidationRule("regex", "^branch$", "יש לבחור סניף מכירות לפני המעבר לשלב הבא.", "regex", "^branch$"),
+            "#case-category" => new ValidationRule("regex", "^(?!network$).+$", "יש לבחור קטגוריית פניה שונה לפני המעבר לשלב הבא.", "regex", "^(?!network$).+$"),
+            "#case-assigned" => new ValidationRule("regex", "^(?!דניאל כהן$)(?=.*\\S).+$", "יש לעדכן את הנציג המטפל לפני המעבר לשלב הבא.", "regex", "^(?!דניאל כהן$)(?=.*\\S).+$"),
+            "#case-subject" => new ValidationRule("regex", "^(?!איטיות בגלישה ונפילות קו תקשורת ראשי$)(?=.{10,}$).+", "יש לעדכן את נושא הפניה לנושא חדש בן 10 תווים לפחות.", "regex", "^(?!איטיות בגלישה ונפילות קו תקשורת ראשי$)(?=.{10,}$).+"),
+            "#lead-source" => new ValidationRule("regex", "^(?!web$).+$", "יש לשנות את מקור הליד לפני המעבר לשלב הבא.", "regex", "^(?!web$).+$"),
+            "#lead-interest" => new ValidationRule("regex", "^(?!cloud_crm$).+$", "יש לשנות את המוצר המבוקש לפני המעבר לשלב הבא.", "regex", "^(?!cloud_crm$).+$"),
+            "#lead-email" => new ValidationRule("regex", "^(?!ronit@nextgen\\.co\\.il$)[^\\s@]+@[^\\s@]+\\.[^\\s@]+$", "יש לעדכן את כתובת הדוא״ל לכתובת תקינה ושונה מהכתובת המקורית.", "regex", "^(?!ronit@nextgen\\.co\\.il$)[^\\s@]+@[^\\s@]+\\.[^\\s@]+$"),
+            "#c360-tier" => new ValidationRule("regex", "^(?!platinum$).+$", "יש לשנות את סיווג הלקוח לפני המעבר לשלב הבא.", "regex", "^(?!platinum$).+$"),
+            "#c360-manager" => new ValidationRule("regex", "^(?!אורן שגיא$)(?=.*\\S).+$", "יש לעדכן את מנהל תיק הלקוח לפני המעבר לשלב הבא.", "regex", "^(?!אורן שגיא$)(?=.*\\S).+$"),
+            "#c360-mrr" => new ValidationRule("regex", "^\\d+(?:[.,]\\d+)?$", "יש להזין מחזור חודשי כמספר.", "regex", "^\\d+(?:[.,]\\d+)?$"),
+            _ => null
+        };
+
+        stepCommand.Parameters.AddWithValue("$validationEngine", (object?)seedValidation?.Engine ?? DBNull.Value);
+        stepCommand.Parameters.AddWithValue("$validationExpression", (object?)seedValidation?.Expression ?? DBNull.Value);
+        stepCommand.Parameters.AddWithValue("$validationErrorMessage", (object?)seedValidation?.ErrorMessage ?? DBNull.Value);
+        stepCommand.Parameters.AddWithValue("$validationBuilderType", (object?)seedValidation?.BuilderType ?? DBNull.Value);
+        stepCommand.Parameters.AddWithValue("$validationBuilderValue", (object?)seedValidation?.BuilderValue ?? DBNull.Value);
+        stepCommand.ExecuteNonQuery();
+    }
+
+    transaction.Commit();
+}
+
+static void EnsureDevelopmentAdmin(string databasePath)
+{
+    const string username = "admin";
+
+    using var connection = OpenConnection(databasePath);
+
+    using var existsCommand = connection.CreateCommand();
+    existsCommand.CommandText = "SELECT Id FROM Users WHERE Username = $username;";
+    existsCommand.Parameters.AddWithValue("$username", username);
+
+    if (existsCommand.ExecuteScalar() is not null)
+    {
+        return;
+    }
+
+    var passwordHasher = new PasswordHasher<object>();
+    var passwordHash = passwordHasher.HashPassword(new object(), "admin");
+
+    using var transaction = connection.BeginTransaction();
+
+    using var userCommand = connection.CreateCommand();
+    userCommand.Transaction = transaction;
+    userCommand.CommandText = """
+        INSERT INTO Users (Username, DisplayName, PasswordHash, IsActive)
+        VALUES ($username, $displayName, $passwordHash, 1);
+        SELECT last_insert_rowid();
+        """;
+    userCommand.Parameters.AddWithValue("$username", username);
+    userCommand.Parameters.AddWithValue("$displayName", "GWTP Admin");
+    userCommand.Parameters.AddWithValue("$passwordHash", passwordHash);
+
+    var userId = Convert.ToInt64(userCommand.ExecuteScalar());
+
+    using var roleCommand = connection.CreateCommand();
+    roleCommand.Transaction = transaction;
+    roleCommand.CommandText = "INSERT INTO UserRoles (UserId, Role) VALUES ($userId, 'admin');";
+    roleCommand.Parameters.AddWithValue("$userId", userId);
+    roleCommand.ExecuteNonQuery();
+
+    transaction.Commit();
+}
+
+static SqliteConnection OpenConnection(string databasePath)
+{
+    var connection = new SqliteConnection($"Data Source={databasePath}");
+    connection.Open();
+
+    using var command = connection.CreateCommand();
+    command.CommandText = "PRAGMA foreign_keys = ON;";
+    command.ExecuteNonQuery();
+
+    return connection;
+}
+
+static string FindProjectRoot(string startPath)
+{
+    var directory = new DirectoryInfo(startPath);
+
+    while (directory is not null)
+    {
+        if (Directory.Exists(Path.Combine(directory.FullName, "database")) &&
+            Directory.Exists(Path.Combine(directory.FullName, "extension")))
+        {
+            return directory.FullName;
+        }
+
+        directory = directory.Parent;
+    }
+
+    throw new DirectoryNotFoundException("Could not locate the GWTP project root.");
+}
+
+sealed record UserResponse(
+    long Id,
+    string Username,
+    string? DisplayName,
+    bool IsActive,
+    List<string> Roles);
+
+sealed record CreateUserRequest(
+    string Username,
+    string? DisplayName,
+    string Password,
+    string Role);
+
+sealed record UpdateUserRequest(
+    string? DisplayName,
+    string Role,
+    bool IsActive,
+    string? NewPassword);
+
+sealed record CreateTopicRequest(string Name);
+
+sealed record TopicResponse(
+    long Id,
+    string Name);
+
+sealed record FrameTarget(
+    bool IsTop,
+    string? Url,
+    string? Name,
+    string? ElementId,
+    string? ElementName,
+    string? ElementTitle);
+
+sealed record ValidationRule(
+    string Engine,
+    string Expression,
+    string ErrorMessage,
+    string? BuilderType,
+    string? BuilderValue);
+
+sealed record CreateGuideStepRequest(
+    string Selector,
+    string Instruction,
+    FrameTarget? Frame,
+    ValidationRule? Validation);
+
+sealed record CreateGuideRequest(
+    long TopicId,
+    string Name,
+    string? StartUrl,
+    bool IsAvailable,
+    List<CreateGuideStepRequest> Steps);
+
+sealed record GuideStepResponse(
+    int StepOrder,
+    string Selector,
+    string Instruction,
+    FrameTarget? Frame,
+    ValidationRule? Validation);
+
+sealed record GuideResponse(
+    long Id,
+    long TopicId,
+    string Name,
+    string? StartUrl,
+    bool IsAvailable,
+    List<GuideStepResponse> Steps);
+
+sealed record LearnerGuideResponse(long Id, string Name, string ProgressStatus);
+
+sealed record LearnerTopicResponse(
+    long Id,
+    string Name,
+    List<LearnerGuideResponse> Guides);
+
+sealed record ProgressMoveRequest(long GuideId, int Direction);
+
+sealed record LoginRequest(string Username, string Password);
+
+sealed record LoginResponse(
+    long Id,
+    string Username,
+    string? DisplayName,
+    List<string> Roles,
+    string AccessToken);
+
+                WHERE GuideId = $guideId
+                  AND Selector = '#site-phone';
+                """;
+            changedPhoneValidationCommand.Parameters.AddWithValue("$guideId", existingDemoGuideId);
+            changedPhoneValidationCommand.ExecuteNonQuery();
         }
 
         using (var changedValidationCommand = connection.CreateCommand())
