@@ -1170,11 +1170,12 @@ function renderSteps() {
 
 selectButton.addEventListener("click", async () => {
   try {
-    await window.messagingService.sendToActivePage({ type: "GWTP_CLEAR_HIGHLIGHT" }).catch(() => {});
+    await window.messagingService.sendToAllFrames({ type: "GWTP_CLEAR_HIGHLIGHT" }).catch(() => {});
     activeStepId = null;
     markActiveStep(null);
-    const response = await window.messagingService.sendToActivePage({ type: "GWTP_START_ELEMENT_PICKER" });
-    setStatus(response?.message || "Selection mode active.");
+    const responses = await window.messagingService.sendToAllFrames({ type: "GWTP_START_ELEMENT_PICKER" });
+    const started = responses.some((item) => item.response?.success);
+    setStatus(started ? "Selection mode active." : "Could not start selection mode.", started ? "info" : "error");
   } catch (error) {
     setStatus(
       "This page cannot currently be controlled. Try a regular http/https page and reload it after updating the extension.",
