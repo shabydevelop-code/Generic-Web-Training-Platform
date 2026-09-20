@@ -399,11 +399,22 @@ function refreshSelectedLearnerGuideUi() {
 function hideLearnerRecovery() {
   learnerRecoveryPanel.hidden = true;
   learnerRecoveryMessage.textContent = "";
+
+  if (!learnerSessionActive) {
+    startLearningButton.hidden = false;
+    const guideId = Number(learnerGuideSelect.value);
+    const topic = learnerCatalog.find((item) => item.id === Number(learnerTopicSelect.value));
+    const guide = topic?.guides?.find((item) => item.id === guideId);
+    restartLearningButton.hidden = guide?.progressStatus !== "InProgress";
+  }
 }
 
 function showLearnerRecovery() {
   const language = window.i18nService.getLanguage();
   learnerRecoveryMessage.textContent = window.i18nService.translate("resumeElementNotFound", language);
+  startLearningButton.hidden = true;
+  restartLearningButton.hidden = true;
+  exitLearningButton.hidden = true;
   learnerRecoveryPanel.hidden = false;
   learnerStatus.textContent = "";
   learnerStatus.removeAttribute("data-type");
@@ -466,7 +477,6 @@ async function handleStartLearning() {
       const resumeResult = await window.guideRunner.resume(guide);
       if (!resumeResult?.success && resumeResult?.reason === "element-not-found") {
         showLearnerRecovery();
-        restartLearningButton.hidden = false;
         return;
       }
       if (!resumeResult?.success) {
