@@ -186,7 +186,10 @@ async function showTrainingStep(step, navigation = {}) {
     return target.textContent || "";
   };
 
+  const sessionState = await chrome.storage.session.get("gwtp.validation.session");
+  const validationSessionId = sessionState["gwtp.validation.session"] || "default";
   const stepKey = [
+    validationSessionId,
     navigation.mode || "learner",
     Number.isInteger(navigation.stepIndex) ? navigation.stepIndex : 0,
     step.selector
