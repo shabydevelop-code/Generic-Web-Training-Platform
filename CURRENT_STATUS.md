@@ -88,5 +88,7 @@ Reset was verified to delete both guide and step progress as intended.
 
 - Demo CRM navigation regression was strengthened: the Site -> Case transition now uses the site-specific `#btn-open-case-from-site` control inside `TargetContent` instead of the global `#nav-case` tab. This explicitly tests a navigation step whose source element disappears with the old page before the next Case target is restored.
 
+- Editor step-selection UX improved: opening an existing step now shows its step number in the editor heading and keeps that step card visually selected while it is being edited.
+
 ## Immediate next tasks
 1. Review remaining editor/learner UX gaps before adding new capabilities.
