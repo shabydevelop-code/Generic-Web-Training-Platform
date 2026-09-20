@@ -499,7 +499,7 @@ app.MapGet("/api/learner/guides/{id:long}", (long id, HttpContext httpContext) =
 
     using var stepsCommand = connection.CreateCommand();
     stepsCommand.CommandText = """
-        SELECT StepOrder, Selector, Instruction, FrameTarget
+        SELECT StepOrder, Selector, Instruction, FrameTarget, ValidationEngine, ValidationExpression, ValidationErrorMessage, ValidationBuilderType, ValidationBuilderValue
         FROM GuideSteps
         WHERE GuideId = $guideId
         ORDER BY StepOrder;
@@ -515,7 +515,13 @@ app.MapGet("/api/learner/guides/{id:long}", (long id, HttpContext httpContext) =
             stepsReader.GetInt32(0),
             stepsReader.GetString(1),
             stepsReader.GetString(2),
-            stepsReader.IsDBNull(3) ? null : JsonSerializer.Deserialize<FrameTarget>(stepsReader.GetString(3))));
+            stepsReader.IsDBNull(3) ? null : JsonSerializer.Deserialize<FrameTarget>(stepsReader.GetString(3)),
+            stepsReader.IsDBNull(4) || stepsReader.IsDBNull(5) ? null : new ValidationRule(
+                stepsReader.GetString(4),
+                stepsReader.GetString(5),
+                stepsReader.IsDBNull(6) ? "" : stepsReader.GetString(6),
+                stepsReader.IsDBNull(7) ? null : stepsReader.GetString(7),
+                stepsReader.IsDBNull(8) ? null : stepsReader.GetString(8))));
     }
 
     return Results.Ok(new GuideResponse(guideId, topicId, name, startUrl, isAvailable, steps));
@@ -945,7 +951,7 @@ editorGuides.MapGet("/{id:long}", (long id) =>
 
     using var stepsCommand = connection.CreateCommand();
     stepsCommand.CommandText = """
-        SELECT StepOrder, Selector, Instruction, FrameTarget
+        SELECT StepOrder, Selector, Instruction, FrameTarget, ValidationEngine, ValidationExpression, ValidationErrorMessage, ValidationBuilderType, ValidationBuilderValue
         FROM GuideSteps
         WHERE GuideId = $guideId
         ORDER BY StepOrder;
@@ -961,7 +967,13 @@ editorGuides.MapGet("/{id:long}", (long id) =>
             stepsReader.GetInt32(0),
             stepsReader.GetString(1),
             stepsReader.GetString(2),
-            stepsReader.IsDBNull(3) ? null : JsonSerializer.Deserialize<FrameTarget>(stepsReader.GetString(3))));
+            stepsReader.IsDBNull(3) ? null : JsonSerializer.Deserialize<FrameTarget>(stepsReader.GetString(3)),
+            stepsReader.IsDBNull(4) || stepsReader.IsDBNull(5) ? null : new ValidationRule(
+                stepsReader.GetString(4),
+                stepsReader.GetString(5),
+                stepsReader.IsDBNull(6) ? "" : stepsReader.GetString(6),
+                stepsReader.IsDBNull(7) ? null : stepsReader.GetString(7),
+                stepsReader.IsDBNull(8) ? null : stepsReader.GetString(8))));
     }
 
     return Results.Ok(new GuideResponse(guideId, topicId, name, startUrl, isAvailable, steps));
@@ -1016,14 +1028,19 @@ editorGuides.MapPut("/{id:long}", (long id, CreateGuideRequest request) =>
         using var stepCommand = connection.CreateCommand();
         stepCommand.Transaction = transaction;
         stepCommand.CommandText = """
-            INSERT INTO GuideSteps (GuideId, StepOrder, Selector, Instruction, FrameTarget)
-            VALUES ($guideId, $stepOrder, $selector, $instruction, $frameTarget);
+            INSERT INTO GuideSteps (GuideId, StepOrder, Selector, Instruction, FrameTarget, ValidationEngine, ValidationExpression, ValidationErrorMessage, ValidationBuilderType, ValidationBuilderValue)
+            VALUES ($guideId, $stepOrder, $selector, $instruction, $frameTarget, $validationEngine, $validationExpression, $validationErrorMessage, $validationBuilderType, $validationBuilderValue);
             """;
         stepCommand.Parameters.AddWithValue("$guideId", id);
         stepCommand.Parameters.AddWithValue("$stepOrder", index + 1);
         stepCommand.Parameters.AddWithValue("$selector", step.Selector.Trim());
         stepCommand.Parameters.AddWithValue("$instruction", step.Instruction.Trim());
         stepCommand.Parameters.AddWithValue("$frameTarget", step.Frame is null ? DBNull.Value : JsonSerializer.Serialize(step.Frame));
+        stepCommand.Parameters.AddWithValue("$validationEngine", (object?)step.Validation?.Engine ?? DBNull.Value);
+        stepCommand.Parameters.AddWithValue("$validationExpression", (object?)step.Validation?.Expression ?? DBNull.Value);
+        stepCommand.Parameters.AddWithValue("$validationErrorMessage", (object?)step.Validation?.ErrorMessage ?? DBNull.Value);
+        stepCommand.Parameters.AddWithValue("$validationBuilderType", (object?)step.Validation?.BuilderType ?? DBNull.Value);
+        stepCommand.Parameters.AddWithValue("$validationBuilderValue", (object?)step.Validation?.BuilderValue ?? DBNull.Value);
         stepCommand.ExecuteNonQuery();
     }
 
@@ -1036,7 +1053,7 @@ editorGuides.MapPut("/{id:long}", (long id, CreateGuideRequest request) =>
         request.StartUrl?.Trim(),
         request.IsAvailable,
         request.Steps.Select((step, index) =>
-            new GuideStepResponse(index + 1, step.Selector.Trim(), step.Instruction.Trim(), step.Frame))
+            new GuideStepResponse(index + 1, step.Selector.Trim(), step.Instruction.Trim(), step.Frame, step.Validation))
             .ToList()));
 });
 
@@ -1070,21 +1087,26 @@ editorGuides.MapPut("/{id:long}/steps", (long id, List<CreateGuideStepRequest> s
         using var stepCommand = connection.CreateCommand();
         stepCommand.Transaction = transaction;
         stepCommand.CommandText = """
-            INSERT INTO GuideSteps (GuideId, StepOrder, Selector, Instruction, FrameTarget)
-            VALUES ($guideId, $stepOrder, $selector, $instruction, $frameTarget);
+            INSERT INTO GuideSteps (GuideId, StepOrder, Selector, Instruction, FrameTarget, ValidationEngine, ValidationExpression, ValidationErrorMessage, ValidationBuilderType, ValidationBuilderValue)
+            VALUES ($guideId, $stepOrder, $selector, $instruction, $frameTarget, $validationEngine, $validationExpression, $validationErrorMessage, $validationBuilderType, $validationBuilderValue);
             """;
         stepCommand.Parameters.AddWithValue("$guideId", id);
         stepCommand.Parameters.AddWithValue("$stepOrder", index + 1);
         stepCommand.Parameters.AddWithValue("$selector", step.Selector.Trim());
         stepCommand.Parameters.AddWithValue("$instruction", step.Instruction.Trim());
         stepCommand.Parameters.AddWithValue("$frameTarget", step.Frame is null ? DBNull.Value : JsonSerializer.Serialize(step.Frame));
+        stepCommand.Parameters.AddWithValue("$validationEngine", (object?)step.Validation?.Engine ?? DBNull.Value);
+        stepCommand.Parameters.AddWithValue("$validationExpression", (object?)step.Validation?.Expression ?? DBNull.Value);
+        stepCommand.Parameters.AddWithValue("$validationErrorMessage", (object?)step.Validation?.ErrorMessage ?? DBNull.Value);
+        stepCommand.Parameters.AddWithValue("$validationBuilderType", (object?)step.Validation?.BuilderType ?? DBNull.Value);
+        stepCommand.Parameters.AddWithValue("$validationBuilderValue", (object?)step.Validation?.BuilderValue ?? DBNull.Value);
         stepCommand.ExecuteNonQuery();
     }
 
     transaction.Commit();
 
     return Results.Ok(steps.Select((step, index) =>
-        new GuideStepResponse(index + 1, step.Selector.Trim(), step.Instruction.Trim(), step.Frame)).ToList());
+        new GuideStepResponse(index + 1, step.Selector.Trim(), step.Instruction.Trim(), step.Frame, step.Validation)).ToList());
 });
 
 editorGuides.MapDelete("/{id:long}", (long id) =>
@@ -1153,14 +1175,19 @@ editorGuides.MapPost("", (CreateGuideRequest request) =>
         using var stepCommand = connection.CreateCommand();
         stepCommand.Transaction = transaction;
         stepCommand.CommandText = """
-            INSERT INTO GuideSteps (GuideId, StepOrder, Selector, Instruction, FrameTarget)
-            VALUES ($guideId, $stepOrder, $selector, $instruction, $frameTarget);
+            INSERT INTO GuideSteps (GuideId, StepOrder, Selector, Instruction, FrameTarget, ValidationEngine, ValidationExpression, ValidationErrorMessage, ValidationBuilderType, ValidationBuilderValue)
+            VALUES ($guideId, $stepOrder, $selector, $instruction, $frameTarget, $validationEngine, $validationExpression, $validationErrorMessage, $validationBuilderType, $validationBuilderValue);
             """;
         stepCommand.Parameters.AddWithValue("$guideId", guideId);
         stepCommand.Parameters.AddWithValue("$stepOrder", index + 1);
         stepCommand.Parameters.AddWithValue("$selector", step.Selector.Trim());
         stepCommand.Parameters.AddWithValue("$instruction", step.Instruction.Trim());
         stepCommand.Parameters.AddWithValue("$frameTarget", step.Frame is null ? DBNull.Value : JsonSerializer.Serialize(step.Frame));
+        stepCommand.Parameters.AddWithValue("$validationEngine", (object?)step.Validation?.Engine ?? DBNull.Value);
+        stepCommand.Parameters.AddWithValue("$validationExpression", (object?)step.Validation?.Expression ?? DBNull.Value);
+        stepCommand.Parameters.AddWithValue("$validationErrorMessage", (object?)step.Validation?.ErrorMessage ?? DBNull.Value);
+        stepCommand.Parameters.AddWithValue("$validationBuilderType", (object?)step.Validation?.BuilderType ?? DBNull.Value);
+        stepCommand.Parameters.AddWithValue("$validationBuilderValue", (object?)step.Validation?.BuilderValue ?? DBNull.Value);
         stepCommand.ExecuteNonQuery();
     }
 
@@ -1174,7 +1201,7 @@ editorGuides.MapPost("", (CreateGuideRequest request) =>
             request.StartUrl?.Trim(),
             request.IsAvailable,
             request.Steps.Select((step, index) =>
-                new GuideStepResponse(index + 1, step.Selector.Trim(), step.Instruction.Trim(), step.Frame))
+                new GuideStepResponse(index + 1, step.Selector.Trim(), step.Instruction.Trim(), step.Frame, step.Validation))
                 .ToList()));
 });
 
@@ -1235,6 +1262,23 @@ static void ApplyDatabaseMigrations(string databasePath)
     {
         using var migrationCommand = connection.CreateCommand();
         migrationCommand.CommandText = "ALTER TABLE GuideSteps ADD COLUMN FrameTarget TEXT;";
+        migrationCommand.ExecuteNonQuery();
+    }
+
+    var guideStepMigrations = new Dictionary<string, string>
+    {
+        ["ValidationEngine"] = "ALTER TABLE GuideSteps ADD COLUMN ValidationEngine TEXT;",
+        ["ValidationExpression"] = "ALTER TABLE GuideSteps ADD COLUMN ValidationExpression TEXT;",
+        ["ValidationErrorMessage"] = "ALTER TABLE GuideSteps ADD COLUMN ValidationErrorMessage TEXT;",
+        ["ValidationBuilderType"] = "ALTER TABLE GuideSteps ADD COLUMN ValidationBuilderType TEXT;",
+        ["ValidationBuilderValue"] = "ALTER TABLE GuideSteps ADD COLUMN ValidationBuilderValue TEXT;"
+    };
+
+    foreach (var migration in guideStepMigrations)
+    {
+        if (guideStepColumns.Contains(migration.Key)) continue;
+        using var migrationCommand = connection.CreateCommand();
+        migrationCommand.CommandText = migration.Value;
         migrationCommand.ExecuteNonQuery();
     }
 
@@ -1374,8 +1418,8 @@ static void EnsureDemoSiteGuide(string databasePath)
         using var stepCommand = connection.CreateCommand();
         stepCommand.Transaction = transaction;
         stepCommand.CommandText = """
-            INSERT INTO GuideSteps (GuideId, StepOrder, Selector, Instruction, FrameTarget)
-            VALUES ($guideId, $stepOrder, $selector, $instruction, $frameTarget);
+            INSERT INTO GuideSteps (GuideId, StepOrder, Selector, Instruction, FrameTarget, ValidationEngine, ValidationExpression, ValidationErrorMessage, ValidationBuilderType, ValidationBuilderValue)
+            VALUES ($guideId, $stepOrder, $selector, $instruction, $frameTarget, $validationEngine, $validationExpression, $validationErrorMessage, $validationBuilderType, $validationBuilderValue);
             """;
         stepCommand.Parameters.AddWithValue("$guideId", guideId);
         stepCommand.Parameters.AddWithValue("$stepOrder", index + 1);
@@ -1493,10 +1537,18 @@ sealed record FrameTarget(
     string? ElementName,
     string? ElementTitle);
 
+sealed record ValidationRule(
+    string Engine,
+    string Expression,
+    string ErrorMessage,
+    string? BuilderType,
+    string? BuilderValue);
+
 sealed record CreateGuideStepRequest(
     string Selector,
     string Instruction,
-    FrameTarget? Frame);
+    FrameTarget? Frame,
+    ValidationRule? Validation);
 
 sealed record CreateGuideRequest(
     long TopicId,
@@ -1509,7 +1561,8 @@ sealed record GuideStepResponse(
     int StepOrder,
     string Selector,
     string Instruction,
-    FrameTarget? Frame);
+    FrameTarget? Frame,
+    ValidationRule? Validation);
 
 sealed record GuideResponse(
     long Id,
