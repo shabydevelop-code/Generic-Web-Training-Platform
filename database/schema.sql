@@ -35,6 +35,7 @@ CREATE TABLE IF NOT EXISTS GuideSteps (
     StepOrder INTEGER NOT NULL CHECK (StepOrder > 0),
     Selector TEXT NOT NULL,
     Instruction TEXT NOT NULL,
+    FrameTarget TEXT,
     FOREIGN KEY (GuideId) REFERENCES Guides(Id) ON DELETE CASCADE,
     UNIQUE (GuideId, StepOrder)
 );
