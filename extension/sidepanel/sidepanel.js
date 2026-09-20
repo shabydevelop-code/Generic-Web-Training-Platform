@@ -1374,6 +1374,7 @@ function closeStepCreator() {
   clearPageTrainingVisuals();
   editingStepId = null;
   editingStepSnapshot = null;
+  renderSteps();
   saveStepButton.textContent = window.i18nService.translate("saveStepButton", window.i18nService.getLanguage());
   editStepDeleteSection.hidden = true;
   currentSelectedElement = null;
