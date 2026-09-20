@@ -1,4 +1,12 @@
 (function () {
+  async function clearValidationBaselines() {
+    const stored = await chrome.storage.session.get(null);
+    const keys = Object.keys(stored).filter((key) => key.startsWith("gwtp:validation-baseline:"));
+    if (keys.length) {
+      await chrome.storage.session.remove(keys);
+    }
+  }
+
   function waitForTabComplete(tabId) {
     return new Promise((resolve, reject) => {
       const timeoutId = setTimeout(() => {
@@ -100,6 +108,7 @@
   }
 
   async function start(guide) {
+    await clearValidationBaselines();
     if (!guide?.startUrl) {
       throw new Error("The guide start URL is missing.");
     }
@@ -136,6 +145,7 @@
   }
 
   async function restart(guide) {
+    await clearValidationBaselines();
     if (!guide?.startUrl || !guide?.steps?.length) {
       throw new Error("A valid guide with a start URL and at least one step is required.");
     }
@@ -170,6 +180,7 @@
   }
 
   async function preview(guide) {
+    await clearValidationBaselines();
     if (!guide?.startUrl || !guide?.steps?.length) {
       throw new Error("A valid guide with a start URL and at least one step is required.");
     }
