@@ -1663,6 +1663,13 @@ chrome.runtime.onMessage.addListener((message) => {
     return;
   }
 
+  if (message?.type === "GWTP_TRAINING_STEP_CHANGED") {
+    window.guideRunner.showCurrentStep(message.current).catch((error) => {
+      console.info("GWTP learner step change skipped:", error);
+    });
+    return;
+  }
+
   if (message?.type === "GWTP_TRAINING_COMPLETED") {
     const guideId = Number(message.guideId);
     const topic = learnerCatalog.find((item) => item.guides?.some((guide) => guide.id === guideId));
