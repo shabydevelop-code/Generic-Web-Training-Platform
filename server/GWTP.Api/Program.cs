@@ -1376,7 +1376,8 @@ static bool IsValidStepValidation(ValidationRule? validation)
     if (string.Equals(validation.Engine, "required", StringComparison.OrdinalIgnoreCase))
         return string.Equals(validation.Expression, "__required__", StringComparison.Ordinal);
 
-    if (!string.Equals(validation.Engine, "regex", StringComparison.OrdinalIgnoreCase)) return false;
+    if (!string.Equals(validation.Engine, "regex", StringComparison.OrdinalIgnoreCase) &&
+        !string.Equals(validation.Engine, "changed_regex", StringComparison.OrdinalIgnoreCase)) return false;
 
     try
     {
