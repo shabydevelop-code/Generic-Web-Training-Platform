@@ -40,6 +40,18 @@ async function startTrainingSession(guide) {
   return { guide, progress };
 }
 
+async function restartTrainingSession(guide) {
+  if (!guide?.id || !guide?.steps?.length) {
+    throw new Error("A valid guide with at least one step is required.");
+  }
+
+  const progress = await apiRequest(`/api/learner/progress/restart/${guide.id}`, {
+    method: "POST"
+  });
+
+  return { guide, progress };
+}
+
 async function getCurrentTrainingStep() {
   const progress = await apiRequest("/api/learner/progress/active");
   if (!progress?.active) return null;
@@ -94,6 +106,13 @@ async function completeTraining() {
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (message?.type === "GWTP_TRAINING_START") {
     startTrainingSession(message.guide)
+      .then((session) => sendResponse({ success: true, session }))
+      .catch((error) => sendResponse({ success: false, message: error.message }));
+    return true;
+  }
+
+  if (message?.type === "GWTP_TRAINING_RESTART") {
+    restartTrainingSession(message.guide)
       .then((session) => sendResponse({ success: true, session }))
       .catch((error) => sendResponse({ success: false, message: error.message }));
     return true;
