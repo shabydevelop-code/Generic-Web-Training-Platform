@@ -63,7 +63,7 @@ function getInstructionHtml() {
 }
 
 function hasInstructionContent() {
-  return instructionInput.textContent.trim().length > 0 || instructionInput.querySelector("br, li") !== null;
+  return instructionInput.textContent.replace(/\u00a0/g, " ").trim().length > 0;
 }
 const saveStepButton = document.getElementById("saveStepButton");
 const stepEditorTitle = document.querySelector("#stepEditor h2");
