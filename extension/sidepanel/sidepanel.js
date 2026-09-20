@@ -1187,7 +1187,7 @@ function renderSteps() {
       openStepEditor(step);
       await highlightEditorStep(step);
     });
-    item.addEventListener("keydown", (event) => {
+    item.addEventListener("keydown", async (event) => {
       if (event.key === "Enter" || event.key === " ") {
         event.preventDefault();
         openStepEditor(step);
