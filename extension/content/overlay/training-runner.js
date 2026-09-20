@@ -346,8 +346,24 @@ async function showTrainingStep(step, navigation = {}) {
     button.style.cursor = disabled ? "default" : "pointer";
 
     if (!disabled) {
+      button.addEventListener("pointerdown", () => {
+        if (action !== "GWTP_TRAINING_NEXT" && action !== "GWTP_TRAINING_PREVIOUS") return;
+        chrome.runtime.sendMessage({
+          type: "GWTP_TRAINING_PENDING_SET",
+          pending: {
+            direction: action === "GWTP_TRAINING_NEXT" ? 1 : -1,
+            stepIndex: Number.isInteger(navigation.stepIndex) ? navigation.stepIndex : 0
+          }
+        }).catch(() => {});
+      });
+
       button.addEventListener("click", async () => {
-        if ((action === "GWTP_TRAINING_NEXT" || action === "GWTP_PREVIEW_NEXT") && !(await validateCurrentStep())) return;
+        if ((action === "GWTP_TRAINING_NEXT" || action === "GWTP_PREVIEW_NEXT") && !(await validateCurrentStep())) {
+          if (action === "GWTP_TRAINING_NEXT") {
+            chrome.runtime.sendMessage({ type: "GWTP_TRAINING_PENDING_CLEAR" }).catch(() => {});
+          }
+          return;
+        }
         button.disabled = true;
 
         const moveStep = () => chrome.runtime.sendMessage({ type: action }).then((response) => {
@@ -361,6 +377,9 @@ async function showTrainingStep(step, navigation = {}) {
           clearTrainingStep();
           clearHighlight();
 
+          if (!isPreview) {
+            chrome.runtime.sendMessage({ type: "GWTP_TRAINING_PENDING_CLEAR" }).catch(() => {});
+          }
           chrome.runtime.sendMessage({
             type: isPreview ? "GWTP_PREVIEW_STEP_CHANGED" : "GWTP_TRAINING_STEP_CHANGED",
             current: response.current
@@ -393,6 +412,7 @@ async function showTrainingStep(step, navigation = {}) {
           });
 
           if (!availability?.success) {
+            chrome.runtime.sendMessage({ type: "GWTP_TRAINING_PENDING_CLEAR" }).catch(() => {});
             button.disabled = false;
             return;
           }
