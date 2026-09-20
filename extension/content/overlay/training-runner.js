@@ -274,6 +274,13 @@ async function showTrainingStep(step, navigation = {}) {
       return true;
     }
 
+    if (validation.engine === "required") {
+      const isValid = getTargetValue().trim().length > 0;
+      validationError.style.display = isValid ? "none" : "block";
+      validationError.textContent = isValid ? "" : (validation.errorMessage || "");
+      return isValid;
+    }
+
     if (validation.engine && validation.engine !== "regex") return true;
 
     try {
