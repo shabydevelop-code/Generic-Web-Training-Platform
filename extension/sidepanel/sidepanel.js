@@ -58,6 +58,7 @@ function hasInstructionContent() {
   return instructionInput.textContent.trim().length > 0 || instructionInput.querySelector("br, li") !== null;
 }
 const saveStepButton = document.getElementById("saveStepButton");
+const stepEditorTitle = document.querySelector("#stepEditor h2");
 const stepsSection = document.getElementById("stepsSection");
 const stepsList = document.getElementById("stepsList");
 const stepsSaveStatus = document.getElementById("stepsSaveStatus");
@@ -1061,6 +1062,8 @@ function frameMatchesStep(frameInfo, stepFrame) {
 }
 
 async function highlightEditorStep(step) {
+  // Card selection is editor state and does not depend on whether the target element exists on the current URL.
+  markActiveStep(step.id);
   const stepFrame = step.element?.frame || null;
 
   await window.messagingService.sendToAllFrames({ type: "GWTP_CLEAR_HIGHLIGHT" }).catch(() => {});
@@ -1084,10 +1087,7 @@ async function highlightEditorStep(step) {
     matched = responses.some((item) => item.response?.success);
   }
 
-  if (matched) {
-    markActiveStep(step.id);
-    return;
-  }
+  if (matched) return;
 
   setStatus("Could not find the selected element on the current page.", "error");
 }
@@ -1114,6 +1114,8 @@ function openStepCreator() {
 
   editingStepId = null;
   editingStepSnapshot = null;
+  stepEditorTitle.textContent = window.i18nService.translate("stepEditorTitle", window.i18nService.getLanguage());
+  saveStepButton.textContent = window.i18nService.translate("saveStepButton", window.i18nService.getLanguage());
   editStepDeleteSection.hidden = true;
   currentSelectedElement = null;
   selectorInput.value = "";
@@ -1131,6 +1133,7 @@ function openStepEditor(step) {
 
   editingStepId = step.id;
   editingStepSnapshot = step;
+  stepEditorTitle.textContent = window.i18nService.translate("editStepEditorTitle", window.i18nService.getLanguage());
   saveStepButton.textContent = window.i18nService.translate("updateStepButton", window.i18nService.getLanguage());
   editStepDeleteSection.hidden = false;
   currentSelectedElement = step.element || {
