@@ -104,6 +104,51 @@ async function completeTraining() {
 }
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+  if (message?.type === "GWTP_VALIDATION_SESSION_GET") {
+    chrome.storage.session.get("gwtp.validation.session")
+      .then((stored) => sendResponse({
+        success: true,
+        sessionId: stored["gwtp.validation.session"] || null
+      }))
+      .catch((error) => sendResponse({ success: false, message: error.message }));
+    return true;
+  }
+
+  if (message?.type === "GWTP_VALIDATION_BASELINE_GET_OR_CREATE") {
+    const key = String(message.key || "");
+    if (!key.startsWith("gwtp:validation-baseline:")) {
+      sendResponse({ success: false, message: "Invalid validation baseline key." });
+      return;
+    }
+
+    chrome.storage.session.get(key)
+      .then(async (stored) => {
+        if (Object.prototype.hasOwnProperty.call(stored, key)) {
+          sendResponse({ success: true, value: stored[key] });
+          return;
+        }
+
+        const value = String(message.value ?? "");
+        await chrome.storage.session.set({ [key]: value });
+        sendResponse({ success: true, value });
+      })
+      .catch((error) => sendResponse({ success: false, message: error.message }));
+    return true;
+  }
+
+  if (message?.type === "GWTP_VALIDATION_BASELINE_REMOVE") {
+    const key = String(message.key || "");
+    if (!key.startsWith("gwtp:validation-baseline:")) {
+      sendResponse({ success: false, message: "Invalid validation baseline key." });
+      return;
+    }
+
+    chrome.storage.session.remove(key)
+      .then(() => sendResponse({ success: true }))
+      .catch((error) => sendResponse({ success: false, message: error.message }));
+    return true;
+  }
+
   if (message?.type === "GWTP_TRAINING_START") {
     startTrainingSession(message.guide)
       .then((session) => sendResponse({ success: true, session }))
