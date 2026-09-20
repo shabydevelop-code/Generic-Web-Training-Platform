@@ -1241,37 +1241,23 @@ static void EnsureDemoSiteGuide(string databasePath)
     guideLookup.Parameters.AddWithValue("$guideName", guideName);
     var existingGuideId = guideLookup.ExecuteScalar();
 
-    long guideId;
-    if (existingGuideId is null)
+    if (existingGuideId is not null)
     {
-        using var guideCommand = connection.CreateCommand();
-        guideCommand.Transaction = transaction;
-        guideCommand.CommandText = """
-            INSERT INTO Guides (TopicId, Name, StartUrl, IsAvailable)
-            VALUES ($topicId, $name, $startUrl, 1);
-            SELECT last_insert_rowid();
-            """;
-        guideCommand.Parameters.AddWithValue("$topicId", topicId);
-        guideCommand.Parameters.AddWithValue("$name", guideName);
-        guideCommand.Parameters.AddWithValue("$startUrl", "http://localhost:5100/site.html");
-        guideId = Convert.ToInt64(guideCommand.ExecuteScalar());
+        transaction.Commit();
+        return;
     }
-    else
-    {
-        guideId = Convert.ToInt64(existingGuideId);
-        using var updateGuide = connection.CreateCommand();
-        updateGuide.Transaction = transaction;
-        updateGuide.CommandText = """
-            UPDATE Guides
-            SET Name = $name, StartUrl = $startUrl, IsAvailable = 1
-            WHERE Id = $guideId;
-            DELETE FROM GuideSteps WHERE GuideId = $guideId;
-            """;
-        updateGuide.Parameters.AddWithValue("$guideId", guideId);
-        updateGuide.Parameters.AddWithValue("$name", guideName);
-        updateGuide.Parameters.AddWithValue("$startUrl", "http://localhost:5100/site.html");
-        updateGuide.ExecuteNonQuery();
-    }
+
+    using var guideCommand = connection.CreateCommand();
+    guideCommand.Transaction = transaction;
+    guideCommand.CommandText = """
+        INSERT INTO Guides (TopicId, Name, StartUrl, IsAvailable)
+        VALUES ($topicId, $name, $startUrl, 1);
+        SELECT last_insert_rowid();
+        """;
+    guideCommand.Parameters.AddWithValue("$topicId", topicId);
+    guideCommand.Parameters.AddWithValue("$name", guideName);
+    guideCommand.Parameters.AddWithValue("$startUrl", "http://localhost:5100/site.html");
+    var guideId = Convert.ToInt64(guideCommand.ExecuteScalar());
 
     for (var index = 0; index < steps.Length; index++)
     {
