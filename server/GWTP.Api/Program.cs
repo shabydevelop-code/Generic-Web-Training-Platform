@@ -1177,6 +1177,7 @@ editorGuides.MapPost("", (CreateGuideRequest request) =>
         """;
     guideCommand.Parameters.AddWithValue("$topicId", request.TopicId);
     guideCommand.Parameters.AddWithValue("$name", name);
+    guideCommand.Parameters.AddWithValue("$startUrl", request.StartUrl!.Trim());
     guideCommand.Parameters.AddWithValue("$isAvailable", request.IsAvailable ? 1 : 0);
     var guideId = Convert.ToInt64(guideCommand.ExecuteScalar());
 
