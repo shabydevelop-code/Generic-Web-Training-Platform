@@ -1,4 +1,5 @@
 const HIGHLIGHT_ATTRIBUTE = "data-gwtp-highlighted";
+const GWTP_HIGHLIGHT_ACCENT = globalThis.gwtpVisualConfig?.guidanceAccent || "#D6008F";
 
 function clearHighlight() {
   const highlightedElements = document.querySelectorAll(`[${HIGHLIGHT_ATTRIBUTE}]`);
@@ -30,7 +31,7 @@ function highlightElement(selector) {
   element.dataset.gwtpPreviousOutline = element.style.outline;
   element.dataset.gwtpPreviousOutlineOffset = element.style.outlineOffset;
   element.setAttribute(HIGHLIGHT_ATTRIBUTE, "true");
-  element.style.outline = "3px solid #2563eb";
+  element.style.outline = `3px solid ${GWTP_HIGHLIGHT_ACCENT}`;
   element.style.outlineOffset = "3px";
   element.scrollIntoView({ behavior: "smooth", block: "center", inline: "center" });
 
