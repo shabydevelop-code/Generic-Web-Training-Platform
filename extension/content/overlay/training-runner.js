@@ -186,8 +186,8 @@ async function showTrainingStep(step, navigation = {}) {
     return target.textContent || "";
   };
 
-  const sessionState = await chrome.storage.session.get("gwtp.validation.session");
-  const validationSessionId = sessionState["gwtp.validation.session"] || "default";
+  const sessionResponse = await chrome.runtime.sendMessage({ type: "GWTP_VALIDATION_SESSION_GET" });
+  const validationSessionId = sessionResponse?.sessionId || "default";
   const stepKey = [
     validationSessionId,
     navigation.mode || "learner",
@@ -200,14 +200,12 @@ async function showTrainingStep(step, navigation = {}) {
 
     if (step.validation?.engine === "changed" || step.validation?.engine === "changed_regex") {
       const storageKey = `gwtp:validation-baseline:${stepKey}`;
-      const stored = await chrome.storage.session.get(storageKey);
-
-      if (Object.prototype.hasOwnProperty.call(stored, storageKey)) {
-        gwtpTrainingInitialValue = stored[storageKey];
-      } else {
-        gwtpTrainingInitialValue = getTargetValue();
-        await chrome.storage.session.set({ [storageKey]: gwtpTrainingInitialValue });
-      }
+      const baselineResponse = await chrome.runtime.sendMessage({
+        type: "GWTP_VALIDATION_BASELINE_GET_OR_CREATE",
+        key: storageKey,
+        value: getTargetValue()
+      });
+      gwtpTrainingInitialValue = baselineResponse?.value ?? getTargetValue();
     } else {
       gwtpTrainingInitialValue = getTargetValue();
     }
@@ -217,7 +215,10 @@ async function showTrainingStep(step, navigation = {}) {
 
   const clearValidationBaseline = async () => {
     if (step.validation?.engine !== "changed" && step.validation?.engine !== "changed_regex") return;
-    await chrome.storage.session.remove(`gwtp:validation-baseline:${stepKey}`);
+    await chrome.runtime.sendMessage({
+      type: "GWTP_VALIDATION_BASELINE_REMOVE",
+      key: `gwtp:validation-baseline:${stepKey}`
+    });
   };
 
   const validateCurrentStep = () => {
