@@ -277,6 +277,30 @@
             ></div>
           </div>
 
+          <div class="step-validation">
+            <label for="validationTypeSelect" data-i18n="validationLabel">Validation</label>
+            <select id="validationTypeSelect">
+              <option value="none" data-i18n="validationNone">No validation</option>
+              <option value="required" data-i18n="validationRequired">Not empty</option>
+              <option value="equals" data-i18n="validationEquals">Equals</option>
+              <option value="contains" data-i18n="validationContains">Contains</option>
+              <option value="regex" data-i18n="validationRegex">Custom expression</option>
+            </select>
+
+            <div id="validationValueField" class="form-field" hidden>
+              <label for="validationValueInput" id="validationValueLabel" data-i18n="validationValueLabel">Value</label>
+              <input id="validationValueInput" type="text" autocomplete="off" />
+            </div>
+
+            <div id="validationErrorField" class="form-field" hidden>
+              <label for="validationErrorInput">
+                <span data-i18n="validationErrorLabel">Error message</span>
+                <span class="required-marker" aria-hidden="true">*</span>
+              </label>
+              <input id="validationErrorInput" type="text" autocomplete="off" data-i18n-placeholder="validationErrorPlaceholder" placeholder="Message shown when the value is invalid" />
+            </div>
+          </div>
+
           <p id="status" class="status" aria-live="polite"></p>
             <div class="actions">
             <button
