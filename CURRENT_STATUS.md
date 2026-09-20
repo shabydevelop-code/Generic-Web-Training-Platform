@@ -85,3 +85,5 @@ Reset was verified to delete both guide and step progress as intended.
 - Messaging connection restoration is now frame-idempotent: all-frame recovery probes each frame and injects the content bundle only into frames where GWTP is not already ready.
 
 - Temporary `[GWTP debug]` logging in `training-runner.js` was removed after the Ynet/Google frame-recovery regression passed without duplicate-injection errors.
+
+- Dynamic reinjection of the manifest content-script bundle was removed from `messagingService`. GWTP now relies on manifest-managed `all_frames` content-script loading; missing receivers are reported rather than causing a second injection of scripts already managed by Chrome/Edge. This removes the architectural source of duplicate top-level declaration errors.
