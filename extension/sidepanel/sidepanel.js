@@ -22,6 +22,12 @@ const removeSelectedElementButton = document.getElementById("removeSelectedEleme
 const stepEditor = document.getElementById("stepEditor");
 const instructionInput = document.getElementById("instructionInput");
 const richTextToolbarButtons = document.querySelectorAll("[data-rich-command]");
+const validationTypeSelect = document.getElementById("validationTypeSelect");
+const validationValueField = document.getElementById("validationValueField");
+const validationValueLabel = document.getElementById("validationValueLabel");
+const validationValueInput = document.getElementById("validationValueInput");
+const validationErrorField = document.getElementById("validationErrorField");
+const validationErrorInput = document.getElementById("validationErrorInput");
 
 function sanitizeInstructionHtml(html) {
   const template = document.createElement("template");
@@ -1127,6 +1133,56 @@ function renderSelectedFrame(element) {
   selectedFrame.textContent = `${label}: ${frameName}`;
 }
 
+function escapeRegexValue(value) {
+  return value.replace(/[.*+?^$()|[\]\\{}]/g, "\\function updateStepSaveValidity() {");
+}
+
+function updateValidationBuilder() {
+  const language = window.i18nService.getLanguage();
+  const type = validationTypeSelect.value;
+  const needsValue = type === "equals" || type === "contains" || type === "regex";
+  const enabled = type !== "none";
+  validationValueField.hidden = !needsValue;
+  validationErrorField.hidden = !enabled;
+  validationValueLabel.textContent = window.i18nService.translate(type === "regex" ? "validationPatternLabel" : "validationValueLabel", language);
+}
+
+function resetValidationBuilder() {
+  validationTypeSelect.value = "none";
+  validationValueInput.value = "";
+  validationErrorInput.value = "";
+  updateValidationBuilder();
+}
+
+function loadValidationBuilder(validation) {
+  if (!validation?.expression) { resetValidationBuilder(); return; }
+  validationTypeSelect.value = validation.builderType || "regex";
+  validationValueInput.value = validation.builderValue || validation.expression;
+  validationErrorInput.value = validation.errorMessage || "";
+  updateValidationBuilder();
+}
+
+function buildStepValidation() {
+  const type = validationTypeSelect.value;
+  if (type === "none") return null;
+  const language = window.i18nService.getLanguage();
+  const value = validationValueInput.value;
+  const errorMessage = validationErrorInput.value.trim();
+  if (!errorMessage) throw new Error(window.i18nService.translate("validationErrorRequired", language));
+  let expression = "";
+  if (type === "required") {
+    expression = "^(?=.*\\S).+$";
+  } else {
+    if (!value) throw new Error(window.i18nService.translate("validationValueRequired", language));
+    if (type === "equals") expression = "^" + escapeRegexValue(value) + "$";
+    if (type === "contains") expression = ".*" + escapeRegexValue(value) + ".*";
+    if (type === "regex") {
+      try { new RegExp(value); } catch { throw new Error(window.i18nService.translate("validationPatternInvalid", language)); }
+      expression = value;
+    }
+  }
+  return { engine: "regex", expression, errorMessage, builderType: type, builderValue: type === "required" ? "" : value };
+}
 function updateStepSaveValidity() {
   saveStepButton.disabled = !currentSelectedElement || !selectorInput.value.trim() || !hasInstructionContent();
 }
@@ -1215,6 +1271,7 @@ function closeStepCreator() {
   currentSelectedElement = null;
   selectorInput.value = "";
   clearInstructionInput();
+  resetValidationBuilder();
   selectedElement.hidden = true;
   stepEditor.hidden = true;
   selectButton.hidden = true;
@@ -1234,6 +1291,7 @@ function openStepCreator() {
   currentSelectedElement = null;
   selectorInput.value = "";
   clearInstructionInput();
+  resetValidationBuilder();
   selectedElement.hidden = true;
   stepEditor.hidden = false;
   selectButton.hidden = false;
@@ -1257,6 +1315,7 @@ function openStepEditor(step) {
   };
   selectorInput.value = step.selector;
   setInstructionHtml(step.instruction);
+  loadValidationBuilder(step.validation);
   selectedTag.textContent = step.element?.tagName ? `<${step.element.tagName}>${step.element.text ? ` — ${step.element.text}` : ""}` : "";
   selectedSelector.textContent = step.selector;
   renderSelectedFrame(currentSelectedElement);
@@ -1315,7 +1374,8 @@ async function persistStepChanges() {
         steps.map((step) => ({
           selector: step.selector,
           instruction: step.instruction,
-          frame: step.element?.frame || null
+          frame: step.element?.frame || null,
+          validation: step.validation || null
         }))
       )
     });
@@ -1525,7 +1585,8 @@ async function persistExistingGuide() {
       steps: steps.map((step) => ({
         selector: step.selector,
         instruction: step.instruction,
-        frame: step.element?.frame || null
+        frame: step.element?.frame || null,
+        validation: step.validation || null
       }))
     })
   });
@@ -1565,17 +1626,27 @@ saveStepButton.addEventListener("click", async () => {
     return;
   }
 
+  let validation;
+  try {
+    validation = buildStepValidation();
+  } catch (error) {
+    setStatus(error.message, "error");
+    return;
+  }
+
   try {
     const step = editingStepId
       ? window.trainingService.updateStep(editingStepId, {
           selector,
           instruction,
-          element: currentSelectedElement
+          element: currentSelectedElement,
+          validation
         })
       : window.trainingService.createStep({
           selector,
           instruction,
-          element: currentSelectedElement
+          element: currentSelectedElement,
+          validation
         });
 
     renderSteps();
@@ -1653,6 +1724,9 @@ function applyListFormat(tagName) {
 }
 
 instructionInput.addEventListener("input", updateStepSaveValidity);
+validationTypeSelect.addEventListener("change", () => { updateValidationBuilder(); updateStepSaveValidity(); });
+validationValueInput.addEventListener("input", updateStepSaveValidity);
+validationErrorInput.addEventListener("input", updateStepSaveValidity);
 
 removeSelectedElementButton.addEventListener("click", () => {
   currentSelectedElement = null;
@@ -1729,7 +1803,8 @@ saveGuideButton.addEventListener("click", async () => {
         steps: steps.map((step) => ({
           selector: step.selector,
           instruction: step.instruction,
-          frame: step.element?.frame || null
+          frame: step.element?.frame || null,
+          validation: step.validation || null
         }))
       })
     });
