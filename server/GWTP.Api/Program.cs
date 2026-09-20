@@ -1243,6 +1243,30 @@ static void EnsureDemoSiteGuide(string databasePath)
 
     if (existingGuideId is not null)
     {
+        var guideId = Convert.ToInt64(existingGuideId);
+
+        using var frameMigration = connection.CreateCommand();
+        frameMigration.Transaction = transaction;
+        frameMigration.CommandText = """
+            UPDATE GuideSteps
+            SET FrameTarget = $contentFrame
+            WHERE GuideId = $guideId
+              AND FrameTarget IS NULL
+              AND Selector NOT IN ('#nav-site', '#nav-case', '#nav-leads', '#nav-360');
+
+            UPDATE GuideSteps
+            SET FrameTarget = $topFrame
+            WHERE GuideId = $guideId
+              AND FrameTarget IS NULL
+              AND Selector IN ('#nav-site', '#nav-case', '#nav-leads', '#nav-360');
+            """;
+        frameMigration.Parameters.AddWithValue("$guideId", guideId);
+        frameMigration.Parameters.AddWithValue("$contentFrame", JsonSerializer.Serialize(
+            new FrameTarget(false, null, "TargetContent", "ptifrmtgtframe", "TargetContent", "Main Content")));
+        frameMigration.Parameters.AddWithValue("$topFrame", JsonSerializer.Serialize(
+            new FrameTarget(true, null, "", "", "", "")));
+        frameMigration.ExecuteNonQuery();
+
         transaction.Commit();
         return;
     }
