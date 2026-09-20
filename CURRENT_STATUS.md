@@ -95,5 +95,7 @@ Reset was verified to delete both guide and step progress as intended.
 
 - Cross-screen Previous/Next intent is now preserved when the adjacent step target is absent from the current screen. GWTP leaves business navigation to the learner, shows a localized message explaining that the requested step is on another screen, and `PAGE_READY` completes the pending move once that target becomes available. This works in both forward and backward directions without replay or arbitrary waits.
 
+- Fixed duplicate cross-screen progress moves caused by near-simultaneous `GWTP_PAGE_READY` events from the top document and child frames. `resumePendingNavigation()` is now serialized so a pending Previous/Next intent can be consumed only once at a time and advances exactly one step.
+
 ## Immediate next tasks
 1. Review remaining editor/learner UX gaps before adding new capabilities.
