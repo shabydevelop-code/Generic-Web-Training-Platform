@@ -1194,12 +1194,23 @@ async function runStep(step) {
 function renderSteps() {
   const steps = window.trainingService.getSteps();
   stepsList.replaceChildren();
-
   stepsSection.hidden = false;
 
-  if (steps.length === 0) {
-    return;
-  }
+  if (steps.length === 0) return;
+
+  let draggedStepId = null;
+
+  const persistReorder = async (language) => {
+    renderSteps();
+    if (!editingGuideId) return;
+
+    try {
+      await persistExistingGuide();
+    } catch (error) {
+      setStatus(error.message || window.i18nService.translate("guideSaveError", language), "error");
+      console.error(error);
+    }
+  };
 
   steps.forEach((step) => {
     const item = document.createElement("div");
@@ -1210,51 +1221,52 @@ function renderSteps() {
     item.setAttribute("aria-label", `Run Step ${step.order}`);
     item.setAttribute("aria-pressed", String(step.id === activeStepId));
 
-    if (step.id === activeStepId) {
-      item.classList.add("step-item--active");
-    }
+    if (step.id === activeStepId) item.classList.add("step-item--active");
 
     const language = window.i18nService.getLanguage();
+
+    const header = document.createElement("div");
+    header.className = "step-item__header";
+
     const title = document.createElement("strong");
     title.textContent = window.i18nService.translate("stepLabel", language).replace("{number}", step.order);
 
-    const reorderControls = document.createElement("div");
-    reorderControls.className = "step-item__reorder";
+    const dragHandle = document.createElement("button");
+    dragHandle.type = "button";
+    dragHandle.className = "step-item__drag-handle";
+    dragHandle.textContent = "⠿";
+    dragHandle.draggable = true;
+    dragHandle.title = window.i18nService.translate("reorderStep", language);
+    dragHandle.setAttribute("aria-label", dragHandle.title);
 
-    const moveUpButton = document.createElement("button");
-    moveUpButton.type = "button";
-    moveUpButton.className = "step-item__reorder-button";
-    moveUpButton.textContent = "↑";
-    moveUpButton.title = window.i18nService.translate("moveStepUp", language);
-    moveUpButton.setAttribute("aria-label", moveUpButton.title);
-    moveUpButton.disabled = step.order === 1;
-
-    const moveDownButton = document.createElement("button");
-    moveDownButton.type = "button";
-    moveDownButton.className = "step-item__reorder-button";
-    moveDownButton.textContent = "↓";
-    moveDownButton.title = window.i18nService.translate("moveStepDown", language);
-    moveDownButton.setAttribute("aria-label", moveDownButton.title);
-    moveDownButton.disabled = step.order === steps.length;
-
-    const moveStep = async (direction, event) => {
+    dragHandle.addEventListener("click", (event) => event.stopPropagation());
+    dragHandle.addEventListener("keydown", async (event) => {
+      if (event.key !== "ArrowUp" && event.key !== "ArrowDown") return;
+      event.preventDefault();
       event.stopPropagation();
+      const direction = event.key === "ArrowUp" ? -1 : 1;
       if (!window.trainingService.moveStep(step.id, direction)) return;
-      renderSteps();
+      await persistReorder(language);
+      const movedHandle = stepsList.querySelector(`[data-step-id="${step.id}"] .step-item__drag-handle`);
+      movedHandle?.focus();
+    });
 
-      if (editingGuideId) {
-        try {
-          await persistExistingGuide();
-        } catch (error) {
-          setStatus(error.message || window.i18nService.translate("guideSaveError", language), "error");
-          console.error(error);
-        }
-      }
-    };
+    dragHandle.addEventListener("dragstart", (event) => {
+      event.stopPropagation();
+      draggedStepId = step.id;
+      item.classList.add("step-item--dragging");
+      event.dataTransfer.effectAllowed = "move";
+      event.dataTransfer.setData("text/plain", step.id);
+    });
 
-    moveUpButton.addEventListener("click", (event) => moveStep(-1, event));
-    moveDownButton.addEventListener("click", (event) => moveStep(1, event));
-    reorderControls.append(moveUpButton, moveDownButton);
+    dragHandle.addEventListener("dragend", () => {
+      draggedStepId = null;
+      item.classList.remove("step-item--dragging");
+      stepsList.querySelectorAll(".step-item--drop-before, .step-item--drop-after")
+        .forEach((card) => card.classList.remove("step-item--drop-before", "step-item--drop-after"));
+    });
+
+    header.append(title, dragHandle);
 
     const instruction = document.createElement("div");
     instruction.className = "step-item__instruction";
@@ -1263,13 +1275,39 @@ function renderSteps() {
     const selector = document.createElement("code");
     selector.textContent = step.selector;
 
-    item.append(title, reorderControls, instruction, selector);
+    item.append(header, instruction, selector);
+
+    item.addEventListener("dragover", (event) => {
+      if (!draggedStepId || draggedStepId === step.id) return;
+      event.preventDefault();
+      event.dataTransfer.dropEffect = "move";
+      const rect = item.getBoundingClientRect();
+      const placeAfter = event.clientY > rect.top + rect.height / 2;
+      item.classList.toggle("step-item--drop-before", !placeAfter);
+      item.classList.toggle("step-item--drop-after", placeAfter);
+    });
+
+    item.addEventListener("dragleave", () => {
+      item.classList.remove("step-item--drop-before", "step-item--drop-after");
+    });
+
+    item.addEventListener("drop", async (event) => {
+      if (!draggedStepId || draggedStepId === step.id) return;
+      event.preventDefault();
+      event.stopPropagation();
+      const rect = item.getBoundingClientRect();
+      const placeAfter = event.clientY > rect.top + rect.height / 2;
+      if (!window.trainingService.reorderStep(draggedStepId, step.id, placeAfter)) return;
+      draggedStepId = null;
+      await persistReorder(language);
+    });
 
     item.addEventListener("click", async () => {
       openStepEditor(step);
       await highlightEditorStep(step);
     });
     item.addEventListener("keydown", async (event) => {
+      if (event.target !== item) return;
       if (event.key === "Enter" || event.key === " ") {
         event.preventDefault();
         openStepEditor(step);
