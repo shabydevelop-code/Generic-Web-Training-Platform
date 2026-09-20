@@ -333,6 +333,38 @@ adminUsers.MapPut("/{id:long}", (long id, UpdateUserRequest request, HttpContext
     return Results.Ok(new UserResponse(id, username, displayName, isActive, [role!]));
 });
 
+adminUsers.MapDelete("/{id:long}/learning-activity", (long id) =>
+{
+    using var connection = OpenConnection(databasePath);
+
+    using var existsCommand = connection.CreateCommand();
+    existsCommand.CommandText = "SELECT COUNT(*) FROM Users WHERE Id = $id;";
+    existsCommand.Parameters.AddWithValue("$id", id);
+    if (Convert.ToInt32(existsCommand.ExecuteScalar()) == 0)
+        return Results.NotFound();
+
+    using var transaction = connection.BeginTransaction();
+
+    using (var stepProgressCommand = connection.CreateCommand())
+    {
+        stepProgressCommand.Transaction = transaction;
+        stepProgressCommand.CommandText = "DELETE FROM UserStepProgress WHERE UserId = $id;";
+        stepProgressCommand.Parameters.AddWithValue("$id", id);
+        stepProgressCommand.ExecuteNonQuery();
+    }
+
+    using (var progressCommand = connection.CreateCommand())
+    {
+        progressCommand.Transaction = transaction;
+        progressCommand.CommandText = "DELETE FROM UserProgress WHERE UserId = $id;";
+        progressCommand.Parameters.AddWithValue("$id", id);
+        progressCommand.ExecuteNonQuery();
+    }
+
+    transaction.Commit();
+    return Results.NoContent();
+});
+
 adminUsers.MapDelete("/{id:long}", (long id) =>
 {
     using var connection = OpenConnection(databasePath);
