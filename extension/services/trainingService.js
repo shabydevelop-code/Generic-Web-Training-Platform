@@ -100,7 +100,8 @@
 
     newSteps.forEach((step, index) => {
       steps.push({
-        id: crypto.randomUUID(),
+        id: step.id ?? crypto.randomUUID(),
+        persistedId: step.id ?? null,
         order: index + 1,
         selector: step.selector.trim(),
         instruction: step.instruction.trim(),
