@@ -348,14 +348,10 @@
     if (restoreVersion !== learnerRenderVersion) return false;
     if (!response?.success || !response.current?.step) return false;
 
-    const result = await showFirstStep({
-      steps: [response.current.step],
-      stepIndex: response.current.stepIndex,
-      totalSteps: response.current.totalSteps || 1,
-      mode: response.current.mode || "learner",
-      allowDetached: true
-    }, restoreVersion);
-    return result?.success === true;
+    if (!(await canShowStep(response.current))) return false;
+    if (restoreVersion !== learnerRenderVersion) return false;
+
+    return showCurrentStep(response.current);
   }
 
   window.guideRunner = {
