@@ -251,8 +251,10 @@ async function loadLearnerCatalog() {
 
   const language = window.i18nService.getLanguage();
   learnerCatalog = [];
+  learnerSessionActive = false;
   learnerTopicSelect.replaceChildren();
   learnerGuideSelect.replaceChildren();
+  learnerTopicSelect.disabled = false;
   learnerGuideSelect.disabled = true;
   startLearningButton.disabled = true;
   restartLearningButton.hidden = true;
