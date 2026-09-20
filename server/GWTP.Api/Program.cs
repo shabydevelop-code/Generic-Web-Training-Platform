@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.Data.Sqlite;
 using System.Security.Cryptography;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -992,6 +993,9 @@ editorGuides.MapPut("/{id:long}", (long id, CreateGuideRequest request) =>
     if (request.Steps.Any(step => string.IsNullOrWhiteSpace(step.Selector) || string.IsNullOrWhiteSpace(step.Instruction)))
         return Results.BadRequest(new { message = "Every step requires a selector and instruction." });
 
+    if (request.Steps.Any(step => !IsValidStepValidation(step.Validation)))
+        return Results.BadRequest(new { message = "One or more step validations are invalid." });
+
     using var connection = OpenConnection(databasePath);
 
     using var topicCommand = connection.CreateCommand();
@@ -1064,6 +1068,9 @@ editorGuides.MapPut("/{id:long}/steps", (long id, List<CreateGuideStepRequest> s
 
     if (steps.Any(step => string.IsNullOrWhiteSpace(step.Selector) || string.IsNullOrWhiteSpace(step.Instruction)))
         return Results.BadRequest(new { message = "Every step requires a selector and instruction." });
+
+    if (steps.Any(step => !IsValidStepValidation(step.Validation)))
+        return Results.BadRequest(new { message = "One or more step validations are invalid." });
 
     using var connection = OpenConnection(databasePath);
 
@@ -1143,6 +1150,11 @@ editorGuides.MapPost("", (CreateGuideRequest request) =>
         return Results.BadRequest(new { message = "Every step requires a selector and instruction." });
     }
 
+    if (request.Steps.Any(step => !IsValidStepValidation(step.Validation)))
+    {
+        return Results.BadRequest(new { message = "One or more step validations are invalid." });
+    }
+
     using var connection = OpenConnection(databasePath);
 
     using var topicCommand = connection.CreateCommand();
@@ -1206,6 +1218,23 @@ editorGuides.MapPost("", (CreateGuideRequest request) =>
 });
 
 app.Run();
+
+static bool IsValidStepValidation(ValidationRule? validation)
+{
+    if (validation is null) return true;
+    if (!string.Equals(validation.Engine, "regex", StringComparison.OrdinalIgnoreCase)) return false;
+    if (string.IsNullOrWhiteSpace(validation.Expression) || string.IsNullOrWhiteSpace(validation.ErrorMessage)) return false;
+
+    try
+    {
+        _ = new Regex(validation.Expression, RegexOptions.None, TimeSpan.FromMilliseconds(250));
+        return true;
+    }
+    catch (ArgumentException)
+    {
+        return false;
+    }
+}
 
 static void InitializeDatabase(string databasePath, string schemaPath)
 {
