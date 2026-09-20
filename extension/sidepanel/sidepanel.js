@@ -453,7 +453,7 @@ async function loadGuides() {
       item.tabIndex = 0;
       item.setAttribute("role", "button");
       item.addEventListener("click", () => openExistingGuide(guide.id));
-      item.addEventListener("keydown", (event) => {
+      item.addEventListener("keydown", async (event) => {
         if (event.key === "Enter" || event.key === " ") {
           event.preventDefault();
           openExistingGuide(guide.id);
@@ -958,11 +958,42 @@ function updateGuideEditorValidity() {
 }
 
 function clearPageTrainingVisuals() {
-  window.messagingService.sendToActivePage({ type: "GWTP_CLEAR_HIGHLIGHT" }).catch((error) => {
+  window.messagingService.sendToAllFrames({ type: "GWTP_CLEAR_HIGHLIGHT" }).catch((error) => {
     console.debug("Could not clear page training visuals.", error);
   });
   activeStepId = null;
   markActiveStep(null);
+}
+
+function frameMatchesStep(frameInfo, stepFrame) {
+  if (!stepFrame) return frameInfo?.isTop === true;
+  if (stepFrame.isTop) return frameInfo?.isTop === true;
+  if (frameInfo?.isTop) return false;
+
+  if (stepFrame.url && frameInfo?.href === stepFrame.url) return true;
+  if (stepFrame.name && frameInfo?.name === stepFrame.name) return true;
+
+  return false;
+}
+
+async function highlightEditorStep(step) {
+  const stepFrame = step.element?.frame || null;
+
+  await window.messagingService.sendToAllFrames({ type: "GWTP_CLEAR_HIGHLIGHT" }).catch(() => {});
+
+  const responses = await window.messagingService.sendToAllFrames({
+    type: "GWTP_HIGHLIGHT_ELEMENT",
+    selector: step.selector,
+    frame: stepFrame
+  });
+
+  const matched = responses.find((item) => item.response?.success);
+  if (matched) {
+    markActiveStep(step.id);
+    return;
+  }
+
+  setStatus("Could not find the selected element on the current page.", "error");
 }
 
 function closeStepCreator() {
@@ -1152,15 +1183,15 @@ function renderSteps() {
 
     item.append(title, reorderControls, instruction, selector);
 
-    item.addEventListener("click", () => {
-      clearPageTrainingVisuals();
+    item.addEventListener("click", async () => {
       openStepEditor(step);
+      await highlightEditorStep(step);
     });
     item.addEventListener("keydown", (event) => {
       if (event.key === "Enter" || event.key === " ") {
         event.preventDefault();
-        clearPageTrainingVisuals();
         openStepEditor(step);
+        await highlightEditorStep(step);
       }
     });
 
@@ -1393,7 +1424,8 @@ saveGuideButton.addEventListener("click", async () => {
         isAvailable: guideAvailableInput.checked,
         steps: steps.map((step) => ({
           selector: step.selector,
-          instruction: step.instruction
+          instruction: step.instruction,
+          frame: step.element?.frame || null
         }))
       })
     });
