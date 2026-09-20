@@ -246,7 +246,10 @@
 
           <input id="selectorInput" type="hidden" value="" />
 
-          <label for="instructionInput" data-i18n="instructionLabel">Instruction</label>
+          <label for="instructionInput" class="step-instruction-label">
+            <span data-i18n="instructionLabel">Instruction</span>
+            <span class="required-marker" aria-hidden="true">*</span>
+          </label>
           <div class="rich-text-editor">
             <div class="rich-text-toolbar" role="toolbar">
               <button type="button" class="rich-text-toolbar__button" data-rich-command="bold" aria-label="Bold"><strong>B</strong></button>
