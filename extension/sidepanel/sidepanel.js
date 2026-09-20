@@ -465,6 +465,9 @@ async function handleExitLearning() {
 
   await chrome.runtime.sendMessage({ type: "GWTP_TRAINING_STOP" });
   learnerSessionActive = false;
+
+  learnerTopicSelect.disabled = false;
+  learnerGuideSelect.disabled = !learnerTopicSelect.value;
   handleLearnerGuideChange();
 }
 
