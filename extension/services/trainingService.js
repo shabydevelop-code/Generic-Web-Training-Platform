@@ -1,7 +1,7 @@
 (() => {
   const steps = [];
 
-  function createStep({ selector, instruction, element }) {
+  function createStep({ selector, instruction, element, validation = null }) {
     if (!selector || !selector.trim()) {
       throw new Error("A selector is required to create a step.");
     }
@@ -21,14 +21,15 @@
             text: element.text || "",
             frame: element.frame ? { ...element.frame } : null
           }
-        : null
+        : null,
+      validation: validation ? { ...validation } : null
     };
 
     steps.push(step);
     return { ...step };
   }
 
-  function updateStep(id, { selector, instruction, element }) {
+  function updateStep(id, { selector, instruction, element, validation = null }) {
     const index = steps.findIndex((step) => step.id === id);
     if (index < 0) throw new Error("Step not found.");
     if (!selector || !selector.trim()) throw new Error("A selector is required to update a step.");
@@ -40,7 +41,8 @@
       instruction: instruction.trim(),
       element: element
         ? { tagName: element.tagName || "", text: element.text || "", frame: element.frame ? { ...element.frame } : null }
-        : steps[index].element
+        : steps[index].element,
+      validation: validation ? { ...validation } : null
     };
     return { ...steps[index] };
   }
@@ -106,7 +108,8 @@
           tagName: "",
           text: "",
           frame: step.frame ? { ...step.frame } : null
-        }
+        },
+        validation: step.validation ? { ...step.validation } : null
       });
     });
 
