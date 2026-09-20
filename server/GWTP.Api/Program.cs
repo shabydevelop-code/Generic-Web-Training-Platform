@@ -1370,7 +1370,7 @@ static void EnsureDemoSiteGuide(string databasePath)
         ("#btn-save-case", "לחץ על <strong>עדכן פניה</strong>. אם קיימת שגיאת ולידציה, תקן אותה ועדכן שוב. אם העדכון הסתיים ללא שגיאות, לחץ על <strong>הבא</strong>."),
         ("#nav-leads", "עבור למסך <strong>לידים</strong>."),
         ("#lead-source", "בחר מקור ליד שאינו <strong>אתר אינטרנט</strong>."),
-        ("#lead-interest", "שנה את המוצר המבוקש."),
+        ("#lead-interest", "בחר מוצר מבוקש שאינו <strong>Cloud CRM</strong>."),
         ("#lead-email", "בדוק שקיימת כתובת דוא״ל לפני השמירה."),
         ("#btn-save-lead", "לחץ על <strong>שמור ליד</strong>. אם השמירה נדחית, תקן את השדה המסומן ונסה שוב. אם השמירה הסתיימה ללא שגיאות, לחץ על <strong>הבא</strong>."),
         ("#nav-360", "עבור למסך <strong>360</strong>."),
@@ -1433,6 +1433,20 @@ static void EnsureDemoSiteGuide(string databasePath)
         frameMigration.Parameters.AddWithValue("$topFrame", JsonSerializer.Serialize(
             new FrameTarget(true, null, "", "", "", "")));
         frameMigration.ExecuteNonQuery();
+
+        using (var leadInterestInstructionCommand = connection.CreateCommand())
+        {
+            leadInterestInstructionCommand.Transaction = transaction;
+            leadInterestInstructionCommand.CommandText = """
+                UPDATE GuideSteps
+                SET Instruction = 'בחר מוצר מבוקש שאינו <strong>Cloud CRM</strong>.'
+                WHERE GuideId = $guideId
+                  AND Selector = '#lead-interest'
+                  AND Instruction = 'שנה את המוצר המבוקש.';
+                """;
+            leadInterestInstructionCommand.Parameters.AddWithValue("$guideId", existingDemoGuideId);
+            leadInterestInstructionCommand.ExecuteNonQuery();
+        }
 
         var demoValidations = new (string Selector, string Engine, string Expression, string ErrorMessage, string BuilderType, string BuilderValue)[]
         {
