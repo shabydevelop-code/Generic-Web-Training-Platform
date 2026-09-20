@@ -181,6 +181,42 @@
     });
   }
 
+  async function resume(guide) {
+    await beginValidationSession("learner", guide?.id);
+    if (!guide?.steps?.length) {
+      throw new Error("A valid guide with at least one step is required.");
+    }
+
+    const startResponse = await chrome.runtime.sendMessage({
+      type: "GWTP_TRAINING_START",
+      guide
+    });
+
+    if (!startResponse?.success) {
+      throw new Error(startResponse?.message || "Could not resume the training session.");
+    }
+
+    const stepIndex = Number.isInteger(startResponse.session?.progress?.stepIndex)
+      ? startResponse.session.progress.stepIndex
+      : 0;
+    const step = guide.steps?.[stepIndex];
+    if (!step) throw new Error("The saved guide step was not found.");
+
+    const current = {
+      step,
+      stepIndex,
+      totalSteps: startResponse.session?.progress?.totalSteps || guide.steps.length,
+      mode: "learner"
+    };
+
+    if (!(await canShowStep(current))) {
+      return { success: false, reason: "element-not-found", current };
+    }
+
+    const shown = await showCurrentStep(current);
+    return { success: shown, current };
+  }
+
   async function restart(guide) {
     await beginValidationSession("learner", guide?.id);
     if (!guide?.startUrl || !guide?.steps?.length) {
@@ -307,6 +343,7 @@
 
   window.guideRunner = {
     start,
+    resume,
     restart,
     preview,
     restoreActiveStep,
