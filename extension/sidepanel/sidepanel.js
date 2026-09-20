@@ -279,6 +279,11 @@ async function loadLearnerCatalog() {
       learnerTopicSelect.appendChild(option);
     });
 
+    if (learnerCatalog.length === 1) {
+      learnerTopicSelect.value = String(learnerCatalog[0].id);
+      handleLearnerTopicChange();
+    }
+
     learnerStatus.textContent = learnerCatalog.length === 0
       ? window.i18nService.translate("noPublishedGuides", language)
       : "";
@@ -324,7 +329,13 @@ function handleLearnerTopicChange() {
   });
 
   learnerGuideSelect.disabled = false;
-  startLearningButton.disabled = true;
+
+  if (topic.guides.length === 1) {
+    learnerGuideSelect.value = String(topic.guides[0].id);
+    handleLearnerGuideChange();
+  } else {
+    startLearningButton.disabled = true;
+  }
 }
 
 function handleLearnerGuideChange() {
