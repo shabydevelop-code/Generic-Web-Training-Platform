@@ -5,6 +5,7 @@
 - Local working copy: `C:\\yossi\\ChatGpt\\Generic-Web-Training-Platform`.
 - ChatGPT inspects and updates the GitHub repository; the developer syncs changes with `git pull`.
 - Do not use ZIP delivery for normal project changes.
+- Database changes and test fixtures must be delivered through versioned GitHub repository changes. Do not use manual replacement of `database/GWTP.db` as the normal workflow; the developer should receive them with `git pull origin main`.
 - Inspect current repository files before changing code.
 - Work incrementally and avoid partial-code patches when a complete coherent change is required.
 
