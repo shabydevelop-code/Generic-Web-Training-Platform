@@ -1228,10 +1228,10 @@ static bool IsValidStepValidation(ValidationRule? validation)
     if (string.Equals(validation.Engine, "changed", StringComparison.OrdinalIgnoreCase))
         return string.Equals(validation.Expression, "__changed__", StringComparison.Ordinal);
 
-    var isRegexValidation =
-        string.Equals(validation.Engine, "regex", StringComparison.OrdinalIgnoreCase) ||
-        string.Equals(validation.Engine, "changed_regex", StringComparison.OrdinalIgnoreCase);
-    if (!isRegexValidation) return false;
+    if (string.Equals(validation.Engine, "required", StringComparison.OrdinalIgnoreCase))
+        return string.Equals(validation.Expression, "__required__", StringComparison.Ordinal);
+
+    if (!string.Equals(validation.Engine, "regex", StringComparison.OrdinalIgnoreCase)) return false;
 
     try
     {
@@ -1434,17 +1434,19 @@ static void EnsureDemoSiteGuide(string databasePath)
             new FrameTarget(true, null, "", "", "", "")));
         frameMigration.ExecuteNonQuery();
 
-        var demoValidations = new (string Selector, string Expression, string ErrorMessage, string BuilderType, string BuilderValue)[]
+        var demoValidations = new (string Selector, string Engine, string Expression, string ErrorMessage, string BuilderType, string BuilderValue)[]
         {
-            ("#site-type", "^branch$", "יש לבחור סניף מכירות לפני המעבר לשלב הבא.", "regex", "^branch$"),
-            ("#case-category", "^(?!network$).+$", "לא ניתן לבחור ב״תקלות תקשורת ורשת״. יש לבחור קטגוריה אחרת.", "regex", "^(?!network$).+$"),
-            ("#case-subject", "^(?!איטיות בגלישה ונפילות קו תקשורת ראשי$)(?=.{10,}$).+", "יש לעדכן את נושא הפניה לנושא חדש בן 10 תווים לפחות.", "regex", "^(?!איטיות בגלישה ונפילות קו תקשורת ראשי$)(?=.{10,}$).+"),
-            ("#lead-source", "^(?!web$).+$", "לא ניתן לבחור ב״אתר אינטרנט״. יש לבחור מקור ליד אחר.", "regex", "^(?!web$).+$"),
-            ("#lead-interest", "^(?!cloud_crm$).+$", "יש לשנות את המוצר המבוקש לפני המעבר לשלב הבא.", "regex", "^(?!cloud_crm$).+$"),
-            ("#lead-email", "^(?!ronit@nextgen\\.co\\.il$)[^\\s@]+@[^\\s@]+\\.[^\\s@]+$", "יש לעדכן את כתובת הדוא״ל לכתובת תקינה ושונה מהכתובת המקורית.", "regex", "^(?!ronit@nextgen\\.co\\.il$)[^\\s@]+@[^\\s@]+\\.[^\\s@]+$"),
-            ("#c360-tier", "^(?!platinum$).+$", "יש לשנות את סיווג הלקוח לפני המעבר לשלב הבא.", "regex", "^(?!platinum$).+$"),
-            ("#c360-manager", "^(?!אורן שגיא$)(?=.*\\S).+$", "יש לעדכן את מנהל תיק הלקוח לפני המעבר לשלב הבא.", "regex", "^(?!אורן שגיא$)(?=.*\\S).+$"),
-            ("#c360-mrr", "^\\d+(?:[.,]\\d+)?$", "יש להזין מחזור חודשי כמספר.", "regex", "^\\d+(?:[.,]\\d+)?$")
+            ("#site-phone", "changed", "__changed__", "יש לשנות את מספר הטלפון לפני המעבר לשלב הבא.", "changed", ""),
+            ("#site-type", "regex", "^branch$", "יש לבחור סניף מכירות לפני המעבר לשלב הבא.", "equals", "branch"),
+            ("#case-category", "regex", "^(?!network$).+$", "לא ניתן לבחור ב״תקלות תקשורת ורשת״. יש לבחור קטגוריה אחרת.", "not_equals", "network"),
+            ("#case-assigned", "changed", "__changed__", "יש לשנות את הנציג המטפל לפני המעבר לשלב הבא.", "changed", ""),
+            ("#case-subject", "changed", "__changed__", "יש לשנות את נושא הפנייה לפני המעבר לשלב הבא.", "changed", ""),
+            ("#lead-source", "regex", "^(?!web$).+$", "לא ניתן לבחור ב״אתר אינטרנט״. יש לבחור מקור ליד אחר.", "not_equals", "web"),
+            ("#lead-interest", "regex", "^(?!cloud_crm$).+$", "לא ניתן לבחור ב־Cloud CRM. יש לבחור מוצר אחר.", "not_equals", "cloud_crm"),
+            ("#lead-email", "changed", "__changed__", "יש לשנות את כתובת הדוא״ל לפני המעבר לשלב הבא.", "changed", ""),
+            ("#c360-tier", "regex", "^(?!platinum$).+$", "לא ניתן לבחור בסיווג Platinum. יש לבחור סיווג אחר.", "not_equals", "platinum"),
+            ("#c360-manager", "changed", "__changed__", "יש לשנות את מנהל תיק הלקוח לפני המעבר לשלב הבא.", "changed", ""),
+            ("#c360-mrr", "required", "__required__", "יש להזין מחזור חודשי לפני המעבר לשלב הבא.", "required", "")
         };
 
         foreach (var validation in demoValidations)
@@ -1453,57 +1455,21 @@ static void EnsureDemoSiteGuide(string databasePath)
             validationCommand.Transaction = transaction;
             validationCommand.CommandText = """
                 UPDATE GuideSteps
-                SET ValidationEngine = 'regex',
+                SET ValidationEngine = $engine,
                     ValidationExpression = $expression,
                     ValidationErrorMessage = $errorMessage,
                     ValidationBuilderType = $builderType,
                     ValidationBuilderValue = $builderValue
-                WHERE GuideId = $guideId
-                  AND Selector = $selector;
+                WHERE GuideId = $guideId AND Selector = $selector;
                 """;
             validationCommand.Parameters.AddWithValue("$guideId", existingDemoGuideId);
             validationCommand.Parameters.AddWithValue("$selector", validation.Selector);
+            validationCommand.Parameters.AddWithValue("$engine", validation.Engine);
             validationCommand.Parameters.AddWithValue("$expression", validation.Expression);
             validationCommand.Parameters.AddWithValue("$errorMessage", validation.ErrorMessage);
             validationCommand.Parameters.AddWithValue("$builderType", validation.BuilderType);
             validationCommand.Parameters.AddWithValue("$builderValue", validation.BuilderValue);
             validationCommand.ExecuteNonQuery();
-        }
-
-        using (var changedPhoneValidationCommand = connection.CreateCommand())
-        {
-            changedPhoneValidationCommand.Transaction = transaction;
-            changedPhoneValidationCommand.CommandText = """
-                UPDATE GuideSteps
-                SET ValidationEngine = 'changed_regex',
-                    ValidationExpression = $expression,
-                    ValidationErrorMessage = $errorMessage,
-                    ValidationBuilderType = 'regex',
-                    ValidationBuilderValue = $expression
-                WHERE GuideId = $guideId
-                  AND Selector = '#site-phone';
-                """;
-            changedPhoneValidationCommand.Parameters.AddWithValue("$guideId", existingDemoGuideId);
-            changedPhoneValidationCommand.Parameters.AddWithValue("$expression", "^(?:05\\d[- ]?\\d{7}|0[2-4,8-9][- ]?\\d{7})$");
-            changedPhoneValidationCommand.Parameters.AddWithValue("$errorMessage", "יש לשנות את מספר הטלפון למספר אחר ותקין: נייד בן 10 ספרות או נייח בן 9 ספרות. ניתן להשתמש במקף.");
-            changedPhoneValidationCommand.ExecuteNonQuery();
-        }
-
-        using (var changedValidationCommand = connection.CreateCommand())
-        {
-            changedValidationCommand.Transaction = transaction;
-            changedValidationCommand.CommandText = """
-                UPDATE GuideSteps
-                SET ValidationEngine = 'changed',
-                    ValidationExpression = '__changed__',
-                    ValidationErrorMessage = 'יש לשנות את הנציג המטפל לפני המעבר לשלב הבא.',
-                    ValidationBuilderType = 'changed',
-                    ValidationBuilderValue = ''
-                WHERE GuideId = $guideId
-                  AND Selector = '#case-assigned';
-                """;
-            changedValidationCommand.Parameters.AddWithValue("$guideId", existingDemoGuideId);
-            changedValidationCommand.ExecuteNonQuery();
         }
 
         var instructionMigrations = new (string Selector, string OldInstruction, string NewInstruction)[]
@@ -1578,20 +1544,19 @@ static void EnsureDemoSiteGuide(string databasePath)
 
         var seedValidation = steps[index].Selector switch
         {
-            "#site-phone" => new ValidationRule("changed_regex", "^(?:05\\d[- ]?\\d{7}|0[2-4,8-9][- ]?\\d{7})$", "יש לשנות את מספר הטלפון למספר אחר ותקין: נייד בן 10 ספרות או נייח בן 9 ספרות. ניתן להשתמש במקף.", "regex", "^(?:05\\d[- ]?\\d{7}|0[2-4,8-9][- ]?\\d{7})$"),
-            "#site-type" => new ValidationRule("regex", "^branch$", "יש לבחור סניף מכירות לפני המעבר לשלב הבא.", "regex", "^branch$"),
-            "#case-category" => new ValidationRule("regex", "^(?!network$).+$", "יש לבחור קטגוריית פניה שונה לפני המעבר לשלב הבא.", "regex", "^(?!network$).+$"),
+            "#site-phone" => new ValidationRule("changed", "__changed__", "יש לשנות את מספר הטלפון לפני המעבר לשלב הבא.", "changed", ""),
+            "#site-type" => new ValidationRule("regex", "^branch$", "יש לבחור סניף מכירות לפני המעבר לשלב הבא.", "equals", "branch"),
+            "#case-category" => new ValidationRule("regex", "^(?!network$).+$", "לא ניתן לבחור ב״תקלות תקשורת ורשת״. יש לבחור קטגוריה אחרת.", "not_equals", "network"),
             "#case-assigned" => new ValidationRule("changed", "__changed__", "יש לשנות את הנציג המטפל לפני המעבר לשלב הבא.", "changed", ""),
-            "#case-subject" => new ValidationRule("regex", "^(?!איטיות בגלישה ונפילות קו תקשורת ראשי$)(?=.{10,}$).+", "יש לעדכן את נושא הפניה לנושא חדש בן 10 תווים לפחות.", "regex", "^(?!איטיות בגלישה ונפילות קו תקשורת ראשי$)(?=.{10,}$).+"),
-            "#lead-source" => new ValidationRule("regex", "^(?!web$).+$", "יש לשנות את מקור הליד לפני המעבר לשלב הבא.", "regex", "^(?!web$).+$"),
-            "#lead-interest" => new ValidationRule("regex", "^(?!cloud_crm$).+$", "יש לשנות את המוצר המבוקש לפני המעבר לשלב הבא.", "regex", "^(?!cloud_crm$).+$"),
-            "#lead-email" => new ValidationRule("regex", "^(?!ronit@nextgen\\.co\\.il$)[^\\s@]+@[^\\s@]+\\.[^\\s@]+$", "יש לעדכן את כתובת הדוא״ל לכתובת תקינה ושונה מהכתובת המקורית.", "regex", "^(?!ronit@nextgen\\.co\\.il$)[^\\s@]+@[^\\s@]+\\.[^\\s@]+$"),
-            "#c360-tier" => new ValidationRule("regex", "^(?!platinum$).+$", "יש לשנות את סיווג הלקוח לפני המעבר לשלב הבא.", "regex", "^(?!platinum$).+$"),
-            "#c360-manager" => new ValidationRule("regex", "^(?!אורן שגיא$)(?=.*\\S).+$", "יש לעדכן את מנהל תיק הלקוח לפני המעבר לשלב הבא.", "regex", "^(?!אורן שגיא$)(?=.*\\S).+$"),
-            "#c360-mrr" => new ValidationRule("regex", "^\\d+(?:[.,]\\d+)?$", "יש להזין מחזור חודשי כמספר.", "regex", "^\\d+(?:[.,]\\d+)?$"),
+            "#case-subject" => new ValidationRule("changed", "__changed__", "יש לשנות את נושא הפנייה לפני המעבר לשלב הבא.", "changed", ""),
+            "#lead-source" => new ValidationRule("regex", "^(?!web$).+$", "לא ניתן לבחור ב״אתר אינטרנט״. יש לבחור מקור ליד אחר.", "not_equals", "web"),
+            "#lead-interest" => new ValidationRule("regex", "^(?!cloud_crm$).+$", "לא ניתן לבחור ב־Cloud CRM. יש לבחור מוצר אחר.", "not_equals", "cloud_crm"),
+            "#lead-email" => new ValidationRule("changed", "__changed__", "יש לשנות את כתובת הדוא״ל לפני המעבר לשלב הבא.", "changed", ""),
+            "#c360-tier" => new ValidationRule("regex", "^(?!platinum$).+$", "לא ניתן לבחור בסיווג Platinum. יש לבחור סיווג אחר.", "not_equals", "platinum"),
+            "#c360-manager" => new ValidationRule("changed", "__changed__", "יש לשנות את מנהל תיק הלקוח לפני המעבר לשלב הבא.", "changed", ""),
+            "#c360-mrr" => new ValidationRule("required", "__required__", "יש להזין מחזור חודשי לפני המעבר לשלב הבא.", "required", ""),
             _ => null
         };
-
         stepCommand.Parameters.AddWithValue("$validationEngine", (object?)seedValidation?.Engine ?? DBNull.Value);
         stepCommand.Parameters.AddWithValue("$validationExpression", (object?)seedValidation?.Expression ?? DBNull.Value);
         stepCommand.Parameters.AddWithValue("$validationErrorMessage", (object?)seedValidation?.ErrorMessage ?? DBNull.Value);
