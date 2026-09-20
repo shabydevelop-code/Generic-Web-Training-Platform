@@ -105,10 +105,17 @@ async function completeTraining() {
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (message?.type === "GWTP_VALIDATION_SESSION_GET") {
-    chrome.storage.session.get("gwtp.validation.session")
+    const tabId = _sender?.tab?.id;
+    if (!Number.isInteger(tabId)) {
+      sendResponse({ success: false, message: "Validation session requires a browser tab context." });
+      return;
+    }
+
+    const sessionKey = `gwtp:validation-session:${tabId}`;
+    chrome.storage.session.get(sessionKey)
       .then((stored) => sendResponse({
         success: true,
-        sessionId: stored["gwtp.validation.session"] || null
+        context: stored[sessionKey] || null
       }))
       .catch((error) => sendResponse({ success: false, message: error.message }));
     return true;
