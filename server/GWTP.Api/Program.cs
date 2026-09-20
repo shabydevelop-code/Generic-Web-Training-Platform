@@ -1429,7 +1429,7 @@ static void EnsureDemoSiteGuide(string databasePath)
 
         var demoValidations = new (string Selector, string Expression, string ErrorMessage, string BuilderType, string BuilderValue)[]
         {
-            ("#site-phone", "^05\\d{8}$", "יש להזין מספר טלפון נייד תקין בן 10 ספרות.", "regex", "^05\\d{8}$"),
+            ("#site-phone", "^(?:05\\d[- ]?\\d{7}|0[2-4,8-9][- ]?\\d{7})$", "יש להזין מספר טלפון תקין: נייד בן 10 ספרות או נייח בן 9 ספרות. ניתן להשתמש במקף.", "regex", "^(?:05\\d[- ]?\\d{7}|0[2-4,8-9][- ]?\\d{7})$"),
             ("#case-subject", "^(?=.*\\S).+$", "יש להזין נושא לפניה לפני המעבר לשלב הבא.", "required", ""),
             ("#lead-email", "^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$", "יש להזין כתובת דוא״ל תקינה.", "regex", "^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$"),
             ("#c360-mrr", "^\\d+(?:[.,]\\d+)?$", "יש להזין מחזור חודשי כמספר.", "regex", "^\\d+(?:[.,]\\d+)?$")
@@ -1491,7 +1491,7 @@ static void EnsureDemoSiteGuide(string databasePath)
 
         var seedValidation = steps[index].Selector switch
         {
-            "#site-phone" => new ValidationRule("regex", "^05\\d{8}$", "יש להזין מספר טלפון נייד תקין בן 10 ספרות.", "regex", "^05\\d{8}$"),
+            "#site-phone" => new ValidationRule("regex", "^(?:05\\d[- ]?\\d{7}|0[2-4,8-9][- ]?\\d{7})$", "יש להזין מספר טלפון תקין: נייד בן 10 ספרות או נייח בן 9 ספרות. ניתן להשתמש במקף.", "regex", "^(?:05\\d[- ]?\\d{7}|0[2-4,8-9][- ]?\\d{7})$"),
             "#case-subject" => new ValidationRule("regex", "^(?=.*\\S).+$", "יש להזין נושא לפניה לפני המעבר לשלב הבא.", "required", ""),
             "#lead-email" => new ValidationRule("regex", "^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$", "יש להזין כתובת דוא״ל תקינה.", "regex", "^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$"),
             "#c360-mrr" => new ValidationRule("regex", "^\\d+(?:[.,]\\d+)?$", "יש להזין מחזור חודשי כמספר.", "regex", "^\\d+(?:[.,]\\d+)?$"),
