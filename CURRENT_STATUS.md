@@ -71,6 +71,7 @@ Reset was verified to delete both guide and step progress as intended.
 ## Validation regression fixture
 - The backend now seeds a published guide named `בדיקת כל חוקי הוולידציה` under `Demo CRM` when it is missing.
 - The guide uses the existing local Demo CRM page and contains deterministic scenarios for Required, Equals, Not Equals, Contains, Changed, and Changed + Regex.
+- The Changed + Regex phone scenario accepts Israeli-style values both with and without a hyphen (for example `03-5551235` and `050-1234567`) and uses a concise learner instruction.
 - The fixture is created through versioned backend code rather than by manually replacing `database/GWTP.db`.
 
 ## Repository database rule
