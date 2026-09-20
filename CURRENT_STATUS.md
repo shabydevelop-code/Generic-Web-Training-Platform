@@ -68,5 +68,15 @@ Backend includes:
 
 Reset was verified to delete both guide and step progress as intended.
 
+## Validation regression fixture
+- The backend now seeds a published guide named `בדיקת כל חוקי הוולידציה` under `Demo CRM` when it is missing.
+- The guide uses the existing local Demo CRM page and contains deterministic scenarios for Required, Equals, Not Equals, Contains, Changed, and Changed + Regex.
+- The fixture is created through versioned backend code rather than by manually replacing `database/GWTP.db`.
+
+## Repository database rule
+- Changes to persistent/test database content must be delivered through GitHub as versioned repository changes.
+- Do not distribute a replacement `GWTP.db` as the normal project workflow. The developer should receive repository changes with `git pull origin main`.
+
 ## Immediate next tasks
-1. Run a focused validation regression pass for `required`, `regex`, `changed`, and `changed_regex`, including invalid -> blocked Next -> correction -> successful Next and postback/restoration cases.
+1. Pull and restart the API, then run the validation regression guide end-to-end.
+2. Resolve the authoring/API discrepancy for `changed_regex`: runtime supports it, but the normal editor/backend validation path does not yet expose/accept it.
