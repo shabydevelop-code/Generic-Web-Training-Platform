@@ -36,6 +36,9 @@ CREATE TABLE IF NOT EXISTS GuideSteps (
     Selector TEXT NOT NULL,
     Instruction TEXT NOT NULL,
     FrameTarget TEXT,
+    ValidationEngine TEXT,
+    ValidationExpression TEXT,
+    ValidationErrorMessage TEXT,
     FOREIGN KEY (GuideId) REFERENCES Guides(Id) ON DELETE CASCADE,
     UNIQUE (GuideId, StepOrder)
 );
