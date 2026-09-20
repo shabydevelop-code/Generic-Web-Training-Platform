@@ -1465,6 +1465,40 @@ static void EnsureDemoSiteGuide(string databasePath)
             validationCommand.ExecuteNonQuery();
         }
 
+        var instructionMigrations = new (string Selector, string OldInstruction, string NewInstruction)[]
+        {
+            ("#btn-save-site",
+                "לחץ על <strong>שמור שינויים</strong> כדי לשמור את נתוני האתר.",
+                "לחץ על <strong>שמור שינויים</strong> כדי לשמור את נתוני האתר. אם השמירה הסתיימה ללא שגיאות, לחץ על <strong>הבא</strong>."),
+            ("#btn-save-case",
+                "לחץ על <strong>עדכן פניה</strong>. אם קיימת שגיאת ולידציה, תקן אותה ועדכן שוב.",
+                "לחץ על <strong>עדכן פניה</strong>. אם קיימת שגיאת ולידציה, תקן אותה ועדכן שוב. אם העדכון הסתיים ללא שגיאות, לחץ על <strong>הבא</strong>."),
+            ("#btn-save-lead",
+                "לחץ על <strong>שמור ליד</strong>. אם השמירה נדחית, תקן את השדה המסומן ונסה שוב.",
+                "לחץ על <strong>שמור ליד</strong>. אם השמירה נדחית, תקן את השדה המסומן ונסה שוב. אם השמירה הסתיימה ללא שגיאות, לחץ על <strong>הבא</strong>."),
+            ("#btn-save-360",
+                "לחץ על <strong>שמור פרטי לקוח</strong>. תקן שגיאות ולידציה אם יוצגו.",
+                "לחץ על <strong>שמור פרטי לקוח</strong>. תקן שגיאות ולידציה אם יוצגו. אם השמירה הסתיימה ללא שגיאות, לחץ על <strong>הבא</strong>.")
+        };
+
+        foreach (var migration in instructionMigrations)
+        {
+            using var instructionCommand = connection.CreateCommand();
+            instructionCommand.Transaction = transaction;
+            instructionCommand.CommandText = """
+                UPDATE GuideSteps
+                SET Instruction = $newInstruction
+                WHERE GuideId = $guideId
+                  AND Selector = $selector
+                  AND Instruction = $oldInstruction;
+                """;
+            instructionCommand.Parameters.AddWithValue("$guideId", existingDemoGuideId);
+            instructionCommand.Parameters.AddWithValue("$selector", migration.Selector);
+            instructionCommand.Parameters.AddWithValue("$oldInstruction", migration.OldInstruction);
+            instructionCommand.Parameters.AddWithValue("$newInstruction", migration.NewInstruction);
+            instructionCommand.ExecuteNonQuery();
+        }
+
         transaction.Commit();
         return;
     }
