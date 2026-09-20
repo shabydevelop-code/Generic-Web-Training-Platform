@@ -54,4 +54,5 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 });
 
 
+globalThis.__GWTP_CONTENT_READY__ = true;
 chrome.runtime.sendMessage({ type: "GWTP_PAGE_READY" }).catch(() => {});
