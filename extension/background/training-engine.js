@@ -109,6 +109,34 @@ async function moveTrainingStep(direction) {
   };
 }
 
+async function getPendingNavigationKey(sender) {
+  const tabId = sender?.tab?.id;
+  if (!Number.isInteger(tabId)) throw new Error("Pending navigation requires a browser tab context.");
+  return `gwtp:pending-navigation:${tabId}`;
+}
+
+async function setPendingNavigation(sender, pending) {
+  const key = await getPendingNavigationKey(sender);
+  if (!pending) {
+    await chrome.storage.session.remove(key);
+    return null;
+  }
+
+  const value = {
+    direction: pending.direction === -1 ? -1 : 1,
+    stepIndex: Number(pending.stepIndex),
+    createdAt: Date.now()
+  };
+  await chrome.storage.session.set({ [key]: value });
+  return value;
+}
+
+async function getPendingNavigation(sender) {
+  const key = await getPendingNavigationKey(sender);
+  const stored = await chrome.storage.session.get(key);
+  return stored[key] || null;
+}
+
 async function completeTraining() {
   const current = await getCurrentTrainingStep();
   if (!current) throw new Error("No active training session.");
@@ -182,6 +210,27 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
         await chrome.storage.session.set({ [key]: state });
         sendResponse({ success: true, state });
       })
+      .catch((error) => sendResponse({ success: false, message: error.message }));
+    return true;
+  }
+
+  if (message?.type === "GWTP_TRAINING_PENDING_SET") {
+    setPendingNavigation(_sender, message.pending)
+      .then((pending) => sendResponse({ success: true, pending }))
+      .catch((error) => sendResponse({ success: false, message: error.message }));
+    return true;
+  }
+
+  if (message?.type === "GWTP_TRAINING_PENDING_GET") {
+    getPendingNavigation(_sender)
+      .then((pending) => sendResponse({ success: true, pending }))
+      .catch((error) => sendResponse({ success: false, message: error.message }));
+    return true;
+  }
+
+  if (message?.type === "GWTP_TRAINING_PENDING_CLEAR") {
+    setPendingNavigation(_sender, null)
+      .then(() => sendResponse({ success: true }))
       .catch((error) => sendResponse({ success: false, message: error.message }));
     return true;
   }
