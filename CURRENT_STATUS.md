@@ -81,3 +81,5 @@ Reset was verified to delete both guide and step progress as intended.
 ## Immediate next tasks
 1. Pull and restart the API, then run the validation regression guide end-to-end.
 2. Resolve the authoring/API discrepancy for `changed_regex`: runtime supports it, but the normal editor/backend validation path does not yet expose/accept it.
+
+- Messaging connection restoration is now frame-idempotent: all-frame recovery probes each frame and injects the content bundle only into frames where GWTP is not already ready.
