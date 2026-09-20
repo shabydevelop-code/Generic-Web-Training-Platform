@@ -60,6 +60,8 @@ function hasInstructionContent() {
 const saveStepButton = document.getElementById("saveStepButton");
 const stepsSection = document.getElementById("stepsSection");
 const stepsList = document.getElementById("stepsList");
+const stepsSaveStatus = document.getElementById("stepsSaveStatus");
+let stepsSaveStatusTimer = null;
 const learnModeView = document.getElementById("learnModeView");
 const learnerTopicSelect = document.getElementById("learnerTopicSelect");
 const learnerGuideSelect = document.getElementById("learnerGuideSelect");
@@ -1154,17 +1156,45 @@ async function deleteDraftStep(stepId) {
   renderSteps();
   updateGuideEditorValidity();
 
-  if (editingGuideId) {
-    try {
-      await persistExistingGuide();
-    } catch (error) {
-      setStatus(error.message || "Could not save the guide.", "error");
-      console.error(error);
-      return;
-    }
-  }
+  if (editingGuideId && !(await persistStepChanges())) return;
 
   if (editingStepId === stepId) closeStepCreator();
+}
+
+function setStepsSaveStatus(key = "", type = "info", autoClear = false) {
+  clearTimeout(stepsSaveStatusTimer);
+
+  if (!key) {
+    stepsSaveStatus.textContent = "";
+    stepsSaveStatus.removeAttribute("data-type");
+    return;
+  }
+
+  stepsSaveStatus.textContent = window.i18nService.translate(key, window.i18nService.getLanguage());
+  stepsSaveStatus.dataset.type = type;
+
+  if (autoClear) {
+    stepsSaveStatusTimer = setTimeout(() => {
+      stepsSaveStatus.textContent = "";
+      stepsSaveStatus.removeAttribute("data-type");
+    }, 2500);
+  }
+}
+
+async function persistStepChanges() {
+  if (!editingGuideId) return true;
+
+  setStepsSaveStatus("stepsSaving", "info");
+
+  try {
+    await persistExistingGuide();
+    setStepsSaveStatus("stepsSaved", "success", true);
+    return true;
+  } catch (error) {
+    setStepsSaveStatus("stepsSaveFailed", "error");
+    console.error(error);
+    return false;
+  }
 }
 
 function setStatus(message, type = "info") {
@@ -1212,16 +1242,9 @@ function renderSteps() {
 
   let draggedStepId = null;
 
-  const persistReorder = async (language) => {
+  const persistReorder = async () => {
     renderSteps();
-    if (!editingGuideId) return;
-
-    try {
-      await persistExistingGuide();
-    } catch (error) {
-      setStatus(error.message || window.i18nService.translate("guideSaveError", language), "error");
-      console.error(error);
-    }
+    await persistStepChanges();
   };
 
   steps.forEach((step) => {
@@ -1258,7 +1281,7 @@ function renderSteps() {
       event.stopPropagation();
       const direction = event.key === "ArrowUp" ? -1 : 1;
       if (!window.trainingService.moveStep(step.id, direction)) return;
-      await persistReorder(language);
+      await persistReorder();
       const movedHandle = stepsList.querySelector(`[data-step-id="${step.id}"] .step-item__drag-handle`);
       movedHandle?.focus();
     });
@@ -1311,7 +1334,7 @@ function renderSteps() {
       const placeAfter = event.clientY > rect.top + rect.height / 2;
       if (!window.trainingService.reorderStep(draggedStepId, step.id, placeAfter)) return;
       draggedStepId = null;
-      await persistReorder(language);
+      await persistReorder();
     });
 
     item.addEventListener("click", async () => {
@@ -1422,8 +1445,8 @@ saveStepButton.addEventListener("click", async () => {
     renderSteps();
     updateGuideEditorValidity();
 
-    if (editingGuideId) {
-      await persistExistingGuide();
+    if (editingGuideId && !(await persistStepChanges())) {
+      return;
     }
 
     closeStepCreator();
