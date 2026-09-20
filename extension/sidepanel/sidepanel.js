@@ -2152,8 +2152,10 @@ async function verifyApiConnection() {
   try {
     const health = await window.apiService.healthCheck();
     console.info("GWTP API connected:", health);
-  } catch (error) {
-    console.error("GWTP API connection failed:", error);
+    return true;
+  } catch {
+    console.info("GWTP API is unavailable.");
+    return false;
   }
 }
 
@@ -2166,8 +2168,9 @@ async function initializePanel() {
   renderSteps();
 
   const restoredUser = await window.authService.restoreSession();
+  const apiAvailable = await verifyApiConnection();
 
-  if (restoredUser) {
+  if (restoredUser && apiAvailable) {
     loginView.hidden = true;
     appView.hidden = false;
     adminModeActive = false;
@@ -2180,9 +2183,12 @@ async function initializePanel() {
     loginView.hidden = false;
     appView.hidden = true;
     usernameInput.focus();
-  }
 
-  verifyApiConnection();
+    if (restoredUser && !apiAvailable) {
+      loginStatus.textContent = window.i18nService.translate("serverUnavailable", window.i18nService.getLanguage());
+      loginStatus.dataset.type = "error";
+    }
+  }
 }
 
 initializePanel();
