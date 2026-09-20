@@ -370,14 +370,12 @@ function handleLearnerGuideChange() {
   const guide = topic?.guides?.find((item) => item.id === guideId);
   const isCompleted = guide?.progressStatus === "Completed";
   const isInProgress = guide?.progressStatus === "InProgress";
-  const key = isCompleted
+  const key = isCompleted || isInProgress
     ? "restartLearningButton"
-    : isInProgress
-      ? "continueLearningButton"
-      : "startLearningButton";
+    : "startLearningButton";
 
   startLearningButton.textContent = window.i18nService.translate(key, window.i18nService.getLanguage());
-  restartLearningButton.hidden = !isInProgress;
+  restartLearningButton.hidden = true;
 }
 
 function refreshSelectedLearnerGuideUi() {
@@ -439,11 +437,17 @@ async function handleStartLearning() {
 
   try {
     const guide = await window.apiService.request(`/api/learner/guides/${guideId}`);
-    await window.guideRunner.start(guide);
-    learnerSessionActive = true;
-
     const topic = learnerCatalog.find((item) => item.id === Number(learnerTopicSelect.value));
     const catalogGuide = topic?.guides?.find((item) => item.id === guideId);
+    const shouldRestart = catalogGuide?.progressStatus === "InProgress" || catalogGuide?.progressStatus === "Completed";
+
+    if (shouldRestart) {
+      await window.guideRunner.restart(guide);
+    } else {
+      await window.guideRunner.start(guide);
+    }
+    learnerSessionActive = true;
+
     if (catalogGuide) {
       catalogGuide.progressStatus = "InProgress";
       refreshSelectedLearnerGuideUi();
