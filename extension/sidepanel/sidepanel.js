@@ -981,13 +981,25 @@ async function highlightEditorStep(step) {
 
   await window.messagingService.sendToAllFrames({ type: "GWTP_CLEAR_HIGHLIGHT" }).catch(() => {});
 
-  const responses = await window.messagingService.sendToAllFrames({
-    type: "GWTP_HIGHLIGHT_ELEMENT",
-    selector: step.selector,
-    frame: stepFrame
-  });
+  let matched = false;
 
-  const matched = responses.find((item) => item.response?.success);
+  if (stepFrame) {
+    const response = await window.messagingService.sendToMatchingFrame(
+      {
+        type: "GWTP_HIGHLIGHT_ELEMENT",
+        selector: step.selector
+      },
+      (frameInfo) => frameMatchesStep(frameInfo, stepFrame)
+    );
+    matched = response?.success === true;
+  } else {
+    const responses = await window.messagingService.sendToAllFrames({
+      type: "GWTP_HIGHLIGHT_ELEMENT",
+      selector: step.selector
+    });
+    matched = responses.some((item) => item.response?.success);
+  }
+
   if (matched) {
     markActiveStep(step.id);
     return;
