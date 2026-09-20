@@ -388,6 +388,15 @@
             Exit learning
           </button>
 
+          <div id="learnerRecoveryPanel" class="learner-recovery" hidden>
+            <p id="learnerRecoveryMessage" class="learner-recovery__message"></p>
+            <div class="actions actions--stacked">
+              <button id="retryLearningButton" class="button button--primary" type="button" data-i18n="retryLearningButton">Try again</button>
+              <button id="recoveryRestartLearningButton" class="button" type="button" data-i18n="restartLearningButton">Start again</button>
+              <button id="recoveryExitLearningButton" class="button" type="button" data-i18n="exitLearningButton">Exit learning</button>
+            </div>
+          </div>
+
           <p id="learnerStatus" class="status" aria-live="polite"></p>
         </section>
       </div>
