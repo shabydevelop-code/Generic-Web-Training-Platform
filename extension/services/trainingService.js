@@ -69,6 +69,26 @@
     return true;
   }
 
+  function reorderStep(id, targetId, placeAfter = false) {
+    const sourceIndex = steps.findIndex((step) => step.id === id);
+    if (sourceIndex < 0) return false;
+
+    const [movedStep] = steps.splice(sourceIndex, 1);
+    let targetIndex = steps.findIndex((step) => step.id === targetId);
+
+    if (targetIndex < 0) {
+      steps.splice(sourceIndex, 0, movedStep);
+      return false;
+    }
+
+    if (placeAfter) targetIndex += 1;
+    steps.splice(targetIndex, 0, movedStep);
+    steps.forEach((step, stepIndex) => {
+      step.order = stepIndex + 1;
+    });
+    return true;
+  }
+
   function getSteps() {
     return steps.map((step) => ({ ...step }));
   }
@@ -102,6 +122,7 @@
     updateStep,
     deleteStep,
     moveStep,
+    reorderStep,
     getSteps,
     replaceSteps,
     clearSteps
