@@ -203,6 +203,7 @@
     if (!step) throw new Error("The saved guide step was not found.");
 
     const current = {
+      guideId: guide.id,
       step,
       stepIndex,
       totalSteps: startResponse.session?.progress?.totalSteps || guide.steps.length,
@@ -225,6 +226,10 @@
     if (!(await canShowStep(current))) {
       return { success: false, reason: "element-not-found", current };
     }
+
+    // The retry may happen after the learner moved to another tab/page.
+    // Rebuild the validation context for the current active tab before rendering.
+    await beginValidationSession(current.mode || "learner", current.guideId);
 
     const shown = await showCurrentStep(current);
     return {
