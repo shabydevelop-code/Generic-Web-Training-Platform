@@ -19,7 +19,7 @@ function clearTrainingStep() {
   }
 }
 
-function showTrainingStep(step, navigation = {}) {
+async function showTrainingStep(step, navigation = {}) {
   clearTrainingStep();
   clearHighlight();
 
@@ -194,10 +194,28 @@ function showTrainingStep(step, navigation = {}) {
 
   if (gwtpTrainingStepKey !== stepKey) {
     gwtpTrainingStepKey = stepKey;
-    gwtpTrainingInitialValue = getTargetValue();
+
+    if (step.validation?.engine === "changed" || step.validation?.engine === "changed_regex") {
+      const storageKey = `gwtp:validation-baseline:${stepKey}`;
+      const stored = await chrome.storage.session.get(storageKey);
+
+      if (Object.prototype.hasOwnProperty.call(stored, storageKey)) {
+        gwtpTrainingInitialValue = stored[storageKey];
+      } else {
+        gwtpTrainingInitialValue = getTargetValue();
+        await chrome.storage.session.set({ [storageKey]: gwtpTrainingInitialValue });
+      }
+    } else {
+      gwtpTrainingInitialValue = getTargetValue();
+    }
   }
 
   const initialTargetValue = gwtpTrainingInitialValue;
+
+  const clearValidationBaseline = async () => {
+    if (step.validation?.engine !== "changed" && step.validation?.engine !== "changed_regex") return;
+    await chrome.storage.session.remove(`gwtp:validation-baseline:${stepKey}`);
+  };
 
   const validateCurrentStep = () => {
     const validation = step.validation;
@@ -269,6 +287,7 @@ function showTrainingStep(step, navigation = {}) {
             return;
           }
 
+          clearValidationBaseline().catch(() => {});
           gwtpTrainingStepKey = null;
           gwtpTrainingInitialValue = null;
           clearTrainingStep();
@@ -318,6 +337,7 @@ function showTrainingStep(step, navigation = {}) {
             guideId: response.result?.guideId
           }).catch(() => {});
 
+          clearValidationBaseline().catch(() => {});
           gwtpTrainingStepKey = null;
           gwtpTrainingInitialValue = null;
           clearTrainingStep();
