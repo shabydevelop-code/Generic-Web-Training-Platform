@@ -32,8 +32,13 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   }
 
   if (message?.type === "GWTP_SHOW_TRAINING_STEP") {
-    sendResponse(showTrainingStep(message.step, message.navigation));
-    return;
+    showTrainingStep(message.step, message.navigation)
+      .then(sendResponse)
+      .catch((error) => sendResponse({
+        success: false,
+        message: error?.message || "Could not show the training step."
+      }));
+    return true;
   }
 
   if (message?.type === "GWTP_CLEAR_TRAINING_STEP") {
