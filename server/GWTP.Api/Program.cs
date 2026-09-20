@@ -1498,8 +1498,15 @@ static void EnsureDemoSiteGuide(string databasePath)
         var seedValidation = steps[index].Selector switch
         {
             "#site-phone" => new ValidationRule("regex", "^(?!03-5551235$)(?:05\\d[- ]?\\d{7}|0[2-4,8-9][- ]?\\d{7})$", "יש לשנות את מספר הטלפון למספר אחר ותקין: נייד בן 10 ספרות או נייח בן 9 ספרות. ניתן להשתמש במקף.", "regex", "^(?!03-5551235$)(?:05\\d[- ]?\\d{7}|0[2-4,8-9][- ]?\\d{7})$"),
-            "#case-subject" => new ValidationRule("regex", "^(?=.*\\S).+$", "יש להזין נושא לפניה לפני המעבר לשלב הבא.", "required", ""),
-            "#lead-email" => new ValidationRule("regex", "^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$", "יש להזין כתובת דוא״ל תקינה.", "regex", "^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$"),
+            "#site-type" => new ValidationRule("regex", "^(?!main$).+$", "יש לשנות את סוג האתר לערך אחר לפני המעבר לשלב הבא.", "regex", "^(?!main$).+$"),
+            "#case-category" => new ValidationRule("regex", "^(?!network$).+$", "יש לבחור קטגוריית פניה שונה לפני המעבר לשלב הבא.", "regex", "^(?!network$).+$"),
+            "#case-assigned" => new ValidationRule("regex", "^(?!דניאל כהן$)(?=.*\\S).+$", "יש לעדכן את הנציג המטפל לפני המעבר לשלב הבא.", "regex", "^(?!דניאל כהן$)(?=.*\\S).+$"),
+            "#case-subject" => new ValidationRule("regex", "^(?!איטיות בגלישה ונפילות קו תקשורת ראשי$)(?=.{10,}$).+", "יש לעדכן את נושא הפניה לנושא חדש בן 10 תווים לפחות.", "regex", "^(?!איטיות בגלישה ונפילות קו תקשורת ראשי$)(?=.{10,}$).+"),
+            "#lead-source" => new ValidationRule("regex", "^(?!web$).+$", "יש לשנות את מקור הליד לפני המעבר לשלב הבא.", "regex", "^(?!web$).+$"),
+            "#lead-interest" => new ValidationRule("regex", "^(?!cloud_crm$).+$", "יש לשנות את המוצר המבוקש לפני המעבר לשלב הבא.", "regex", "^(?!cloud_crm$).+$"),
+            "#lead-email" => new ValidationRule("regex", "^(?!ronit@nextgen\\.co\\.il$)[^\\s@]+@[^\\s@]+\\.[^\\s@]+$", "יש לעדכן את כתובת הדוא״ל לכתובת תקינה ושונה מהכתובת המקורית.", "regex", "^(?!ronit@nextgen\\.co\\.il$)[^\\s@]+@[^\\s@]+\\.[^\\s@]+$"),
+            "#c360-tier" => new ValidationRule("regex", "^(?!platinum$).+$", "יש לשנות את סיווג הלקוח לפני המעבר לשלב הבא.", "regex", "^(?!platinum$).+$"),
+            "#c360-manager" => new ValidationRule("regex", "^(?!אורן שגיא$)(?=.*\\S).+$", "יש לעדכן את מנהל תיק הלקוח לפני המעבר לשלב הבא.", "regex", "^(?!אורן שגיא$)(?=.*\\S).+$"),
             "#c360-mrr" => new ValidationRule("regex", "^\\d+(?:[.,]\\d+)?$", "יש להזין מחזור חודשי כמספר.", "regex", "^\\d+(?:[.,]\\d+)?$"),
             _ => null
         };
