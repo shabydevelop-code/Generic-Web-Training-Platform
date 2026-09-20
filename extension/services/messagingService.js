@@ -66,7 +66,7 @@
 
     const frames = await chrome.scripting.executeScript({
       target: { tabId: tab.id, allFrames: true },
-      func: () => ({ href: location.href, isTop: window.top === window })
+      func: () => ({ href: location.href, isTop: window.top === window, name: window.name || "" })
     });
 
     const results = [];
