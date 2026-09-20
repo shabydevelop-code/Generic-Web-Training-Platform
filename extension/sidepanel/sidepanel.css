@@ -943,6 +943,10 @@ body {
   margin-top: 18px;
 }
 
+.learner-restart-button {
+  margin-top: 10px;
+}
+
 
 .rich-text-editor {
   overflow: hidden;
