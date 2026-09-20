@@ -1,5 +1,6 @@
 (function () {
   const VALIDATION_SESSION_PREFIX = "gwtp:validation-session:";
+  let learnerRenderVersion = 0;
 
   async function getActiveTabId() {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
@@ -92,7 +93,7 @@
     );
   }
 
-  async function showFirstStep(guide) {
+  async function showFirstStep(guide, renderVersion = null) {
     const firstStep = guide?.steps?.[0];
 
     if (!firstStep) {
@@ -103,6 +104,7 @@
     let lastError;
 
     for (let attempt = 0; attempt < 10; attempt += 1) {
+      if (renderVersion != null && renderVersion !== learnerRenderVersion) return { success: false, stale: true };
       try {
         const response = await sendStepToTargetFrame({
           type: "GWTP_SHOW_TRAINING_STEP",
@@ -124,6 +126,12 @@
           }
         }, firstStep);
 
+        if (renderVersion != null && renderVersion !== learnerRenderVersion) {
+          try {
+            await sendStepToTargetFrame({ type: "GWTP_CLEAR_TRAINING_STEP" }, firstStep);
+          } catch {}
+          return { success: false, stale: true };
+        }
         if (response?.success) return response;
         lastError = new Error(response?.message || "Could not start the first guide step.");
       } catch (error) {
@@ -212,15 +220,16 @@
 
   async function showCurrentStep(current, options = {}) {
     if (!current?.step) return false;
+    const renderVersion = ++learnerRenderVersion;
 
-    await showFirstStep({
+    const result = await showFirstStep({
       steps: [current.step],
       stepIndex: current.stepIndex,
       totalSteps: current.totalSteps || 1,
       mode: current.mode || "learner",
       allowDetached: Boolean(options.allowDetached)
-    });
-    return true;
+    }, renderVersion);
+    return result?.success === true;
   }
 
   async function preview(guide) {
@@ -239,13 +248,22 @@
   }
 
   async function restoreActiveStep() {
+    const restoreVersion = ++learnerRenderVersion;
     const response = await chrome.runtime.sendMessage({
       type: "GWTP_TRAINING_GET_CURRENT"
     });
 
+    if (restoreVersion !== learnerRenderVersion) return false;
     if (!response?.success || !response.current?.step) return false;
 
-    return showCurrentStep(response.current, { allowDetached: true });
+    const result = await showFirstStep({
+      steps: [response.current.step],
+      stepIndex: response.current.stepIndex,
+      totalSteps: response.current.totalSteps || 1,
+      mode: response.current.mode || "learner",
+      allowDetached: true
+    }, restoreVersion);
+    return result?.success === true;
   }
 
   window.guideRunner = {
