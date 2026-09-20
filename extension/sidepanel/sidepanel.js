@@ -1151,11 +1151,11 @@ function escapeRegexValue(value) {
 function updateValidationBuilder() {
   const language = window.i18nService.getLanguage();
   const type = validationTypeSelect.value;
-  const needsValue = type === "equals" || type === "contains" || type === "regex";
+  const needsValue = type === "equals" || type === "not_equals" || type === "contains";
   const enabled = type !== "none";
   validationValueField.hidden = !needsValue;
   validationErrorField.hidden = !enabled;
-  validationValueLabel.textContent = window.i18nService.translate(type === "regex" ? "validationPatternLabel" : "validationValueLabel", language);
+  validationValueLabel.textContent = window.i18nService.translate("validationValueLabel", language);
 }
 
 function resetValidationBuilder() {
@@ -1167,8 +1167,11 @@ function resetValidationBuilder() {
 
 function loadValidationBuilder(validation) {
   if (!validation?.expression) { resetValidationBuilder(); return; }
-  validationTypeSelect.value = validation.builderType || "regex";
-  validationValueInput.value = validation.builderValue || validation.expression;
+  const supportedType = ["required", "changed", "equals", "not_equals", "contains"].includes(validation.builderType)
+    ? validation.builderType
+    : "none";
+  validationTypeSelect.value = supportedType;
+  validationValueInput.value = supportedType === "none" ? "" : (validation.builderValue || validation.expression);
   validationErrorInput.value = validation.errorMessage || "";
   updateValidationBuilder();
 }
@@ -1188,17 +1191,14 @@ function buildStepValidation() {
   } else {
     if (!value) throw new Error(window.i18nService.translate("validationValueRequired", language));
     if (type === "equals") expression = "^" + escapeRegexValue(value) + "$";
+    if (type === "not_equals") expression = "^(?!" + escapeRegexValue(value) + "$).+$";
     if (type === "contains") expression = ".*" + escapeRegexValue(value) + ".*";
-    if (type === "regex") {
-      try { new RegExp(value); } catch { throw new Error(window.i18nService.translate("validationPatternInvalid", language)); }
-      expression = value;
-    }
   }
   return { engine: type === "changed" ? "changed" : "regex", expression, errorMessage, builderType: type, builderValue: (type === "required" || type === "changed") ? "" : value };
 }
 function updateStepSaveValidity() {
   const validationType = validationTypeSelect.value;
-  const validationNeedsValue = validationType === "equals" || validationType === "contains" || validationType === "regex";
+  const validationNeedsValue = validationType === "equals" || validationType === "not_equals" || validationType === "contains";
   const validationComplete =
     validationType === "none" ||
     (Boolean(validationErrorInput.value.trim()) && (!validationNeedsValue || Boolean(validationValueInput.value)));
