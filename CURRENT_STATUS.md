@@ -39,6 +39,11 @@ Every functional or architectural code change must update this file in the same 
 - Author validation now requires actual textual instruction content.
 - Existing affected DB row was corrected and the original recovery scenario was retested successfully.
 
+## Validation responsibility
+- GWTP validation is limited to author-configured learning conditions: `required`, `regex`, `changed`, and `changed_regex`.
+- Business rules and business validation remain the responsibility of the live application and must not be duplicated by the extension.
+- Business validation may trigger blur/change handlers, postbacks, frame reloads, or DOM replacement. GWTP preserves learning state through those transitions and reacts to page readiness/target availability rather than evaluating the business rule itself.
+
 ## Validation — implemented, but regression coverage is still open
 Current runtime supports:
 - `required`
