@@ -927,6 +927,10 @@ select:focus {
   width: 100%;
 }
 
+.edit-user__delete-section .button + .button {
+  margin-top: 12px;
+}
+
 /* Keep the user editor fully reachable in the Side Panel. */
 #editUserCard {
   margin-bottom: 24px;
