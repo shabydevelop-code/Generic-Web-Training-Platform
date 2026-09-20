@@ -60,3 +60,10 @@ Database: `database/GWTP.db`.
 - Every functional or architectural code change must update `CURRENT_STATUS.md` in the same change set so the repository status remains the source of truth.
 - `CURRENT_STATUS.md` must describe what is implemented and verified, what remains open, and the immediate next task.
 - Do not leave completed work described as pending.
+
+
+## Validation responsibility
+- GWTP validates only learning-specific conditions explicitly configured by the guide author, such as `required`, `regex`, `changed`, and `changed_regex`.
+- Business validation belongs to the live business application. GWTP must not duplicate, infer, or replace business rules enforced by systems such as PeopleSoft.
+- If blur, change, click, or another learner action triggers business validation, a postback, frame reload, or DOM replacement, GWTP must allow the business application to perform that validation and preserve the learning/navigation state across the transition.
+- GWTP should react to the resulting page/DOM state through the existing page-ready, target-availability, and pending-navigation architecture rather than deciding whether the business validation itself succeeded.
