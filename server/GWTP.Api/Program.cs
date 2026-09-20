@@ -1447,8 +1447,7 @@ static void EnsureDemoSiteGuide(string databasePath)
                     ValidationBuilderType = $builderType,
                     ValidationBuilderValue = $builderValue
                 WHERE GuideId = $guideId
-                  AND Selector = $selector
-                  AND ValidationExpression IS NULL;
+                  AND Selector = $selector;
                 """;
             validationCommand.Parameters.AddWithValue("$guideId", existingDemoGuideId);
             validationCommand.Parameters.AddWithValue("$selector", validation.Selector);
