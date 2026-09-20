@@ -2272,8 +2272,16 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 
   if (message?.type === "GWTP_CHECK_NEXT_STEP_AVAILABLE") {
     window.guideRunner.canShowStep(message.current)
-      .then((success) => sendResponse({ success }))
-      .catch(() => sendResponse({ success: false }));
+      .then((success) => sendResponse({
+        success,
+        message: success
+          ? ""
+          : window.i18nService.translate("stepTargetOnAnotherPage", window.i18nService.getLanguage())
+      }))
+      .catch(() => sendResponse({
+        success: false,
+        message: window.i18nService.translate("stepTargetOnAnotherPage", window.i18nService.getLanguage())
+      }));
     return true;
   }
 
