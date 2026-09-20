@@ -1430,6 +1430,7 @@ static void EnsureDemoSiteGuide(string databasePath)
         var demoValidations = new (string Selector, string Expression, string ErrorMessage, string BuilderType, string BuilderValue)[]
         {
             ("#site-phone", "^(?!03-5551235$)(?:05\\d[- ]?\\d{7}|0[2-4,8-9][- ]?\\d{7})$", "יש לשנות את מספר הטלפון למספר אחר ותקין: נייד בן 10 ספרות או נייח בן 9 ספרות. ניתן להשתמש במקף.", "regex", "^(?!03-5551235$)(?:05\\d[- ]?\\d{7}|0[2-4,8-9][- ]?\\d{7})$"),
+            ("#site-type", "^(?!main$).+$", "יש לשנות את סוג האתר לערך אחר לפני המעבר לשלב הבא.", "regex", "^(?!main$).+$"),
             ("#case-subject", "^(?=.*\\S).+$", "יש להזין נושא לפניה לפני המעבר לשלב הבא.", "required", ""),
             ("#lead-email", "^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$", "יש להזין כתובת דוא״ל תקינה.", "regex", "^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$"),
             ("#c360-mrr", "^\\d+(?:[.,]\\d+)?$", "יש להזין מחזור חודשי כמספר.", "regex", "^\\d+(?:[.,]\\d+)?$")
