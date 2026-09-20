@@ -1232,11 +1232,11 @@ function escapeRegexValue(value) {
 function updateValidationBuilder() {
   const language = window.i18nService.getLanguage();
   const type = validationTypeSelect.value;
-  const needsValue = type === "equals" || type === "not_equals" || type === "contains";
+  const needsValue = type === "equals" || type === "not_equals" || type === "contains" || type === "changed_regex";
   const enabled = type !== "none";
   validationValueField.hidden = !needsValue;
   validationErrorField.hidden = !enabled;
-  validationValueLabel.textContent = window.i18nService.translate("validationValueLabel", language);
+  validationValueLabel.textContent = window.i18nService.translate(type === "changed_regex" ? "validationPatternLabel" : "validationValueLabel", language);
 }
 
 function resetValidationBuilder() {
@@ -1248,7 +1248,7 @@ function resetValidationBuilder() {
 
 function loadValidationBuilder(validation) {
   if (!validation?.expression) { resetValidationBuilder(); return; }
-  const supportedType = ["required", "changed", "equals", "not_equals", "contains"].includes(validation.builderType)
+  const supportedType = ["required", "changed", "equals", "not_equals", "contains", "changed_regex"].includes(validation.builderType)
     ? validation.builderType
     : "none";
   validationTypeSelect.value = supportedType;
@@ -1271,15 +1271,19 @@ function buildStepValidation() {
     expression = "__changed__";
   } else {
     if (!value) throw new Error(window.i18nService.translate("validationValueRequired", language));
+    if (type === "changed_regex") {
+      try { new RegExp(value); } catch { throw new Error(window.i18nService.translate("validationPatternInvalid", language)); }
+      expression = value;
+    }
     if (type === "equals") expression = "^" + escapeRegexValue(value) + "$";
     if (type === "not_equals") expression = "^(?!" + escapeRegexValue(value) + "$).+$";
     if (type === "contains") expression = ".*" + escapeRegexValue(value) + ".*";
   }
-  return { engine: type === "changed" ? "changed" : "regex", expression, errorMessage, builderType: type, builderValue: (type === "required" || type === "changed") ? "" : value };
+  return { engine: type === "changed" ? "changed" : (type === "changed_regex" ? "changed_regex" : "regex"), expression, errorMessage, builderType: type, builderValue: (type === "required" || type === "changed") ? "" : value };
 }
 function updateStepSaveValidity() {
   const validationType = validationTypeSelect.value;
-  const validationNeedsValue = validationType === "equals" || validationType === "not_equals" || validationType === "contains";
+  const validationNeedsValue = validationType === "equals" || validationType === "not_equals" || validationType === "contains" || validationType === "changed_regex";
   const validationComplete =
     validationType === "none" ||
     (Boolean(validationErrorInput.value.trim()) && (!validationNeedsValue || Boolean(validationValueInput.value)));
