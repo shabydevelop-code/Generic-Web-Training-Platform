@@ -287,7 +287,10 @@
         </section>
 
         <section id="stepsSection" class="card" hidden>
-          <h2 data-i18n="stepsTitle">Steps</h2>
+          <div class="steps-section__header">
+            <h2 data-i18n="stepsTitle">Steps</h2>
+            <span id="stepsSaveStatus" class="steps-save-status" role="status" aria-live="polite"></span>
+          </div>
           <button
             id="addStepButton"
             class="button button--primary button--full"
