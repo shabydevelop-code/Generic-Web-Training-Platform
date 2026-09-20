@@ -32,6 +32,30 @@
     return tab.id;
   }
 
+  function frameMatchesStep(frameInfo, stepFrame) {
+    if (!stepFrame) return frameInfo?.isTop === true;
+    if (stepFrame.isTop) return frameInfo?.isTop === true;
+    if (frameInfo?.isTop) return false;
+
+    if (stepFrame.url && frameInfo?.href === stepFrame.url) return true;
+    if (stepFrame.name && frameInfo?.name === stepFrame.name) return true;
+
+    return false;
+  }
+
+  async function sendStepToTargetFrame(message, step) {
+    const stepFrame = step?.frame || null;
+
+    if (!stepFrame) {
+      return window.messagingService.sendToActivePage(message);
+    }
+
+    return window.messagingService.sendToMatchingFrame(
+      message,
+      (frameInfo) => frameMatchesStep(frameInfo, stepFrame)
+    );
+  }
+
   async function showFirstStep(guide) {
     const firstStep = guide?.steps?.[0];
 
@@ -44,7 +68,7 @@
 
     for (let attempt = 0; attempt < 10; attempt += 1) {
       try {
-        const response = await window.messagingService.sendToActivePage({
+        const response = await sendStepToTargetFrame({
           type: "GWTP_SHOW_TRAINING_STEP",
           step: firstStep,
           navigation: {
@@ -60,7 +84,7 @@
               closeCompletion: window.i18nService.translate("closeCompletionButton", window.i18nService.getLanguage())
             }
           }
-        });
+        }, firstStep);
 
         if (response?.success) return response;
         lastError = new Error(response?.message || "Could not start the first guide step.");
