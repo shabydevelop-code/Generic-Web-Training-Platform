@@ -5,8 +5,14 @@ let gwtpTrainingOverlay = null;
 let gwtpTrainingTarget = null;
 let gwtpTrainingStepKey = null;
 let gwtpTrainingInitialValue = null;
+let gwtpTrainingTargetObserver = null;
 
 function clearTrainingStep() {
+  if (gwtpTrainingTargetObserver) {
+    gwtpTrainingTargetObserver.disconnect();
+    gwtpTrainingTargetObserver = null;
+  }
+
   if (gwtpTrainingOverlay) {
     gwtpTrainingOverlay.remove();
     gwtpTrainingOverlay = null;
@@ -39,10 +45,30 @@ async function showTrainingStep(step, navigation = {}) {
     return { success: false, message: "Step element was not found on this page." };
   }
 
-  gwtpTrainingTarget = target;
+  const applyTrainingTargetHighlight = (element) => {
+    if (gwtpTrainingTarget && gwtpTrainingTarget !== element) {
+      gwtpTrainingTarget.style.removeProperty("outline");
+      gwtpTrainingTarget.style.removeProperty("outline-offset");
+    }
+
+    gwtpTrainingTarget = element;
+    element.style.setProperty("outline", `3px solid ${GWTP_GUIDANCE_ACCENT}`, "important");
+    element.style.setProperty("outline-offset", "3px", "important");
+  };
+
+  applyTrainingTargetHighlight(target);
   target.scrollIntoView({ behavior: "smooth", block: "center", inline: "center" });
-  target.style.setProperty("outline", `3px solid ${GWTP_GUIDANCE_ACCENT}`, "important");
-  target.style.setProperty("outline-offset", "3px", "important");
+
+  if (step.selector.startsWith("gwtp-grid:")) {
+    gwtpTrainingTargetObserver = new MutationObserver(() => {
+      if (!gwtpTrainingOverlay) return;
+      const refreshedResult = findElement(step.selector);
+      if (!refreshedResult.error && refreshedResult.element && refreshedResult.element !== gwtpTrainingTarget) {
+        applyTrainingTargetHighlight(refreshedResult.element);
+      }
+    });
+    gwtpTrainingTargetObserver.observe(document.documentElement, { childList: true, subtree: true });
+  }
 
   const overlay = document.createElement("div");
   overlay.className = "gwtp-training-overlay";
