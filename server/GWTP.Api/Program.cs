@@ -1488,11 +1488,21 @@ static void EnsureDemoSiteGuide(string databasePath)
         stepCommand.Parameters.AddWithValue("$selector", steps[index].Selector);
         stepCommand.Parameters.AddWithValue("$instruction", steps[index].Instruction);
         stepCommand.Parameters.AddWithValue("$frameTarget", DBNull.Value);
-        stepCommand.Parameters.AddWithValue("$validationEngine", DBNull.Value);
-        stepCommand.Parameters.AddWithValue("$validationExpression", DBNull.Value);
-        stepCommand.Parameters.AddWithValue("$validationErrorMessage", DBNull.Value);
-        stepCommand.Parameters.AddWithValue("$validationBuilderType", DBNull.Value);
-        stepCommand.Parameters.AddWithValue("$validationBuilderValue", DBNull.Value);
+
+        var seedValidation = steps[index].Selector switch
+        {
+            "#site-phone" => new ValidationRule("regex", "^05\\d{8}$", "יש להזין מספר טלפון נייד תקין בן 10 ספרות.", "regex", "^05\\d{8}$"),
+            "#case-subject" => new ValidationRule("regex", "^(?=.*\\S).+$", "יש להזין נושא לפניה לפני המעבר לשלב הבא.", "required", ""),
+            "#lead-email" => new ValidationRule("regex", "^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$", "יש להזין כתובת דוא״ל תקינה.", "regex", "^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$"),
+            "#c360-mrr" => new ValidationRule("regex", "^\\d+(?:[.,]\\d+)?$", "יש להזין מחזור חודשי כמספר.", "regex", "^\\d+(?:[.,]\\d+)?$"),
+            _ => null
+        };
+
+        stepCommand.Parameters.AddWithValue("$validationEngine", (object?)seedValidation?.Engine ?? DBNull.Value);
+        stepCommand.Parameters.AddWithValue("$validationExpression", (object?)seedValidation?.Expression ?? DBNull.Value);
+        stepCommand.Parameters.AddWithValue("$validationErrorMessage", (object?)seedValidation?.ErrorMessage ?? DBNull.Value);
+        stepCommand.Parameters.AddWithValue("$validationBuilderType", (object?)seedValidation?.BuilderType ?? DBNull.Value);
+        stepCommand.Parameters.AddWithValue("$validationBuilderValue", (object?)seedValidation?.BuilderValue ?? DBNull.Value);
         stepCommand.ExecuteNonQuery();
     }
 
