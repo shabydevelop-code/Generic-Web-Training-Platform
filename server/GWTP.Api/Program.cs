@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Data.Sqlite;
 using System.Security.Cryptography;
+using System.Text.Json;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -498,7 +499,7 @@ app.MapGet("/api/learner/guides/{id:long}", (long id, HttpContext httpContext) =
 
     using var stepsCommand = connection.CreateCommand();
     stepsCommand.CommandText = """
-        SELECT StepOrder, Selector, Instruction
+        SELECT StepOrder, Selector, Instruction, FrameTarget
         FROM GuideSteps
         WHERE GuideId = $guideId
         ORDER BY StepOrder;
@@ -513,7 +514,8 @@ app.MapGet("/api/learner/guides/{id:long}", (long id, HttpContext httpContext) =
         steps.Add(new GuideStepResponse(
             stepsReader.GetInt32(0),
             stepsReader.GetString(1),
-            stepsReader.GetString(2)));
+            stepsReader.GetString(2),
+            stepsReader.IsDBNull(3) ? null : JsonSerializer.Deserialize<FrameTarget>(stepsReader.GetString(3))));
     }
 
     return Results.Ok(new GuideResponse(guideId, topicId, name, startUrl, isAvailable, steps));
@@ -904,7 +906,7 @@ editorGuides.MapGet("/{id:long}", (long id) =>
 
     using var stepsCommand = connection.CreateCommand();
     stepsCommand.CommandText = """
-        SELECT StepOrder, Selector, Instruction
+        SELECT StepOrder, Selector, Instruction, FrameTarget
         FROM GuideSteps
         WHERE GuideId = $guideId
         ORDER BY StepOrder;
@@ -919,7 +921,8 @@ editorGuides.MapGet("/{id:long}", (long id) =>
         steps.Add(new GuideStepResponse(
             stepsReader.GetInt32(0),
             stepsReader.GetString(1),
-            stepsReader.GetString(2)));
+            stepsReader.GetString(2),
+            stepsReader.IsDBNull(3) ? null : JsonSerializer.Deserialize<FrameTarget>(stepsReader.GetString(3))));
     }
 
     return Results.Ok(new GuideResponse(guideId, topicId, name, startUrl, isAvailable, steps));
@@ -974,13 +977,14 @@ editorGuides.MapPut("/{id:long}", (long id, CreateGuideRequest request) =>
         using var stepCommand = connection.CreateCommand();
         stepCommand.Transaction = transaction;
         stepCommand.CommandText = """
-            INSERT INTO GuideSteps (GuideId, StepOrder, Selector, Instruction)
-            VALUES ($guideId, $stepOrder, $selector, $instruction);
+            INSERT INTO GuideSteps (GuideId, StepOrder, Selector, Instruction, FrameTarget)
+            VALUES ($guideId, $stepOrder, $selector, $instruction, $frameTarget);
             """;
         stepCommand.Parameters.AddWithValue("$guideId", id);
         stepCommand.Parameters.AddWithValue("$stepOrder", index + 1);
         stepCommand.Parameters.AddWithValue("$selector", step.Selector.Trim());
         stepCommand.Parameters.AddWithValue("$instruction", step.Instruction.Trim());
+        stepCommand.Parameters.AddWithValue("$frameTarget", step.Frame is null ? DBNull.Value : JsonSerializer.Serialize(step.Frame));
         stepCommand.ExecuteNonQuery();
     }
 
@@ -993,7 +997,7 @@ editorGuides.MapPut("/{id:long}", (long id, CreateGuideRequest request) =>
         request.StartUrl?.Trim(),
         request.IsAvailable,
         request.Steps.Select((step, index) =>
-            new GuideStepResponse(index + 1, step.Selector.Trim(), step.Instruction.Trim()))
+            new GuideStepResponse(index + 1, step.Selector.Trim(), step.Instruction.Trim(), step.Frame))
             .ToList()));
 });
 
@@ -1063,13 +1067,14 @@ editorGuides.MapPost("", (CreateGuideRequest request) =>
         using var stepCommand = connection.CreateCommand();
         stepCommand.Transaction = transaction;
         stepCommand.CommandText = """
-            INSERT INTO GuideSteps (GuideId, StepOrder, Selector, Instruction)
-            VALUES ($guideId, $stepOrder, $selector, $instruction);
+            INSERT INTO GuideSteps (GuideId, StepOrder, Selector, Instruction, FrameTarget)
+            VALUES ($guideId, $stepOrder, $selector, $instruction, $frameTarget);
             """;
         stepCommand.Parameters.AddWithValue("$guideId", guideId);
         stepCommand.Parameters.AddWithValue("$stepOrder", index + 1);
         stepCommand.Parameters.AddWithValue("$selector", step.Selector.Trim());
         stepCommand.Parameters.AddWithValue("$instruction", step.Instruction.Trim());
+        stepCommand.Parameters.AddWithValue("$frameTarget", step.Frame is null ? DBNull.Value : JsonSerializer.Serialize(step.Frame));
         stepCommand.ExecuteNonQuery();
     }
 
@@ -1083,7 +1088,7 @@ editorGuides.MapPost("", (CreateGuideRequest request) =>
             request.StartUrl?.Trim(),
             request.IsAvailable,
             request.Steps.Select((step, index) =>
-                new GuideStepResponse(index + 1, step.Selector.Trim(), step.Instruction.Trim()))
+                new GuideStepResponse(index + 1, step.Selector.Trim(), step.Instruction.Trim(), step.Frame))
                 .ToList()));
 });
 
@@ -1129,6 +1134,21 @@ static void ApplyDatabaseMigrations(string databasePath)
     {
         using var migrationCommand = connection.CreateCommand();
         migrationCommand.CommandText = "ALTER TABLE Guides ADD COLUMN StartUrl TEXT;";
+        migrationCommand.ExecuteNonQuery();
+    }
+
+    var guideStepColumns = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+    using (var guideStepColumnsCommand = connection.CreateCommand())
+    {
+        guideStepColumnsCommand.CommandText = "PRAGMA table_info(GuideSteps);";
+        using var guideStepReader = guideStepColumnsCommand.ExecuteReader();
+        while (guideStepReader.Read()) guideStepColumns.Add(guideStepReader.GetString(1));
+    }
+
+    if (!guideStepColumns.Contains("FrameTarget"))
+    {
+        using var migrationCommand = connection.CreateCommand();
+        migrationCommand.CommandText = "ALTER TABLE GuideSteps ADD COLUMN FrameTarget TEXT;";
         migrationCommand.ExecuteNonQuery();
     }
 
@@ -1258,13 +1278,14 @@ static void EnsureDemoSiteGuide(string databasePath)
         using var stepCommand = connection.CreateCommand();
         stepCommand.Transaction = transaction;
         stepCommand.CommandText = """
-            INSERT INTO GuideSteps (GuideId, StepOrder, Selector, Instruction)
-            VALUES ($guideId, $stepOrder, $selector, $instruction);
+            INSERT INTO GuideSteps (GuideId, StepOrder, Selector, Instruction, FrameTarget)
+            VALUES ($guideId, $stepOrder, $selector, $instruction, $frameTarget);
             """;
         stepCommand.Parameters.AddWithValue("$guideId", guideId);
         stepCommand.Parameters.AddWithValue("$stepOrder", index + 1);
         stepCommand.Parameters.AddWithValue("$selector", steps[index].Selector);
         stepCommand.Parameters.AddWithValue("$instruction", steps[index].Instruction);
+        stepCommand.Parameters.AddWithValue("$frameTarget", DBNull.Value);
         stepCommand.ExecuteNonQuery();
     }
 
@@ -1368,9 +1389,18 @@ sealed record TopicResponse(
     long Id,
     string Name);
 
+sealed record FrameTarget(
+    bool IsTop,
+    string? Url,
+    string? Name,
+    string? ElementId,
+    string? ElementName,
+    string? ElementTitle);
+
 sealed record CreateGuideStepRequest(
     string Selector,
-    string Instruction);
+    string Instruction,
+    FrameTarget? Frame);
 
 sealed record CreateGuideRequest(
     long TopicId,
@@ -1382,7 +1412,8 @@ sealed record CreateGuideRequest(
 sealed record GuideStepResponse(
     int StepOrder,
     string Selector,
-    string Instruction);
+    string Instruction,
+    FrameTarget? Frame);
 
 sealed record GuideResponse(
     long Id,
