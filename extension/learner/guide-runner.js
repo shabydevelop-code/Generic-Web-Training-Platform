@@ -119,7 +119,8 @@
               completedTitle: window.i18nService.translate("guideCompletedTitle", window.i18nService.getLanguage()),
               completedMessage: window.i18nService.translate("guideCompletedMessage", window.i18nService.getLanguage()),
               closeCompletion: window.i18nService.translate("closeCompletionButton", window.i18nService.getLanguage())
-            }
+            },
+            allowDetached: Boolean(guide.allowDetached)
           }
         }, firstStep);
 
@@ -195,14 +196,15 @@
     });
   }
 
-  async function showCurrentStep(current) {
+  async function showCurrentStep(current, options = {}) {
     if (!current?.step) return false;
 
     await showFirstStep({
       steps: [current.step],
       stepIndex: current.stepIndex,
       totalSteps: current.totalSteps || 1,
-      mode: current.mode || "learner"
+      mode: current.mode || "learner",
+      allowDetached: Boolean(options.allowDetached)
     });
     return true;
   }
@@ -229,7 +231,7 @@
 
     if (!response?.success || !response.current?.step) return false;
 
-    return showCurrentStep(response.current);
+    return showCurrentStep(response.current, { allowDetached: true });
   }
 
   window.guideRunner = {
