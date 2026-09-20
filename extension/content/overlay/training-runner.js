@@ -346,24 +346,53 @@ async function showTrainingStep(step, navigation = {}) {
     button.style.cursor = disabled ? "default" : "pointer";
 
     if (!disabled) {
-      button.addEventListener("pointerdown", () => {
+      let pendingNavigationPromise = null;
+      let focusBeforeNavigation = null;
+
+      button.addEventListener("pointerdown", (event) => {
         if (action !== "GWTP_TRAINING_NEXT" && action !== "GWTP_TRAINING_PREVIOUS") return;
-        chrome.runtime.sendMessage({
+
+        // Keep focus on the business field until the pending intent is durably stored.
+        // Otherwise its blur/change handler may start a postback and destroy this frame
+        // before chrome.storage.session has received the navigation intent.
+        event.preventDefault();
+        focusBeforeNavigation = document.activeElement;
+        pendingNavigationPromise = chrome.runtime.sendMessage({
           type: "GWTP_TRAINING_PENDING_SET",
           pending: {
             direction: action === "GWTP_TRAINING_NEXT" ? 1 : -1,
             stepIndex: Number.isInteger(navigation.stepIndex) ? navigation.stepIndex : 0
           }
-        }).catch(() => {});
+        });
       });
 
       button.addEventListener("click", async () => {
+        if (pendingNavigationPromise) {
+          const pendingResponse = await pendingNavigationPromise.catch(() => null);
+          pendingNavigationPromise = null;
+          if (!pendingResponse?.success) return;
+        }
+
         if ((action === "GWTP_TRAINING_NEXT" || action === "GWTP_PREVIEW_NEXT") && !(await validateCurrentStep())) {
           if (action === "GWTP_TRAINING_NEXT") {
             chrome.runtime.sendMessage({ type: "GWTP_TRAINING_PENDING_CLEAR" }).catch(() => {});
           }
           return;
         }
+
+        // Only after validation and pending-state persistence do we allow blur/change.
+        // A business-system postback may unload this frame immediately after this call;
+        // PAGE_READY will then resume the stored navigation.
+        if (
+          (action === "GWTP_TRAINING_NEXT" || action === "GWTP_TRAINING_PREVIOUS") &&
+          focusBeforeNavigation &&
+          focusBeforeNavigation !== button &&
+          typeof focusBeforeNavigation.blur === "function"
+        ) {
+          focusBeforeNavigation.blur();
+          focusBeforeNavigation = null;
+        }
+
         button.disabled = true;
 
         const moveStep = () => chrome.runtime.sendMessage({ type: action }).then((response) => {
