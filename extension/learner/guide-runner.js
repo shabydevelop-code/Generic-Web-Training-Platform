@@ -1,14 +1,38 @@
 (function () {
-  const VALIDATION_SESSION_KEY = "gwtp.validation.session";
+  const VALIDATION_SESSION_PREFIX = "gwtp:validation-session:";
+
+  async function getActiveTabId() {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (!tab?.id) throw new Error("No active browser tab was found.");
+    return tab.id;
+  }
 
   async function beginValidationSession(mode, guideId) {
-    const stored = await chrome.storage.session.get(null);
-    const keys = Object.keys(stored).filter((key) => key.startsWith("gwtp:validation-state:") || key.startsWith("gwtp:validation-baseline:"));
-    if (keys.length) await chrome.storage.session.remove(keys);
+    const user = window.authService?.getCurrentUser?.();
+    const userId = user?.id ?? user?.username;
+    if (userId == null || userId === "") {
+      throw new Error("No authenticated user was found for the validation session.");
+    }
 
-    const sessionId = [mode, guideId || "draft", Date.now(), crypto.randomUUID()].join(":");
-    await chrome.storage.session.set({ [VALIDATION_SESSION_KEY]: sessionId });
-    return sessionId;
+    const tabId = await getActiveTabId();
+    const sessionId = crypto.randomUUID();
+    const context = {
+      userId: String(userId),
+      tabId,
+      guideId: String(guideId || "draft"),
+      mode: mode || "learner",
+      sessionId
+    };
+    const sessionKey = `${VALIDATION_SESSION_PREFIX}${tabId}`;
+
+    const stored = await chrome.storage.session.get(null);
+    const keys = Object.keys(stored).filter((key) =>
+      key.startsWith(`gwtp:validation-state:${context.userId}:${tabId}:`) ||
+      key.startsWith(`gwtp:validation-baseline:${context.userId}:${tabId}:`)
+    );
+    if (keys.length) await chrome.storage.session.remove(keys);
+    await chrome.storage.session.set({ [sessionKey]: context });
+    return context;
   }
 
   function waitForTabComplete(tabId) {
