@@ -368,13 +368,7 @@ function handleLearnerGuideChange() {
   const topicId = Number(learnerTopicSelect.value);
   const topic = learnerCatalog.find((item) => item.id === topicId);
   const guide = topic?.guides?.find((item) => item.id === guideId);
-  const isCompleted = guide?.progressStatus === "Completed";
-  const isInProgress = guide?.progressStatus === "InProgress";
-  const key = isCompleted || isInProgress
-    ? "restartLearningButton"
-    : "startLearningButton";
-
-  startLearningButton.textContent = window.i18nService.translate(key, window.i18nService.getLanguage());
+  startLearningButton.textContent = window.i18nService.translate("startLearningButton", window.i18nService.getLanguage());
   restartLearningButton.hidden = true;
 }
 
