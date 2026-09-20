@@ -210,9 +210,11 @@ function showTrainingStep(step, navigation = {}) {
 
   overlay.dir = navigation.direction || "ltr";
 
+  const isPreview = navigation.mode === "preview";
+
   controls.appendChild(createButton(
     navigation.labels?.previous || "",
-    "GWTP_TRAINING_PREVIOUS",
+    isPreview ? "GWTP_PREVIEW_PREVIOUS" : "GWTP_TRAINING_PREVIOUS",
     stepIndex === 0
   ));
   if (stepIndex >= totalSteps - 1) {
@@ -226,10 +228,10 @@ function showTrainingStep(step, navigation = {}) {
     finishButton.style.cursor = "pointer";
     finishButton.addEventListener("click", () => {
       finishButton.disabled = true;
-      chrome.runtime.sendMessage({ type: "GWTP_TRAINING_COMPLETE" }).then((response) => {
+      chrome.runtime.sendMessage({ type: isPreview ? "GWTP_PREVIEW_COMPLETE" : "GWTP_TRAINING_COMPLETE" }).then((response) => {
         if (response?.success) {
           chrome.runtime.sendMessage({
-            type: "GWTP_TRAINING_COMPLETED",
+            type: isPreview ? "GWTP_PREVIEW_COMPLETED" : "GWTP_TRAINING_COMPLETED",
             guideId: response.result?.guideId
           }).catch(() => {});
 
