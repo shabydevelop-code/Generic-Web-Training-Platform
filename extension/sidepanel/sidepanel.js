@@ -1207,7 +1207,8 @@ async function persistExistingGuide() {
       isAvailable: guideAvailableInput.checked,
       steps: steps.map((step) => ({
         selector: step.selector,
-        instruction: step.instruction
+        instruction: step.instruction,
+        frame: step.element?.frame || null
       }))
     })
   });
