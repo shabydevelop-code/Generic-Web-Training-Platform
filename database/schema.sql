@@ -70,6 +70,18 @@ CREATE TABLE IF NOT EXISTS UserProgress (
     FOREIGN KEY (CurrentStepId) REFERENCES GuideSteps(Id) ON DELETE SET NULL
 );
 
+
+CREATE TABLE IF NOT EXISTS UserStepProgress (
+    UserId INTEGER NOT NULL,
+    GuideId INTEGER NOT NULL,
+    GuideStepId INTEGER NOT NULL,
+    CompletedAt TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (UserId, GuideStepId),
+    FOREIGN KEY (UserId) REFERENCES Users(Id) ON DELETE CASCADE,
+    FOREIGN KEY (GuideId) REFERENCES Guides(Id) ON DELETE CASCADE,
+    FOREIGN KEY (GuideStepId) REFERENCES GuideSteps(Id) ON DELETE CASCADE
+);
+
 CREATE INDEX IF NOT EXISTS IX_UserRoles_Role
     ON UserRoles(Role);
 
@@ -84,3 +96,6 @@ CREATE INDEX IF NOT EXISTS IX_StepValidations_StepId
 
 CREATE INDEX IF NOT EXISTS IX_UserProgress_GuideId
     ON UserProgress(GuideId);
+
+CREATE INDEX IF NOT EXISTS IX_UserStepProgress_UserGuide
+    ON UserStepProgress(UserId, GuideId);
