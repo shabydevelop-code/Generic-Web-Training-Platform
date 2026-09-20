@@ -1414,7 +1414,10 @@ function openStepEditor(step) {
 
   editingStepId = step.id;
   editingStepSnapshot = step;
-  stepEditorTitle.textContent = window.i18nService.translate("editStepEditorTitle", window.i18nService.getLanguage());
+  const language = window.i18nService.getLanguage();
+  const stepLabel = window.i18nService.translate("stepLabel", language).replace("{number}", step.order);
+  stepEditorTitle.textContent = `${window.i18nService.translate("editStepEditorTitle", language)} — ${stepLabel}`;
+  renderSteps();
   saveStepButton.textContent = window.i18nService.translate("updateStepButton", window.i18nService.getLanguage());
   editStepDeleteSection.hidden = false;
   currentSelectedElement = step.element || {
@@ -1557,6 +1560,7 @@ function renderSteps() {
     item.setAttribute("aria-pressed", String(step.id === activeStepId));
 
     if (step.id === activeStepId) item.classList.add("step-item--active");
+    if (step.id === editingStepId) item.classList.add("step-item--editing");
 
     const language = window.i18nService.getLanguage();
 
