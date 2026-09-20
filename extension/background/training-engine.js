@@ -214,6 +214,13 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     return true;
   }
 
+  if (message?.type === "GWTP_TRAINING_PEEK_PREVIOUS") {
+    peekTrainingStep(-1)
+      .then((current) => sendResponse({ success: true, current }))
+      .catch((error) => sendResponse({ success: false, message: error.message }));
+    return true;
+  }
+
   if (message?.type === "GWTP_TRAINING_NEXT") {
     moveTrainingStep(1)
       .then((current) => sendResponse({ success: true, current }))
