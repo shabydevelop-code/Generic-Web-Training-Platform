@@ -1116,3 +1116,19 @@ body {
 .step-item--drop-after::before {
   bottom: -6px;
 }
+
+.guide-preview-section {
+  margin-top: 16px;
+}
+
+.guide-preview-active {
+  display: grid;
+  gap: 10px;
+}
+
+.guide-preview-active__status {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  text-align: center;
+}
