@@ -76,6 +76,11 @@ label {
   margin-bottom: 0;
 }
 
+/* Shared spacing for standalone controls that follow form fields. */
+.form-control-gap {
+  margin-top: 16px;
+}
+
 input,
 textarea,
 select {
