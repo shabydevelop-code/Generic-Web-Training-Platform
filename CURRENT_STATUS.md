@@ -68,5 +68,11 @@ Backend includes:
 
 Reset was verified to delete both guide and step progress as intended.
 
+## Validation test fixture
+- Added a local test page at `http://localhost:5000/validation-test` with dedicated fields for each validation rule currently exposed by the editor.
+- Added `tools/create-validation-test-guide.ps1`, which creates or updates a published guide named `בדיקת כל חוקי הוולידציה` under `בדיקות מערכת`.
+- The fixture covers the editor's current authorable rules: Required, Equals, Not Equals, Contains, and Changed. Equals/Not Equals/Contains/Required exercise the regex runtime; Changed exercises baseline-change validation.
+- This fixture is intended for repeatable validation regression testing without depending on an external website.
+
 ## Immediate next tasks
 1. Run a focused validation regression pass for `required`, `regex`, `changed`, and `changed_regex`, including invalid -> blocked Next -> correction -> successful Next and postback/restoration cases.
