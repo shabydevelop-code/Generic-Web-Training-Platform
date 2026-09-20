@@ -1,4 +1,5 @@
 const selectorInput = document.getElementById("selectorInput");
+const screenNameInput = document.getElementById("screenNameInput");
 const selectButton = document.getElementById("selectButton");
 const addStepButton = document.getElementById("addStepButton");
 const cancelStepButton = document.getElementById("cancelStepButton");
@@ -417,7 +418,10 @@ function hideLearnerRecovery() {
 function showLearnerRecovery(current = null) {
   learnerRecoveryCurrentStep = current;
   const language = window.i18nService.getLanguage();
-  learnerRecoveryMessage.textContent = window.i18nService.translate("resumeElementNotFound", language);
+  const screenName = current?.step?.screenName?.trim();
+  learnerRecoveryMessage.textContent = screenName
+    ? window.i18nService.translate("resumeElementNotFoundWithScreen", language).replace("{screen}", screenName)
+    : window.i18nService.translate("resumeElementNotFound", language);
   startLearningButton.hidden = true;
   restartLearningButton.hidden = true;
   exitLearningButton.hidden = true;
@@ -1379,6 +1383,7 @@ function closeStepCreator() {
   editStepDeleteSection.hidden = true;
   currentSelectedElement = null;
   selectorInput.value = "";
+  screenNameInput.value = "";
   clearInstructionInput();
   resetValidationBuilder();
   selectedElement.hidden = true;
@@ -1399,6 +1404,10 @@ function openStepCreator() {
   editStepDeleteSection.hidden = true;
   currentSelectedElement = null;
   selectorInput.value = "";
+  const existingSteps = window.trainingService.getSteps();
+  screenNameInput.value = existingSteps.length
+    ? (existingSteps[existingSteps.length - 1].screenName || "")
+    : "";
   clearInstructionInput();
   resetValidationBuilder();
   selectedElement.hidden = true;
@@ -1426,6 +1435,7 @@ function openStepEditor(step) {
     text: ""
   };
   selectorInput.value = step.selector;
+  screenNameInput.value = step.screenName || "";
   setInstructionHtml(step.instruction);
   loadValidationBuilder(step.validation);
   selectedTag.textContent = step.element?.tagName ? `<${step.element.tagName}>${step.element.text ? ` — ${step.element.text}` : ""}` : "";
@@ -1487,6 +1497,7 @@ async function persistStepChanges() {
           id: step.persistedId || null,
           selector: step.selector,
           instruction: step.instruction,
+          screenName: step.screenName || null,
           frame: step.element?.frame || null,
           validation: step.validation || null
         }))
@@ -1724,6 +1735,7 @@ saveStepButton.addEventListener("click", async () => {
 
   const instruction = getInstructionHtml();
   const selector = selectorInput.value.trim();
+  const screenName = screenNameInput.value.trim();
 
   if (!currentSelectedElement) {
     setStatus(window.i18nService.translate("stepElementRequired", language), "error");
@@ -1754,12 +1766,14 @@ saveStepButton.addEventListener("click", async () => {
       ? window.trainingService.updateStep(editingStepId, {
           selector,
           instruction,
+          screenName,
           element: currentSelectedElement,
           validation
         })
       : window.trainingService.createStep({
           selector,
           instruction,
+          screenName,
           element: currentSelectedElement,
           validation
         });
@@ -1919,6 +1933,7 @@ saveGuideButton.addEventListener("click", async () => {
           id: step.persistedId || null,
           selector: step.selector,
           instruction: step.instruction,
+          screenName: step.screenName || null,
           frame: step.element?.frame || null,
           validation: step.validation || null
         }))
@@ -2276,11 +2291,17 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
         success,
         message: success
           ? ""
-          : window.i18nService.translate("stepTargetOnAnotherPage", window.i18nService.getLanguage())
+          : message.current?.step?.screenName
+            ? window.i18nService.translate("stepTargetOnNamedScreen", window.i18nService.getLanguage())
+                .replace("{screen}", message.current.step.screenName)
+            : window.i18nService.translate("stepTargetOnAnotherPage", window.i18nService.getLanguage())
       }))
       .catch(() => sendResponse({
         success: false,
-        message: window.i18nService.translate("stepTargetOnAnotherPage", window.i18nService.getLanguage())
+        message: message.current?.step?.screenName
+          ? window.i18nService.translate("stepTargetOnNamedScreen", window.i18nService.getLanguage())
+              .replace("{screen}", message.current.step.screenName)
+          : window.i18nService.translate("stepTargetOnAnotherPage", window.i18nService.getLanguage())
       }));
     return true;
   }
