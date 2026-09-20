@@ -161,7 +161,7 @@ function showTrainingStep(step, navigation = {}) {
 
   const controls = document.createElement("div");
   controls.style.display = "flex";
-  controls.style.justifyContent = "space-between";
+  controls.style.justifyContent = "center";
   controls.style.gap = "8px";
   controls.style.marginTop = "12px";
 
