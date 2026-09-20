@@ -41,7 +41,7 @@ async function showTrainingStep(step, navigation = {}) {
 
   const target = targetResult.element;
 
-  if (!target) {
+  if (!target && !navigation.allowDetached) {
     return { success: false, message: "Step element was not found on this page." };
   }
 
@@ -56,10 +56,12 @@ async function showTrainingStep(step, navigation = {}) {
     element.style.setProperty("outline-offset", "3px", "important");
   };
 
-  applyTrainingTargetHighlight(target);
-  target.scrollIntoView({ behavior: "smooth", block: "center", inline: "center" });
+  if (target) {
+    applyTrainingTargetHighlight(target);
+    target.scrollIntoView({ behavior: "smooth", block: "center", inline: "center" });
+  }
 
-  if (step.selector.startsWith("gwtp-grid:")) {
+  if (target && step.selector.startsWith("gwtp-grid:")) {
     gwtpTrainingTargetObserver = new MutationObserver(() => {
       if (!gwtpTrainingOverlay) return;
       const refreshedResult = findElement(step.selector);
@@ -203,6 +205,7 @@ async function showTrainingStep(step, navigation = {}) {
   overlay.appendChild(validationError);
 
   const getTargetValue = () => {
+    if (!target) return "";
     if (target instanceof HTMLSelectElement) {
       const selectedOption = target.options[target.selectedIndex];
       return String(selectedOption?.value ?? target.value ?? "");
@@ -285,7 +288,7 @@ async function showTrainingStep(step, navigation = {}) {
       validationError.style.display = isValid ? "none" : "block";
       validationError.textContent = isValid ? "" : (validation.errorMessage || "");
       if (!isValid) {
-        target.focus?.();
+        target?.focus?.();
         return false;
       }
 
@@ -314,7 +317,7 @@ async function showTrainingStep(step, navigation = {}) {
       validationError.style.display = isValid ? "none" : "block";
       validationError.textContent = isValid ? "" : (validation.errorMessage || "");
       if (!isValid) {
-        target.focus?.();
+        target?.focus?.();
         return false;
       }
       return true;
@@ -493,7 +496,13 @@ async function showTrainingStep(step, navigation = {}) {
   gwtpTrainingOverlay = overlay;
 
   const positionOverlay = () => {
-    if (!gwtpTrainingOverlay || !gwtpTrainingTarget) {
+    if (!gwtpTrainingOverlay) return;
+
+    if (!gwtpTrainingTarget) {
+      const overlayRect = gwtpTrainingOverlay.getBoundingClientRect();
+      const gap = 14;
+      gwtpTrainingOverlay.style.top = `${gap}px`;
+      gwtpTrainingOverlay.style.left = `${Math.max(gap, window.innerWidth - overlayRect.width - gap)}px`;
       return;
     }
 
