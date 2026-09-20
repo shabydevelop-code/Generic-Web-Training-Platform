@@ -1427,6 +1427,38 @@ static void EnsureDemoSiteGuide(string databasePath)
             new FrameTarget(true, null, "", "", "", "")));
         frameMigration.ExecuteNonQuery();
 
+        var demoValidations = new (string Selector, string Expression, string ErrorMessage, string BuilderType, string BuilderValue)[]
+        {
+            ("#site-phone", "^05\\d{8}$", "יש להזין מספר טלפון נייד תקין בן 10 ספרות.", "regex", "^05\\d{8}$"),
+            ("#case-subject", "^(?=.*\\S).+$", "יש להזין נושא לפניה לפני המעבר לשלב הבא.", "required", ""),
+            ("#lead-email", "^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$", "יש להזין כתובת דוא״ל תקינה.", "regex", "^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$"),
+            ("#c360-mrr", "^\\d+(?:[.,]\\d+)?$", "יש להזין מחזור חודשי כמספר.", "regex", "^\\d+(?:[.,]\\d+)?$")
+        };
+
+        foreach (var validation in demoValidations)
+        {
+            using var validationCommand = connection.CreateCommand();
+            validationCommand.Transaction = transaction;
+            validationCommand.CommandText = """
+                UPDATE GuideSteps
+                SET ValidationEngine = 'regex',
+                    ValidationExpression = $expression,
+                    ValidationErrorMessage = $errorMessage,
+                    ValidationBuilderType = $builderType,
+                    ValidationBuilderValue = $builderValue
+                WHERE GuideId = $guideId
+                  AND Selector = $selector
+                  AND ValidationExpression IS NULL;
+                """;
+            validationCommand.Parameters.AddWithValue("$guideId", existingDemoGuideId);
+            validationCommand.Parameters.AddWithValue("$selector", validation.Selector);
+            validationCommand.Parameters.AddWithValue("$expression", validation.Expression);
+            validationCommand.Parameters.AddWithValue("$errorMessage", validation.ErrorMessage);
+            validationCommand.Parameters.AddWithValue("$builderType", validation.BuilderType);
+            validationCommand.Parameters.AddWithValue("$builderValue", validation.BuilderValue);
+            validationCommand.ExecuteNonQuery();
+        }
+
         transaction.Commit();
         return;
     }
