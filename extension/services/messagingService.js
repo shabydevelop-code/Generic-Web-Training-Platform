@@ -61,7 +61,7 @@
     }
   }
 
-  async function sendToAllFrames(message) {
+  async function sendToAllFrames(message, options = {}) {
     const tab = await getActiveTab();
     if (!tab?.id) throw new Error("No active browser tab was found.");
 
@@ -76,7 +76,7 @@
         const response = await chrome.tabs.sendMessage(tab.id, message, { frameId: frame.frameId });
         results.push({ frameId: frame.frameId, frameInfo: frame.result, response });
       } catch (error) {
-        if (isMissingReceiverError(error)) {
+        if (isMissingReceiverError(error) && options.restoreConnection !== false) {
           await chrome.scripting.executeScript({
             target: { tabId: tab.id, frameIds: [frame.frameId] },
             files: contentFiles
