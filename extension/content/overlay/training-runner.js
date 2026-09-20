@@ -175,6 +175,10 @@ function showTrainingStep(step, navigation = {}) {
   overlay.appendChild(validationError);
 
   const getTargetValue = () => {
+    if (target instanceof HTMLSelectElement) {
+      const selectedOption = target.options[target.selectedIndex];
+      return String(selectedOption?.value ?? target.value ?? "");
+    }
     if ("value" in target) return String(target.value ?? "");
     if (target.isContentEditable) return target.textContent || "";
     return target.textContent || "";
