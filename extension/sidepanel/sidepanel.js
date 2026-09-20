@@ -1013,16 +1013,28 @@ async function handleCreateTopic() {
   }
 }
 
+function hasGuideDefinitionChanges() {
+  if (!editingGuideId || !editingGuideSnapshot) return true;
+
+  return (
+    Number(topicSelect.value) !== Number(editingGuideSnapshot.topicId) ||
+    guideNameInput.value.trim() !== String(editingGuideSnapshot.name || "").trim() ||
+    guideStartUrlInput.value.trim() !== String(editingGuideSnapshot.startUrl || "").trim() ||
+    guideAvailableInput.checked !== Boolean(editingGuideSnapshot.isAvailable)
+  );
+}
+
 function updateGuideEditorValidity() {
   const hasTopic = Boolean(topicSelect.value);
   const hasGuideName = Boolean(guideNameInput.value.trim());
   const hasStartUrl = Boolean(guideStartUrlInput.value.trim());
   const guideIdentityValid = hasTopic && hasGuideName && hasStartUrl;
 
-  // Adding a step depends on the guide identity already being defined.
-  // Saving stays clickable so validation can explain any missing required fields.
   addStepButton.disabled = !guideIdentityValid;
-  saveGuideButton.disabled = false;
+
+  // Existing guides only enable "Update guide" when guide-level settings changed.
+  // Step operations are persisted independently and must not mark the guide settings dirty.
+  saveGuideButton.disabled = Boolean(editingGuideId) && !hasGuideDefinitionChanges();
 
   return guideIdentityValid;
 }
@@ -1582,6 +1594,12 @@ guideNameInput.addEventListener("input", () => {
     saveGuideStatus.textContent = window.i18nService.translate("guideNameRequired", window.i18nService.getLanguage());
     saveGuideStatus.dataset.type = "error";
   }
+});
+
+guideAvailableInput.addEventListener("change", () => {
+  saveGuideStatus.textContent = "";
+  saveGuideStatus.removeAttribute("data-type");
+  updateGuideEditorValidity();
 });
 
 topicSelect.addEventListener("change", () => {
