@@ -31,7 +31,7 @@ Every functional or architectural code change must update this file in the same 
 - Exit cleanup does not restore/reinject content scripts.
 - `restoreActiveStep()` only displays a step when its target exists.
 - Duplicate reinjection was identified as the source of repeated top-level declaration errors and was hardened.
-- `showFirstStep()` still contains a legacy 10 x 250 ms retry loop for content-script readiness. This should be removed/refactored so content readiness belongs to the messaging layer rather than learner business-step logic.
+- The legacy `showFirstStep()` 10 x 250 ms timing retry loop was removed. Learner step rendering now makes a single request; missing content-script receivers are restored by the messaging layer, while business target availability remains governed by page/frame readiness and actual DOM availability.
 
 ## Step instructions
 - A stored `<br>` instruction caused an empty learner bubble.
@@ -64,5 +64,4 @@ Backend includes:
 Reset was verified to delete both guide and step progress as intended.
 
 ## Immediate next tasks
-1. Remove/refactor the legacy timing retry in `guide-runner.js` and keep content readiness in the messaging/page-ready architecture.
-2. Run a focused validation regression pass for `required`, `regex`, `changed`, and `changed_regex`, including invalid -> blocked Next -> correction -> successful Next and postback/restoration cases.
+1. Run a focused validation regression pass for `required`, `regex`, `changed`, and `changed_regex`, including invalid -> blocked Next -> correction -> successful Next and postback/restoration cases.
