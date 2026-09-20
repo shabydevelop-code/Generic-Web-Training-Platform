@@ -69,10 +69,10 @@ Backend includes:
 Reset was verified to delete both guide and step progress as intended.
 
 ## Validation regression fixture
-- The backend now seeds a published guide named `בדיקת כל חוקי הוולידציה` under `Demo CRM` when it is missing.
+- A versioned one-time database migration creates/refreshes the published guide `בדיקת כל חוקי הוולידציה` under `Demo CRM` and records its migration ID in `SchemaMigrations`; it is not re-seeded on every API startup.
 - The guide uses the existing local Demo CRM page and contains deterministic scenarios for Required, Equals, Not Equals, Contains, Changed, and Changed + Regex.
 - The Changed + Regex phone scenario accepts Israeli-style values both with and without a hyphen (for example `03-5551235` and `050-1234567`) and uses a concise learner instruction.
-- The fixture is created through versioned backend code rather than by manually replacing `database/GWTP.db`.
+- The fixture is created through versioned backend migration code rather than by manually replacing `database/GWTP.db`. After the migration ID is recorded, subsequent API startups only perform the migration-ID lookup and do not query/create the guide.
 
 ## Repository database rule
 - Changes to persistent/test database content must be delivered through GitHub as versioned repository changes.
