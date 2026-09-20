@@ -162,6 +162,46 @@ function showTrainingStep(step, navigation = {}) {
   }
   overlay.appendChild(instruction);
 
+  const validationError = document.createElement("div");
+  validationError.setAttribute("role", "alert");
+  validationError.style.display = "none";
+  validationError.style.marginTop = "10px";
+  validationError.style.padding = "8px 10px";
+  validationError.style.borderRadius = "7px";
+  validationError.style.background = "#fef3f2";
+  validationError.style.color = "#b42318";
+  validationError.style.fontSize = "13px";
+  validationError.style.fontWeight = "600";
+  overlay.appendChild(validationError);
+
+  const getTargetValue = () => {
+    if ("value" in target) return String(target.value ?? "");
+    if (target.isContentEditable) return target.textContent || "";
+    return target.textContent || "";
+  };
+
+  const validateCurrentStep = () => {
+    const validation = step.validation;
+    if (!validation?.expression) return true;
+
+    if (validation.engine && validation.engine !== "regex") return true;
+
+    try {
+      const isValid = new RegExp(validation.expression).test(getTargetValue());
+      validationError.style.display = isValid ? "none" : "block";
+      validationError.textContent = isValid ? "" : (validation.errorMessage || "");
+      if (!isValid) {
+        target.focus?.();
+        return false;
+      }
+      return true;
+    } catch {
+      validationError.style.display = "block";
+      validationError.textContent = validation.errorMessage || "";
+      return false;
+    }
+  };
+
   const controls = document.createElement("div");
   controls.style.display = "flex";
   controls.style.justifyContent = "center";
@@ -181,6 +221,7 @@ function showTrainingStep(step, navigation = {}) {
 
     if (!disabled) {
       button.addEventListener("click", () => {
+        if ((action === "GWTP_TRAINING_NEXT" || action === "GWTP_PREVIEW_NEXT") && !validateCurrentStep()) return;
         button.disabled = true;
 
         chrome.runtime.sendMessage({ type: action }).then((response) => {
@@ -227,6 +268,7 @@ function showTrainingStep(step, navigation = {}) {
     finishButton.style.background = "#ffffff";
     finishButton.style.cursor = "pointer";
     finishButton.addEventListener("click", () => {
+      if (!validateCurrentStep()) return;
       finishButton.disabled = true;
       chrome.runtime.sendMessage({ type: isPreview ? "GWTP_PREVIEW_COMPLETE" : "GWTP_TRAINING_COMPLETE" }).then((response) => {
         if (response?.success) {
