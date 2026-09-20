@@ -34,17 +34,52 @@
     }
   }
 
-  async function restorePageConnection(tabId, allFrames = false, frameId = null) {
-    if (frameId != null && await isContentReady(tabId, frameId)) return false;
-    if (frameId == null && !allFrames && await isContentReady(tabId)) return false;
+  async function getFrameStates(tabId) {
+    try {
+      return await chrome.scripting.executeScript({
+        target: { tabId, allFrames: true },
+        func: () => ({
+          href: location.href,
+          isTop: window.top === window,
+          name: window.name || "",
+          contentReady: globalThis.__GWTP_CONTENT_READY__ === true
+        })
+      });
+    } catch {
+      return [];
+    }
+  }
+
+  async function restoreFrameConnection(tabId, frameId) {
+    if (await isContentReady(tabId, frameId)) return false;
 
     await chrome.scripting.executeScript({
-      target: frameId != null
-        ? { tabId, frameIds: [frameId] }
-        : { tabId, allFrames },
+      target: { tabId, frameIds: [frameId] },
       files: contentFiles
     });
     return true;
+  }
+
+  async function restorePageConnection(tabId, allFrames = false, frameId = null) {
+    if (frameId != null) return restoreFrameConnection(tabId, frameId);
+
+    if (!allFrames) {
+      if (await isContentReady(tabId)) return false;
+      await chrome.scripting.executeScript({
+        target: { tabId },
+        files: contentFiles
+      });
+      return true;
+    }
+
+    const frames = await getFrameStates(tabId);
+    let restored = false;
+    for (const frame of frames) {
+      if (frame.result?.contentReady === true) continue;
+      await restoreFrameConnection(tabId, frame.frameId);
+      restored = true;
+    }
+    return restored;
   }
 
   async function sendToActivePage(message, options = {}) {
@@ -83,10 +118,7 @@
     const tab = await getActiveTab();
     if (!tab?.id) throw new Error("No active browser tab was found.");
 
-    const frames = await chrome.scripting.executeScript({
-      target: { tabId: tab.id, allFrames: true },
-      func: () => ({ href: location.href, isTop: window.top === window, name: window.name || "" })
-    });
+    const frames = await getFrameStates(tab.id);
 
     const results = [];
     for (const frame of frames) {
