@@ -100,48 +100,42 @@
       throw new Error("The guide does not contain any steps.");
     }
 
-    // document_idle content scripts can initialize just after the tab reports complete.
-    let lastError;
-
-    for (let attempt = 0; attempt < 10; attempt += 1) {
-      if (renderVersion != null && renderVersion !== learnerRenderVersion) return { success: false, stale: true };
-      try {
-        const response = await sendStepToTargetFrame({
-          type: "GWTP_SHOW_TRAINING_STEP",
-          step: firstStep,
-          navigation: {
-            mode: guide.mode || "learner",
-            stepIndex: Number.isInteger(guide.stepIndex) ? guide.stepIndex : 0,
-            totalSteps: guide.totalSteps || guide.steps.length,
-            direction: window.i18nService.getLanguage() === "he" ? "rtl" : "ltr",
-            labels: {
-              previous: window.i18nService.translate("previousButton", window.i18nService.getLanguage()),
-              next: window.i18nService.translate("nextButton", window.i18nService.getLanguage()),
-              finish: window.i18nService.translate("finishButton", window.i18nService.getLanguage()),
-              completedTitle: window.i18nService.translate("guideCompletedTitle", window.i18nService.getLanguage()),
-              completedMessage: window.i18nService.translate("guideCompletedMessage", window.i18nService.getLanguage()),
-              closeCompletion: window.i18nService.translate("closeCompletionButton", window.i18nService.getLanguage())
-            },
-            allowDetached: Boolean(guide.allowDetached)
-          }
-        }, firstStep);
-
-        if (renderVersion != null && renderVersion !== learnerRenderVersion) {
-          try {
-            await sendStepToTargetFrame({ type: "GWTP_CLEAR_TRAINING_STEP" }, firstStep);
-          } catch {}
-          return { success: false, stale: true };
-        }
-        if (response?.success) return response;
-        lastError = new Error(response?.message || "Could not start the first guide step.");
-      } catch (error) {
-        lastError = error;
-      }
-
-      await new Promise((resolve) => setTimeout(resolve, 250));
+    if (renderVersion != null && renderVersion !== learnerRenderVersion) {
+      return { success: false, stale: true };
     }
 
-    throw lastError || new Error("Could not start the first guide step.");
+    const response = await sendStepToTargetFrame({
+      type: "GWTP_SHOW_TRAINING_STEP",
+      step: firstStep,
+      navigation: {
+        mode: guide.mode || "learner",
+        stepIndex: Number.isInteger(guide.stepIndex) ? guide.stepIndex : 0,
+        totalSteps: guide.totalSteps || guide.steps.length,
+        direction: window.i18nService.getLanguage() === "he" ? "rtl" : "ltr",
+        labels: {
+          previous: window.i18nService.translate("previousButton", window.i18nService.getLanguage()),
+          next: window.i18nService.translate("nextButton", window.i18nService.getLanguage()),
+          finish: window.i18nService.translate("finishButton", window.i18nService.getLanguage()),
+          completedTitle: window.i18nService.translate("guideCompletedTitle", window.i18nService.getLanguage()),
+          completedMessage: window.i18nService.translate("guideCompletedMessage", window.i18nService.getLanguage()),
+          closeCompletion: window.i18nService.translate("closeCompletionButton", window.i18nService.getLanguage())
+        },
+        allowDetached: Boolean(guide.allowDetached)
+      }
+    }, firstStep);
+
+    if (renderVersion != null && renderVersion !== learnerRenderVersion) {
+      try {
+        await sendStepToTargetFrame({ type: "GWTP_CLEAR_TRAINING_STEP" }, firstStep);
+      } catch {}
+      return { success: false, stale: true };
+    }
+
+    if (!response?.success) {
+      throw new Error(response?.message || "Could not show the guide step.");
+    }
+
+    return response;
   }
 
   async function start(guide) {
