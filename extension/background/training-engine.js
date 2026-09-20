@@ -109,14 +109,14 @@ async function moveTrainingStep(direction) {
   };
 }
 
-async function getPendingNavigationKey(sender) {
-  const tabId = sender?.tab?.id;
+async function getPendingNavigationKey(sender, explicitTabId = null) {
+  const tabId = Number.isInteger(explicitTabId) ? explicitTabId : sender?.tab?.id;
   if (!Number.isInteger(tabId)) throw new Error("Pending navigation requires a browser tab context.");
   return `gwtp:pending-navigation:${tabId}`;
 }
 
-async function setPendingNavigation(sender, pending) {
-  const key = await getPendingNavigationKey(sender);
+async function setPendingNavigation(sender, pending, explicitTabId = null) {
+  const key = await getPendingNavigationKey(sender, explicitTabId);
   if (!pending) {
     await chrome.storage.session.remove(key);
     return null;
@@ -131,8 +131,8 @@ async function setPendingNavigation(sender, pending) {
   return value;
 }
 
-async function getPendingNavigation(sender) {
-  const key = await getPendingNavigationKey(sender);
+async function getPendingNavigation(sender, explicitTabId = null) {
+  const key = await getPendingNavigationKey(sender, explicitTabId);
   const stored = await chrome.storage.session.get(key);
   return stored[key] || null;
 }
@@ -215,21 +215,21 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   }
 
   if (message?.type === "GWTP_TRAINING_PENDING_SET") {
-    setPendingNavigation(_sender, message.pending)
+    setPendingNavigation(_sender, message.pending, message.tabId)
       .then((pending) => sendResponse({ success: true, pending }))
       .catch((error) => sendResponse({ success: false, message: error.message }));
     return true;
   }
 
   if (message?.type === "GWTP_TRAINING_PENDING_GET") {
-    getPendingNavigation(_sender)
+    getPendingNavigation(_sender, message.tabId)
       .then((pending) => sendResponse({ success: true, pending }))
       .catch((error) => sendResponse({ success: false, message: error.message }));
     return true;
   }
 
   if (message?.type === "GWTP_TRAINING_PENDING_CLEAR") {
-    setPendingNavigation(_sender, null)
+    setPendingNavigation(_sender, null, message.tabId)
       .then(() => sendResponse({ success: true }))
       .catch((error) => sendResponse({ success: false, message: error.message }));
     return true;
