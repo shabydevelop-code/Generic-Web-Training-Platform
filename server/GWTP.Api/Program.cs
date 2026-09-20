@@ -1040,6 +1040,53 @@ editorGuides.MapPut("/{id:long}", (long id, CreateGuideRequest request) =>
             .ToList()));
 });
 
+editorGuides.MapPut("/{id:long}/steps", (long id, List<CreateGuideStepRequest> steps) =>
+{
+    if (steps is null)
+        return Results.BadRequest(new { message = "Steps are required." });
+
+    if (steps.Any(step => string.IsNullOrWhiteSpace(step.Selector) || string.IsNullOrWhiteSpace(step.Instruction)))
+        return Results.BadRequest(new { message = "Every step requires a selector and instruction." });
+
+    using var connection = OpenConnection(databasePath);
+
+    using var guideExistsCommand = connection.CreateCommand();
+    guideExistsCommand.CommandText = "SELECT COUNT(*) FROM Guides WHERE Id = $id;";
+    guideExistsCommand.Parameters.AddWithValue("$id", id);
+    if (Convert.ToInt32(guideExistsCommand.ExecuteScalar()) == 0)
+        return Results.NotFound();
+
+    using var transaction = connection.BeginTransaction();
+
+    using var deleteStepsCommand = connection.CreateCommand();
+    deleteStepsCommand.Transaction = transaction;
+    deleteStepsCommand.CommandText = "DELETE FROM GuideSteps WHERE GuideId = $guideId;";
+    deleteStepsCommand.Parameters.AddWithValue("$guideId", id);
+    deleteStepsCommand.ExecuteNonQuery();
+
+    for (var index = 0; index < steps.Count; index++)
+    {
+        var step = steps[index];
+        using var stepCommand = connection.CreateCommand();
+        stepCommand.Transaction = transaction;
+        stepCommand.CommandText = """
+            INSERT INTO GuideSteps (GuideId, StepOrder, Selector, Instruction, FrameTarget)
+            VALUES ($guideId, $stepOrder, $selector, $instruction, $frameTarget);
+            """;
+        stepCommand.Parameters.AddWithValue("$guideId", id);
+        stepCommand.Parameters.AddWithValue("$stepOrder", index + 1);
+        stepCommand.Parameters.AddWithValue("$selector", step.Selector.Trim());
+        stepCommand.Parameters.AddWithValue("$instruction", step.Instruction.Trim());
+        stepCommand.Parameters.AddWithValue("$frameTarget", step.Frame is null ? DBNull.Value : JsonSerializer.Serialize(step.Frame));
+        stepCommand.ExecuteNonQuery();
+    }
+
+    transaction.Commit();
+
+    return Results.Ok(steps.Select((step, index) =>
+        new GuideStepResponse(index + 1, step.Selector.Trim(), step.Instruction.Trim(), step.Frame)).ToList());
+});
+
 editorGuides.MapDelete("/{id:long}", (long id) =>
 {
     using var connection = OpenConnection(databasePath);
