@@ -1369,7 +1369,7 @@ static void EnsureDemoSiteGuide(string databasePath)
         ("#case-subject", "עדכן את נושא הפניה. שים לב שהשרת מבצע ולידציה בעת השמירה."),
         ("#btn-save-case", "לחץ על <strong>עדכן פניה</strong>. אם קיימת שגיאת ולידציה, תקן אותה ועדכן שוב. אם העדכון הסתיים ללא שגיאות, לחץ על <strong>הבא</strong>."),
         ("#nav-leads", "עבור למסך <strong>לידים</strong>."),
-        ("#lead-source", "שנה את מקור הליד."),
+        ("#lead-source", "בחר מקור ליד שאינו <strong>אתר אינטרנט</strong>."),
         ("#lead-interest", "שנה את המוצר המבוקש."),
         ("#lead-email", "בדוק את כתובת הדוא״ל. השרת יאכוף כתובת תקינה בעת השמירה."),
         ("#btn-save-lead", "לחץ על <strong>שמור ליד</strong>. אם השמירה נדחית, תקן את השדה המסומן ונסה שוב. אם השמירה הסתיימה ללא שגיאות, לחץ על <strong>הבא</strong>."),
@@ -1439,7 +1439,7 @@ static void EnsureDemoSiteGuide(string databasePath)
             ("#site-type", "^branch$", "יש לבחור סניף מכירות לפני המעבר לשלב הבא.", "regex", "^branch$"),
             ("#case-category", "^(?!network$).+$", "לא ניתן לבחור ב״תקלות תקשורת ורשת״. יש לבחור קטגוריה אחרת.", "regex", "^(?!network$).+$"),
             ("#case-subject", "^(?!איטיות בגלישה ונפילות קו תקשורת ראשי$)(?=.{10,}$).+", "יש לעדכן את נושא הפניה לנושא חדש בן 10 תווים לפחות.", "regex", "^(?!איטיות בגלישה ונפילות קו תקשורת ראשי$)(?=.{10,}$).+"),
-            ("#lead-source", "^(?!web$).+$", "יש לשנות את מקור הליד לפני המעבר לשלב הבא.", "regex", "^(?!web$).+$"),
+            ("#lead-source", "^(?!web$).+$", "לא ניתן לבחור ב״אתר אינטרנט״. יש לבחור מקור ליד אחר.", "regex", "^(?!web$).+$"),
             ("#lead-interest", "^(?!cloud_crm$).+$", "יש לשנות את המוצר המבוקש לפני המעבר לשלב הבא.", "regex", "^(?!cloud_crm$).+$"),
             ("#lead-email", "^(?!ronit@nextgen\\.co\\.il$)[^\\s@]+@[^\\s@]+\\.[^\\s@]+$", "יש לעדכן את כתובת הדוא״ל לכתובת תקינה ושונה מהכתובת המקורית.", "regex", "^(?!ronit@nextgen\\.co\\.il$)[^\\s@]+@[^\\s@]+\\.[^\\s@]+$"),
             ("#c360-tier", "^(?!platinum$).+$", "יש לשנות את סיווג הלקוח לפני המעבר לשלב הבא.", "regex", "^(?!platinum$).+$"),
@@ -1508,6 +1508,9 @@ static void EnsureDemoSiteGuide(string databasePath)
 
         var instructionMigrations = new (string Selector, string OldInstruction, string NewInstruction)[]
         {
+            ("#lead-source",
+                "שנה את מקור הליד.",
+                "בחר מקור ליד שאינו <strong>אתר אינטרנט</strong>."),
             ("#case-category",
                 "בחר קטגוריה מתאימה לפניה.",
                 "בחר קטגוריה מתאימה לפנייה, שאינה <strong>תקלות תקשורת ורשת</strong>."),
