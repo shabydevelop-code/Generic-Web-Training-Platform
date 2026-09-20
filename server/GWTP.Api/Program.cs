@@ -30,6 +30,7 @@ InitializeDatabase(databasePath, schemaPath);
 ApplyDatabaseMigrations(databasePath);
 EnsureDevelopmentAdmin(databasePath);
 EnsureDemoSiteGuide(databasePath);
+ApplyDemoScreenNameMigration(databasePath);
 
 var sessions = new Dictionary<string, long>(StringComparer.Ordinal);
 var sessionLock = new object();
@@ -1649,6 +1650,36 @@ static void ApplyDatabaseMigrations(string databasePath)
     normalizeProgress.CommandText = "UPDATE UserProgress SET StartedAt = COALESCE(StartedAt, CURRENT_TIMESTAMP), LastActivityAt = COALESCE(LastActivityAt, CURRENT_TIMESTAMP);";
     normalizeProgress.ExecuteNonQuery();
 
+}
+
+
+static void ApplyDemoScreenNameMigration(string databasePath)
+{
+    using var connection = OpenConnection(databasePath);
+
+    ApplyOneTimeMigration(connection, "20260921_demo_guide_screen_names", () =>
+    {
+        using var command = connection.CreateCommand();
+        command.CommandText = """
+            UPDATE GuideSteps
+            SET ScreenName = CASE
+                WHEN StepOrder BETWEEN 1 AND 6 THEN 'אתר'
+                WHEN StepOrder BETWEEN 7 AND 10 THEN 'פניה'
+                WHEN StepOrder BETWEEN 11 AND 15 THEN 'לידים'
+                WHEN StepOrder BETWEEN 16 AND 21 THEN '360'
+                ELSE ScreenName
+            END
+            WHERE GuideId IN (
+                SELECT g.Id
+                FROM Guides g
+                INNER JOIN Topics t ON t.Id = g.TopicId
+                WHERE t.Name = 'Demo CRM'
+                  AND g.Name = 'תרגול מלא - Demo CRM'
+            )
+              AND (ScreenName IS NULL OR TRIM(ScreenName) = '');
+            """;
+        command.ExecuteNonQuery();
+    });
 }
 
 
