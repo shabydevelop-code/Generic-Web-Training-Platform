@@ -1012,6 +1012,21 @@ body {
   margin-top: 10px;
 }
 
+.learner-recovery {
+  margin-top: 18px;
+  padding: 14px;
+  border: 1px solid #fecdca;
+  border-radius: 8px;
+  background: #fffbfa;
+}
+
+.learner-recovery__message {
+  margin: 0 0 12px;
+  font-size: 13px;
+  line-height: 1.45;
+  color: #b42318;
+}
+
 
 .rich-text-editor {
   overflow: hidden;
