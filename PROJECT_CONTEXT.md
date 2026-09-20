@@ -45,7 +45,7 @@ Database: `database/GWTP.db`.
 
 ## Missing element behavior
 - A missing target must never silently advance progress.
-- Allow a short loading/retry window before declaring the target unavailable.
+- Do not use arbitrary time-based polling to wait for business target elements. Active navigation waits on page/frame readiness and checks actual target availability before advancing progress.
 - Learner-facing state: explain that the required element is not available on the current screen and offer Retry / Exit guide.
 - Editor Preview may additionally expose technical selector information.
 - The existing active-navigation/postback mechanism should remain separate from old-session Resume.
@@ -54,3 +54,9 @@ Database: `database/GWTP.db`.
 - Prefer global/architectural solutions over local hacks.
 - Keep responsibilities separated between side panel UI, learner runner, content/overlay logic, background training engine, services and backend.
 - Preserve existing server-side progress infrastructure unless a backend change is actually required.
+
+
+## Repository maintenance rule
+- Every functional or architectural code change must update `CURRENT_STATUS.md` in the same change set so the repository status remains the source of truth.
+- `CURRENT_STATUS.md` must describe what is implemented and verified, what remains open, and the immediate next task.
+- Do not leave completed work described as pending.
