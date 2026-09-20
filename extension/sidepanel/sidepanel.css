@@ -206,6 +206,18 @@ select:focus {
   color: #b42318;
 }
 
+.step-instruction-label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 16px;
+}
+
+.required-marker {
+  color: #b42318;
+  font-weight: 700;
+}
+
 .selected-element__remove {
   margin-top: 10px;
   align-self: flex-start;
