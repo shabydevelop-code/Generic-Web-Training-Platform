@@ -2112,6 +2112,13 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 
   if (role !== "learner") return;
 
+  if (message?.type === "GWTP_CHECK_NEXT_STEP_AVAILABLE") {
+    window.guideRunner.canShowStep(message.current)
+      .then((success) => sendResponse({ success }))
+      .catch(() => sendResponse({ success: false }));
+    return true;
+  }
+
   if (message?.type === "GWTP_PAGE_READY") {
     window.guideRunner.restoreActiveStep().catch((error) => {
       console.info("GWTP active step restore skipped:", error);
