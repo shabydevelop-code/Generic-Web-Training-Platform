@@ -80,6 +80,11 @@ Reset was verified to delete both guide and step progress as intended.
 
 - Demo CRM regression: the Customer 360 tier instruction now explicitly tells the learner to choose a tier other than Platinum, matching its validation rule.
 
+## Live-application postback/page-transition regression — verified
+- The full `תרגול מלא - Demo CRM` learner guide was run end-to-end across Site, Case, Leads, and Customer 360.
+- Cross-page/frame transitions, server-side saves, validation flows, and page/frame reloads preserved learning continuity.
+- No replay of previous business actions or loss of learner position was observed.
+- The only regression issue found was the Customer 360 tier instruction wording; it was corrected to explicitly require a tier other than Platinum.
+
 ## Immediate next tasks
-1. Verify learner continuity across live-application postback/partial DOM or frame replacement: learning position must remain stable, no business actions may be replayed, and the active step should resume only when the relevant page/frame is ready.
-2. After that regression passes, review remaining editor/learner UX gaps before adding new capabilities.
+1. Review remaining editor/learner UX gaps before adding new capabilities.
