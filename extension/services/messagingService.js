@@ -73,7 +73,7 @@
     for (const frame of frames) {
       try {
         const response = await chrome.tabs.sendMessage(tab.id, message, { frameId: frame.frameId });
-        results.push({ frameId: frame.frameId, response });
+        results.push({ frameId: frame.frameId, frameInfo: frame.result, response });
       } catch (error) {
         if (isMissingReceiverError(error)) {
           await chrome.scripting.executeScript({
@@ -83,15 +83,42 @@
           const response = await chrome.tabs.sendMessage(tab.id, message, { frameId: frame.frameId });
           results.push({ frameId: frame.frameId, response });
         } else {
-          results.push({ frameId: frame.frameId, error: error.message });
+          results.push({ frameId: frame.frameId, frameInfo: frame.result, error: error.message });
         }
       }
     }
     return results;
   }
 
+  async function sendToMatchingFrame(message, matcher) {
+    const tab = await getActiveTab();
+    if (!tab?.id) throw new Error("No active browser tab was found.");
+
+    const frames = await chrome.scripting.executeScript({
+      target: { tabId: tab.id, allFrames: true },
+      func: () => ({ href: location.href, isTop: window.top === window, name: window.name || "" })
+    });
+
+    const frame = frames.find((item) => matcher(item.result));
+    if (!frame) return null;
+
+    try {
+      return await chrome.tabs.sendMessage(tab.id, message, { frameId: frame.frameId });
+    } catch (error) {
+      if (!isMissingReceiverError(error)) throw error;
+
+      await chrome.scripting.executeScript({
+        target: { tabId: tab.id, frameIds: [frame.frameId] },
+        files: contentFiles
+      });
+
+      return chrome.tabs.sendMessage(tab.id, message, { frameId: frame.frameId });
+    }
+  }
+
   window.messagingService = {
     sendToActivePage,
-    sendToAllFrames
+    sendToAllFrames,
+    sendToMatchingFrame
   };
 })();
