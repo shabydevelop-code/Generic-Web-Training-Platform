@@ -97,5 +97,8 @@ Reset was verified to delete both guide and step progress as intended.
 
 - Fixed duplicate cross-screen progress moves caused by near-simultaneous `GWTP_PAGE_READY` events from the top document and child frames. `resumePendingNavigation()` is now serialized so a pending Previous/Next intent can be consumed only once at a time and advances exactly one step.
 
+- Guide steps now support an optional explicit `ScreenName`. The editor auto-fills a new step from the previous step's screen name for convenience, but saves the value explicitly on every step; reopening a step shows its stored value. The API/SQLite schema persist `ScreenName`, existing guides remain compatible when it is empty, and the Demo CRM full guide receives screen names through the versioned migration `20260921_demo_guide_screen_names`.
+- Learner recovery and cross-screen Previous/Next guidance use the destination step's `ScreenName` when available (for example, "פניה"), with the existing generic message as fallback.
+
 ## Immediate next tasks
 1. Review remaining editor/learner UX gaps before adding new capabilities.
