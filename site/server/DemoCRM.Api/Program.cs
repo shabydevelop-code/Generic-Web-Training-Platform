@@ -310,7 +310,7 @@ app.MapPost("/customer360/field-change", async (HttpRequest request) =>
     var state = new Customer360FormState(form["name"].ToString(), form["tier"].ToString(), form["mrr"].ToString(), form["manager"].ToString());
     var token = Guid.NewGuid().ToString("N");
     Customer360FormStates[token] = state;
-    return Results.Redirect($"/customer360.html?state={Uri.EscapeDataString(token)}");
+    return Results.Redirect($"/customer360_content.html?state={Uri.EscapeDataString(token)}");
 });
 
 app.MapGet("/api/customer360-state/{token}", (string token) =>
@@ -336,7 +336,7 @@ app.MapPost("/case/field-change", async (HttpRequest request) =>
         form["assigned"].ToString(), form["subject"].ToString(), form["notes"].ToString());
     var token = Guid.NewGuid().ToString("N");
     CaseFormStates[token] = state;
-    return Results.Redirect($"/case.html?state={Uri.EscapeDataString(token)}");
+    return Results.Redirect($"/case_content.html?state={Uri.EscapeDataString(token)}");
 });
 
 app.MapGet("/api/case-state/{token}", (string token) =>
@@ -365,7 +365,7 @@ app.MapPost("/lead/field-change", async (HttpRequest request) =>
         form["source"].ToString(), form["interest"].ToString());
     var token = Guid.NewGuid().ToString("N");
     LeadFormStates[token] = state;
-    return Results.Redirect($"/leads.html?state={Uri.EscapeDataString(token)}");
+    return Results.Redirect($"/leads_content.html?state={Uri.EscapeDataString(token)}");
 });
 
 app.MapGet("/api/lead-state/{token}", (string token) =>
@@ -405,7 +405,7 @@ app.MapPost("/site/type-change", async (HttpRequest request) =>
         ? $"&message={Uri.EscapeDataString("בחרת ב\"סניף מכירות\"")}"
         : "";
 
-    return Results.Redirect($"/site.html?state={Uri.EscapeDataString(token)}{messageQuery}");
+    return Results.Redirect($"/site_content.html?state={Uri.EscapeDataString(token)}{messageQuery}");
 });
 
 app.MapGet("/api/site-state/{token}", (string token) =>
