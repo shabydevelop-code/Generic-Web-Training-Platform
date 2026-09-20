@@ -61,6 +61,27 @@ async function showTrainingStep(step, navigation = {}) {
     target.scrollIntoView({ behavior: "smooth", block: "center", inline: "center" });
   }
 
+  // A highlighted native link may destroy this document before the learner can press
+  // the overlay's Next button. Persist only the learning intent here; PAGE_READY on
+  // the destination still verifies that the next step actually exists before moving
+  // progress. No business action is replayed by GWTP.
+  if (
+    target instanceof HTMLAnchorElement &&
+    target.href &&
+    navigation.mode !== "preview" &&
+    Number.isInteger(navigation.stepIndex)
+  ) {
+    target.addEventListener("pointerdown", () => {
+      chrome.runtime.sendMessage({
+        type: "GWTP_TRAINING_PENDING_SET",
+        pending: {
+          direction: 1,
+          stepIndex: navigation.stepIndex
+        }
+      }).catch(() => {});
+    }, { once: true });
+  }
+
   if (target && step.selector.startsWith("gwtp-grid:")) {
     gwtpTrainingTargetObserver = new MutationObserver(() => {
       if (!gwtpTrainingOverlay) return;
