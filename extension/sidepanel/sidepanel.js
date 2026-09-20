@@ -369,8 +369,13 @@ function handleLearnerGuideChange() {
   const topicId = Number(learnerTopicSelect.value);
   const topic = learnerCatalog.find((item) => item.id === topicId);
   const guide = topic?.guides?.find((item) => item.id === guideId);
-  startLearningButton.textContent = window.i18nService.translate("startLearningButton", window.i18nService.getLanguage());
-  restartLearningButton.hidden = true;
+  const language = window.i18nService.getLanguage();
+  const inProgress = guide?.progressStatus === "InProgress";
+  startLearningButton.textContent = window.i18nService.translate(
+    inProgress ? "continueLearningButton" : "startLearningButton",
+    language
+  );
+  restartLearningButton.hidden = !inProgress;
 }
 
 function refreshSelectedLearnerGuideUi() {
@@ -434,9 +439,21 @@ async function handleStartLearning() {
     const guide = await window.apiService.request(`/api/learner/guides/${guideId}`);
     const topic = learnerCatalog.find((item) => item.id === Number(learnerTopicSelect.value));
     const catalogGuide = topic?.guides?.find((item) => item.id === guideId);
-    const shouldRestart = catalogGuide?.progressStatus === "InProgress" || catalogGuide?.progressStatus === "Completed";
+    const isInProgress = catalogGuide?.progressStatus === "InProgress";
+    const isCompleted = catalogGuide?.progressStatus === "Completed";
 
-    if (shouldRestart) {
+    if (isInProgress) {
+      const resumeResult = await window.guideRunner.resume(guide);
+      if (!resumeResult?.success && resumeResult?.reason === "element-not-found") {
+        learnerStatus.textContent = window.i18nService.translate("resumeElementNotFound", language);
+        learnerStatus.dataset.type = "error";
+        restartLearningButton.hidden = false;
+        return;
+      }
+      if (!resumeResult?.success) {
+        throw new Error("Could not resume the saved guide step.");
+      }
+    } else if (isCompleted) {
       await window.guideRunner.restart(guide);
     } else {
       await window.guideRunner.start(guide);
@@ -2189,6 +2206,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   }
 
   if (message?.type === "GWTP_PAGE_READY") {
+    if (!learnerSessionActive) return;
     window.guideRunner.resumePendingNavigation()
       .then((resumed) => {
         if (resumed) return;
