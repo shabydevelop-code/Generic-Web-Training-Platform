@@ -17,6 +17,7 @@ const statusElement = document.getElementById("status");
 const selectedElement = document.getElementById("selectedElement");
 const selectedTag = document.getElementById("selectedTag");
 const selectedSelector = document.getElementById("selectedSelector");
+const selectedFrame = document.getElementById("selectedFrame");
 const removeSelectedElementButton = document.getElementById("removeSelectedElementButton");
 const stepEditor = document.getElementById("stepEditor");
 const instructionInput = document.getElementById("instructionInput");
@@ -1043,6 +1044,20 @@ function updateGuideEditorValidity() {
   return guideIdentityValid;
 }
 
+function renderSelectedFrame(element) {
+  const language = window.i18nService.getLanguage();
+  const frame = element?.frame || null;
+  const label = window.i18nService.translate("selectedFrameLabel", language);
+
+  if (!frame || frame.isTop) {
+    selectedFrame.textContent = `${label}: ${window.i18nService.translate("selectedFrameTop", language)}`;
+    return;
+  }
+
+  const frameName = frame.name || frame.elementName || frame.elementId || frame.elementTitle || "Frame";
+  selectedFrame.textContent = `${label}: ${frameName}`;
+}
+
 function updateStepSaveValidity() {
   saveStepButton.disabled = !currentSelectedElement || !selectorInput.value.trim() || !hasInstructionContent();
 }
@@ -1175,6 +1190,7 @@ function openStepEditor(step) {
   setInstructionHtml(step.instruction);
   selectedTag.textContent = step.element?.tagName ? `<${step.element.tagName}>${step.element.text ? ` — ${step.element.text}` : ""}` : "";
   selectedSelector.textContent = step.selector;
+  renderSelectedFrame(currentSelectedElement);
   selectedElement.hidden = false;
   stepEditor.hidden = false;
   selectButton.hidden = false;
@@ -1563,6 +1579,7 @@ removeSelectedElementButton.addEventListener("click", () => {
   selectorInput.value = "";
   selectedTag.textContent = "";
   selectedSelector.textContent = "";
+  selectedFrame.textContent = "";
   selectedElement.hidden = true;
   updateStepSaveValidity();
   setStatus(window.i18nService.translate("stepElementRequired", window.i18nService.getLanguage()), "error");
@@ -1695,6 +1712,7 @@ chrome.runtime.onMessage.addListener((message) => {
     selectorInput.value = element.selector;
     selectedTag.textContent = `<${element.tagName}>${element.text ? ` — ${element.text}` : ""}`;
     selectedSelector.textContent = element.selector;
+    renderSelectedFrame(element);
     selectedElement.hidden = false;
     stepEditor.hidden = false;
     updateStepSaveValidity();
