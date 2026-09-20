@@ -184,9 +184,19 @@ function showTrainingStep(step, navigation = {}) {
     return target.textContent || "";
   };
 
+  const initialTargetValue = getTargetValue();
+
   const validateCurrentStep = () => {
     const validation = step.validation;
     if (!validation?.expression) return true;
+
+    if (validation.engine === "changed") {
+      const isValid = getTargetValue() !== initialTargetValue;
+      validationError.style.display = isValid ? "none" : "block";
+      validationError.textContent = isValid ? "" : (validation.errorMessage || "");
+      if (!isValid) target.focus?.();
+      return isValid;
+    }
 
     if (validation.engine && validation.engine !== "regex") return true;
 
