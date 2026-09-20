@@ -477,7 +477,9 @@ async function showTrainingStep(step, navigation = {}) {
           });
 
           if (!availability?.success) {
-            chrome.runtime.sendMessage({ type: "GWTP_TRAINING_PENDING_CLEAR" }).catch(() => {});
+            // Keep the pending learning intent. The live application owns navigation;
+            // when the learner reaches a page where the requested step exists,
+            // GWTP_PAGE_READY will resume the move in the requested direction.
             button.disabled = false;
             return;
           }
