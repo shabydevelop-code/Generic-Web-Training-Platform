@@ -193,7 +193,7 @@ function showTrainingStep(step, navigation = {}) {
           clearHighlight();
 
           chrome.runtime.sendMessage({
-            type: "GWTP_TRAINING_STEP_CHANGED",
+            type: isPreview ? "GWTP_PREVIEW_STEP_CHANGED" : "GWTP_TRAINING_STEP_CHANGED",
             current: response.current
           }).catch(() => {});
         }).catch(() => {
