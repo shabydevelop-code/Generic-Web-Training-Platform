@@ -2001,7 +2001,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       return;
     }
 
-    if (message?.type === "GWTP_TRAINING_STEP_CHANGED" && message.current?.mode === "preview") {
+    if (message?.type === "GWTP_PREVIEW_STEP_CHANGED" && message.current?.mode === "preview") {
       window.guideRunner.showCurrentStep(message.current).catch((error) => {
         console.info("GWTP preview step change skipped:", error);
       });
