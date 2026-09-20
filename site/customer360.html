@@ -6,18 +6,16 @@
   <title>CRM PeopleSoft - מסך 360</title>
   <link rel="icon" type="image/png" href="/icons/icon48.png">
   <link rel="stylesheet" href="peoplesoft_crm.css">
+
+  <style>
+    html, body { height: 100%; }
+    body { margin: 0; display: flex; flex-direction: column; overflow: hidden; }
+    .ps-header { flex: 0 0 auto; }
+    .ps-target-frame { flex: 1 1 auto; width: 100%; border: 0; display: block; background: #fff; }
+  </style>
 </head>
 <body>
-  <!-- Splash Screen (Prevent FOUC) -->
-  <div id="splash-screen" class="splash-screen" aria-live="polite" aria-label="טוען נתונים">
-    <div class="splash-loading-box">
-      <div class="splash-spinner"></div>
-      <span>טוען נתונים...</span>
-    </div>
-  </div>
-
-  <!-- PeopleSoft Header -->
-  <header class="ps-header">
+<header class="ps-header">
     <div class="ps-header-top">
       <div class="ps-brand">
         <span>PeopleSoft Enterprise CRM</span>
@@ -35,93 +33,6 @@
       <a href="customer360.html" class="ps-nav-link active" id="nav-360">מסך 360</a>
     </nav>
   </header>
-
-  <!-- Page Content Container -->
-  <main class="ps-container">
-    <div class="ps-page-title-bar">
-      <div>
-        <h1 class="ps-page-title" id="page-title">תיק לקוח 360° - <span id="c360-title-name"></span></h1>
-        <div class="ps-breadcrumb">לקוחות &gt; מבט כולל 360 &gt; <span id="c360-company-id"></span></div>
-      </div>
-      <div>
-        <span class="ps-status-badge ps-status-active" id="c360-status-badge"></span>
-      </div>
-    </div>
-
-    <!-- Panel: 360 Master Profile -->
-    <section class="ps-panel" aria-labelledby="panel-header-c360">
-      <div class="ps-panel-header" id="panel-header-c360">
-        <span>נתוני פרופיל לקוח (Account Profile)</span>
-        <span id="c360-tenure" style="font-size: 11px; color: #475569;"></span>
-      </div>
-      <div class="ps-panel-body">
-        <form id="form-360" method="post" action="/customer360/field-change">
-          <div class="ps-form-grid">
-            <div class="ps-form-group">
-              <label for="c360-acc-num" class="ps-label">מספר חשבון CRM</label>
-              <input type="text" id="c360-acc-num" class="ps-input" readonly>
-            </div>
-            <div class="ps-form-group">
-              <label for="c360-name" class="ps-label required">שם תאגיד / עסק</label>
-              <input type="text" id="c360-name" name="name" class="ps-input" required>
-            </div>
-            <div class="ps-form-group">
-              <label for="c360-tier" class="ps-label">סיווג לקוח (Tier)</label>
-              <select id="c360-tier" name="tier" class="ps-select">
-                <option value="platinum">Platinum Enterprise</option>
-                <option value="gold">Gold Business</option>
-                <option value="standard">Standard</option>
-              </select>
-            </div>
-            <div class="ps-form-group">
-              <label for="c360-mrr" class="ps-label">מחזור חודשי (MRR)</label>
-              <input type="text" id="c360-mrr" name="mrr" class="ps-input">
-            </div>
-            <div class="ps-form-group">
-              <label for="c360-manager" class="ps-label">מנהל תיק לקוח (TAM)</label>
-              <input type="text" id="c360-manager" name="manager" class="ps-input">
-            </div>
-            <div class="ps-form-group">
-              <label for="c360-credit-rating" class="ps-label">דירוג אשראי</label>
-              <input type="text" id="c360-credit-rating" class="ps-input" readonly>
-            </div>
-          </div>
-
-          <div class="ps-action-bar" style="margin-top: 14px;">
-            <button type="submit" class="ps-btn ps-btn-primary" id="btn-save-360">שמור פרטי לקוח</button>
-            <a href="case.html" class="ps-btn ps-btn-accent" id="btn-new-case-for-360">פתח קריאה חדשה ללקוח +</a>
-            <a href="site.html" class="ps-btn" id="btn-view-sites">צפה באתרי הלקוח &larr;</a>
-          </div>
-        </form>
-      </div>
-    </section>
-
-    <!-- Panel: 360 Related Modules (Open Tickets & Active Contracts) -->
-    <section class="ps-panel" aria-labelledby="panel-header-modules">
-      <div class="ps-panel-header" id="panel-header-modules">
-        <span>קריאות שירות פתוחות והסכמים פעילים</span>
-        <span style="font-size: 11px; color: #475569;">תמונת מצב עדכנית</span>
-      </div>
-      <div class="ps-panel-body">
-        <div class="ps-table-wrapper">
-          <table class="ps-table" id="c360-summary-table">
-            <thead>
-              <tr>
-                <th><button type="button" class="ps-grid-sort" data-sort="referenceNumber" aria-label="מיין לפי מספר פניה / חוזה">מספר פניה / חוזה<span class="ps-sort-indicator" aria-hidden="true"></span></button></th>
-                <th><button type="button" class="ps-grid-sort" data-sort="type" aria-label="מיין לפי סוג">סוג<span class="ps-sort-indicator" aria-hidden="true"></span></button></th>
-                <th><button type="button" class="ps-grid-sort" data-sort="service" aria-label="מיין לפי אתר / שירות">אתר / שירות<span class="ps-sort-indicator" aria-hidden="true"></span></button></th>
-                <th><button type="button" class="ps-grid-sort" data-sort="status" aria-label="מיין לפי סטטוס">סטטוס<span class="ps-sort-indicator" aria-hidden="true"></span></button></th>
-                <th><button type="button" class="ps-grid-sort" data-sort="date" aria-label="מיין לפי תאריך תוקף / יצירה">תאריך תוקף / יצירה<span class="ps-sort-indicator" aria-hidden="true"></span></button></th>
-              </tr>
-            </thead>
-            <tbody id="c360-summary-body"></tbody>
-          </table>
-        </div>
-      </div>
-    </section>
-  </main>
-
-  <script src="peoplesoft_common.js"></script>
-  <script src="customer360.js"></script>
+  <iframe id="ptifrmtgtframe" name="TargetContent" class="ps-target-frame" src="customer360_content.html" title="Main Content"></iframe>
 </body>
 </html>
