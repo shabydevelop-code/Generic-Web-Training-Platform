@@ -2,11 +2,56 @@
 
 Last updated: 2026-09-20
 
-## Current focus
-Implement safe learner Resume together with missing-element handling, while preserving the existing live-navigation/postback mechanism.
+## Repository rule
+Every functional or architectural code change must update this file in the same change set. Completed work must not remain documented as pending.
 
-## Existing progress infrastructure
-Backend already contains:
+## Current learner architecture
+- GWTP owns learning progress; the live application owns business/page state.
+- No automatic replay of old clicks or reconstruction of business state.
+- Learner navigation uses Previous/Next only.
+- Progress advances only after the destination step can actually be displayed.
+- `pending-navigation` in `chrome.storage.session` survives postbacks/DOM/frame destruction.
+- `GWTP_PAGE_READY` resumes pending navigation and otherwise attempts to restore the active step.
+- Business target availability is event/state based. Do not add arbitrary time-based polling for target elements.
+
+## Resume and recovery — implemented and verified
+- NotStarted starts at step 1.
+- InProgress offers Continue / Start over.
+- Completed starts over.
+- Continue restores the saved learning position without reconstructing external application state.
+- Missing target preserves progress and shows recovery actions.
+- Recovery supports Retry, Start Again and Exit Learning.
+- Retry rechecks the saved step on the current page without restarting the guide.
+- Cross-site recovery was verified: wrong site -> recovery -> navigate to correct site -> Retry.
+- Exit clears learner/pending state without reinjecting content scripts.
+
+## Content-script/page transition hardening
+- Manifest content scripts cover HTTP/HTTPS pages and frames.
+- Connection restoration probes the content-ready marker before reinjection.
+- Exit cleanup does not restore/reinject content scripts.
+- `restoreActiveStep()` only displays a step when its target exists.
+- Duplicate reinjection was identified as the source of repeated top-level declaration errors and was hardened.
+- `showFirstStep()` still contains a legacy 10 x 250 ms retry loop for content-script readiness. This should be removed/refactored so content readiness belongs to the messaging layer rather than learner business-step logic.
+
+## Step instructions
+- A stored `<br>` instruction caused an empty learner bubble.
+- Root cause was author validation treating `<br>` as valid content.
+- Author validation now requires actual textual instruction content.
+- Existing affected DB row was corrected and the original recovery scenario was retested successfully.
+
+## Validation — implemented, but regression coverage is still open
+Current runtime supports:
+- `required`
+- `regex`
+- `changed`
+- `changed_regex`
+
+Validation blocks Next when the current value is invalid. Changed-based validation stores a baseline for the active validation session so the learner must actually change the field. `changed_regex` requires both a changed value and a matching format.
+
+Previously implemented/tested examples included changed-value behavior and a phone-format `changed_regex` scenario. However, validation work was interrupted by learner progress/Resume/recovery work. A systematic regression pass of all validation modes and their behavior across postback/page restoration has not yet been completed.
+
+## Progress backend
+Backend includes:
 - `UserProgress`
 - `UserStepProgress`
 - `POST /api/learner/progress/start/{guideId}`
@@ -16,43 +61,8 @@ Backend already contains:
 - `GET /api/learner/progress/steps/{guideId}`
 - `GET /api/learner/progress/active`
 
-Reset was verified to delete `UserStepProgress` rows.
+Reset was verified to delete both guide and step progress as intended.
 
-## Existing extension behavior verified
-Relevant files:
-- `extension/learner/guide-runner.js`
-- `extension/background/training-engine.js`
-- `extension/content/overlay/training-runner.js`
-- `extension/sidepanel/sidepanel.js`
-
-The active-guide navigation mechanism already:
-1. peeks at the next/previous step,
-2. checks whether that step can be displayed,
-3. moves progress only after availability succeeds.
-
-A `pending-navigation` value in `chrome.storage.session` survives business-system postbacks/DOM destruction. On `GWTP_PAGE_READY`, `resumePendingNavigation()` attempts to continue once the destination element becomes available.
-
-Current `GWTP_PAGE_READY` flow in the learner side panel is:
-- `resumePendingNavigation()`
-- if nothing resumed, `restoreActiveStep()`.
-
-Current `restoreActiveStep()` uses `allowDetached: true`, so an overlay can be restored without its target element. This behavior must be reconsidered for old-session Resume.
-
-## Current start behavior to change
-`handleStartLearning()` currently treats both `InProgress` and `Completed` as restart conditions and calls `guideRunner.restart(guide)`. This intentionally starts again at step 1.
-
-Target behavior:
-- NotStarted -> start at step 1.
-- InProgress -> show Continue from saved step / Start over.
-- Completed -> start over.
-- Continue -> attempt saved step without resetting DB progress.
-- Missing target during Resume -> keep progress, show Retry / Exit.
-- Start over -> restart selected guide only.
-
-## Important distinction
-Do not replace or break the existing `pending-navigation` mechanism. It solves a different problem: a DOM/page transition occurring while an active guide is running.
-
-The new Resume flow solves re-entry into an older InProgress guide where the live application may no longer be on the correct screen or may have changed.
-
-## Next implementation task
-Implement the Resume choice and missing-element state as one coherent change, reusing existing APIs and navigation infrastructure where possible. Avoid PageState models, automatic click replay, or business-state reconstruction.
+## Immediate next tasks
+1. Remove/refactor the legacy timing retry in `guide-runner.js` and keep content readiness in the messaging/page-ready architecture.
+2. Run a focused validation regression pass for `required`, `regex`, `changed`, and `changed_regex`, including invalid -> blocked Next -> correction -> successful Next and postback/restoration cases.
