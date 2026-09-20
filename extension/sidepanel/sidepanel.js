@@ -65,6 +65,8 @@ const learnerTopicSelect = document.getElementById("learnerTopicSelect");
 const learnerGuideSelect = document.getElementById("learnerGuideSelect");
 const startLearningButton = document.getElementById("startLearningButton");
 const restartLearningButton = document.getElementById("restartLearningButton");
+const exitLearningButton = document.getElementById("exitLearningButton");
+let learnerSessionActive = false;
 const learnerStatus = document.getElementById("learnerStatus");
 let learnerCatalog = [];
 const createModeView = document.getElementById("createModeView");
@@ -252,8 +254,24 @@ function handleLearnerGuideChange() {
 
   if (!guideId) {
     startLearningButton.textContent = window.i18nService.translate("startLearningButton", window.i18nService.getLanguage());
+    restartLearningButton.hidden = true;
+    exitLearningButton.hidden = true;
     return;
   }
+
+  if (learnerSessionActive) {
+    startLearningButton.hidden = true;
+    restartLearningButton.hidden = true;
+    exitLearningButton.hidden = false;
+    learnerTopicSelect.disabled = true;
+    learnerGuideSelect.disabled = true;
+    return;
+  }
+
+  startLearningButton.hidden = false;
+  exitLearningButton.hidden = true;
+  learnerTopicSelect.disabled = false;
+  learnerGuideSelect.disabled = false;
 
   const topicId = Number(learnerTopicSelect.value);
   const topic = learnerCatalog.find((item) => item.id === topicId);
@@ -296,6 +314,7 @@ async function handleRestartLearning() {
   try {
     const guide = await window.apiService.request(`/api/learner/guides/${guideId}`);
     await window.guideRunner.restart(guide);
+    learnerSessionActive = true;
 
     const topic = learnerCatalog.find((item) => item.id === Number(learnerTopicSelect.value));
     const catalogGuide = topic?.guides?.find((item) => item.id === guideId);
@@ -329,6 +348,7 @@ async function handleStartLearning() {
   try {
     const guide = await window.apiService.request(`/api/learner/guides/${guideId}`);
     await window.guideRunner.start(guide);
+    learnerSessionActive = true;
 
     const topic = learnerCatalog.find((item) => item.id === Number(learnerTopicSelect.value));
     const catalogGuide = topic?.guides?.find((item) => item.id === guideId);
@@ -346,6 +366,18 @@ async function handleStartLearning() {
   } finally {
     startLearningButton.disabled = !learnerGuideSelect.value;
   }
+}
+
+async function handleExitLearning() {
+  try {
+    await window.messagingService.sendToAllFrames({ type: "GWTP_CLEAR_TRAINING_STEP" });
+  } catch (error) {
+    console.info("GWTP learner overlay cleanup skipped:", error);
+  }
+
+  await chrome.runtime.sendMessage({ type: "GWTP_TRAINING_STOP" });
+  learnerSessionActive = false;
+  handleLearnerGuideChange();
 }
 
 function openTopicEditor(topic) {
@@ -1617,6 +1649,7 @@ learnerTopicSelect.addEventListener("change", handleLearnerTopicChange);
 learnerGuideSelect.addEventListener("change", handleLearnerGuideChange);
 startLearningButton.addEventListener("click", handleStartLearning);
 restartLearningButton.addEventListener("click", handleRestartLearning);
+exitLearningButton.addEventListener("click", handleExitLearning);
 openTopicsButton.addEventListener("click", openTopics);
 backFromTopicsButton.addEventListener("click", closeTopics);
 cancelDeleteButton.addEventListener("click", closeDeleteConfirmation);
@@ -1710,6 +1743,7 @@ chrome.runtime.onMessage.addListener((message) => {
   }
 
   if (message?.type === "GWTP_TRAINING_COMPLETED") {
+    learnerSessionActive = false;
     const guideId = Number(message.guideId);
     const topic = learnerCatalog.find((item) => item.guides?.some((guide) => guide.id === guideId));
     const guide = topic?.guides?.find((item) => item.id === guideId);
