@@ -1953,6 +1953,46 @@ async function handleLogin() {
   await loadLearnerCatalog();
 }
 
+function resetTransientUiStateForLogout() {
+  editingGuideId = null;
+  editingGuideSnapshot = null;
+  activeStepId = null;
+  editingStepId = null;
+  previewSession = null;
+  learnerCatalog = [];
+  learnerSessionActive = false;
+
+  window.trainingService.clearSteps();
+
+  topicSelect.value = "";
+  guideNameInput.value = "";
+  guideStartUrlInput.value = "";
+  guideAvailableInput.checked = false;
+
+  closeStepCreator();
+  closeTopicCreator();
+  closeUserEditor();
+  closeCreateUser();
+
+  topicsView.hidden = true;
+  guideEditorView.hidden = true;
+  guideLibraryView.hidden = false;
+
+  learnerTopicSelect.replaceChildren();
+  learnerGuideSelect.replaceChildren();
+  startLearningButton.disabled = true;
+  restartLearningButton.hidden = true;
+  exitLearningButton.hidden = true;
+
+  renderSteps();
+  updatePreviewUi();
+  updateGuideEditorValidity();
+
+  saveGuideStatus.textContent = "";
+  saveGuideStatus.removeAttribute("data-type");
+  setStepsSaveStatus();
+}
+
 async function handleLogout() {
   try {
     await window.messagingService.sendToActivePage({
@@ -1966,6 +2006,7 @@ async function handleLogout() {
     type: "GWTP_TRAINING_STOP"
   });
   await window.authService.logout();
+  resetTransientUiStateForLogout();
   appView.hidden = true;
   adminModeActive = false;
   adminButton.hidden = true;
