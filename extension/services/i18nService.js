@@ -237,6 +237,7 @@
       elementSelectionCancelled: "בחירת האלמנט בוטלה.",
       moveStepUp: "העבר שלב למעלה",
       moveStepDown: "העבר שלב למטה",
+      reorderStep: "גרור לשינוי סדר. ניתן להשתמש גם במקשי החצים למעלה ולמטה.",
       saveGuideButton: "שמור מדריך",
       updateGuideButton: "עדכן מדריך",
       guideTopicRequired: "יש לבחור נושא.",
