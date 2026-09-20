@@ -27,10 +27,10 @@ Every functional or architectural code change must update this file in the same 
 
 ## Content-script/page transition hardening
 - Manifest content scripts cover HTTP/HTTPS pages and frames.
-- Connection restoration probes the content-ready marker before reinjection.
+- Content scripts are loaded by the manifest for HTTP/HTTPS pages and all frames; runtime messaging no longer dynamically reinjects the content-script bundle.
 - Exit cleanup does not restore/reinject content scripts.
 - `restoreActiveStep()` only displays a step when its target exists.
-- Duplicate reinjection was identified as the source of repeated top-level declaration errors and was hardened.
+- Duplicate reinjection was identified as the source of repeated top-level declaration errors. Dynamic reinjection was removed, and the Ynet/Google recovery regression was verified with both page and Side Panel consoles clean.
 - The legacy `showFirstStep()` 10 x 250 ms timing retry loop was removed. Learner step rendering now makes a single request; missing content-script receivers are restored by the messaging layer, while business target availability remains governed by page/frame readiness and actual DOM availability.
 
 ## Step instructions
@@ -44,7 +44,7 @@ Every functional or architectural code change must update this file in the same 
 - Business rules and business validation remain the responsibility of the live application and must not be duplicated by the extension.
 - Business validation may trigger blur/change handlers, postbacks, frame reloads, or DOM replacement. GWTP preserves learning state through those transitions and reacts to page readiness/target availability rather than evaluating the business rule itself.
 
-## Validation — implemented, but regression coverage is still open
+## Validation — implemented and verified
 Current runtime supports:
 - `required`
 - `regex`
@@ -53,7 +53,7 @@ Current runtime supports:
 
 Validation blocks Next when the current value is invalid. Changed-based validation stores a baseline for the active validation session so the learner must actually change the field. `changed_regex` requires both a changed value and a matching format.
 
-Previously implemented/tested examples included changed-value behavior and a phone-format `changed_regex` scenario. However, validation work was interrupted by learner progress/Resume/recovery work. A systematic regression pass of all validation modes and their behavior across postback/page restoration has not yet been completed.
+The validation regression guide was run end-to-end successfully. Required, Equals, Not Equals, Contains, Changed, and Changed + Regex were verified. `changed_regex` was also created through the normal editor, saved, reloaded, and executed successfully as a learner.
 
 ## Progress backend
 Backend includes:
@@ -79,11 +79,5 @@ Reset was verified to delete both guide and step progress as intended.
 - Do not distribute a replacement `GWTP.db` as the normal project workflow. The developer should receive repository changes with `git pull origin main`.
 
 ## Immediate next tasks
-1. Pull and restart the API, then run the validation regression guide end-to-end.
-2. Resolve the authoring/API discrepancy for `changed_regex`: runtime supports it, but the normal editor/backend validation path does not yet expose/accept it.
-
-- Messaging connection restoration is now frame-idempotent: all-frame recovery probes each frame and injects the content bundle only into frames where GWTP is not already ready.
-
-- Temporary `[GWTP debug]` logging in `training-runner.js` was removed after the Ynet/Google frame-recovery regression passed without duplicate-injection errors.
-
-- Dynamic reinjection of the manifest content-script bundle was removed from `messagingService`. GWTP now relies on manifest-managed `all_frames` content-script loading; missing receivers are reported rather than causing a second injection of scripts already managed by Chrome/Edge. This removes the architectural source of duplicate top-level declaration errors.
+1. Verify learner continuity across live-application postback/partial DOM or frame replacement: learning position must remain stable, no business actions may be replayed, and the active step should resume only when the relevant page/frame is ready.
+2. After that regression passes, review remaining editor/learner UX gaps before adding new capabilities.
