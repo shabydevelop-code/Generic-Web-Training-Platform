@@ -316,7 +316,7 @@ function showTrainingStep(step, navigation = {}) {
   } else {
     controls.appendChild(createButton(
       navigation.labels?.next || "",
-      "GWTP_TRAINING_NEXT",
+      isPreview ? "GWTP_PREVIEW_NEXT" : "GWTP_TRAINING_NEXT",
       false
     ));
   }
