@@ -86,5 +86,7 @@ Reset was verified to delete both guide and step progress as intended.
 - No replay of previous business actions or loss of learner position was observed.
 - The only regression issue found was the Customer 360 tier instruction wording; it was corrected to explicitly require a tier other than Platinum.
 
+- Demo CRM navigation regression was strengthened: the Site -> Case transition now uses the site-specific `#btn-open-case-from-site` control inside `TargetContent` instead of the global `#nav-case` tab. This explicitly tests a navigation step whose source element disappears with the old page before the next Case target is restored.
+
 ## Immediate next tasks
 1. Review remaining editor/learner UX gaps before adding new capabilities.
