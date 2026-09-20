@@ -3,6 +3,26 @@ const PICKER_ATTRIBUTE = "data-gwtp-picker-hovered";
 let pickerActive = false;
 let hoveredElement = null;
 
+function getFrameContext() {
+  const isTop = window.top === window;
+  let frameElement = null;
+
+  try {
+    frameElement = window.frameElement;
+  } catch {
+    frameElement = null;
+  }
+
+  return {
+    isTop,
+    url: window.location.href,
+    name: window.name || "",
+    elementId: frameElement?.id || "",
+    elementName: frameElement?.getAttribute?.("name") || "",
+    elementTitle: frameElement?.getAttribute?.("title") || ""
+  };
+}
+
 function clearPickerHover() {
   if (!hoveredElement) return;
 
@@ -49,7 +69,8 @@ function onPickerClick(event) {
     tagName: element.tagName.toLowerCase(),
     id: element.id || "",
     selector,
-    text: (element.innerText || element.getAttribute("aria-label") || "").trim().slice(0, 120)
+    text: (element.innerText || element.getAttribute("aria-label") || "").trim().slice(0, 120),
+    frame: getFrameContext()
   };
 
   stopElementPicker();
@@ -58,14 +79,14 @@ function onPickerClick(event) {
   chrome.runtime.sendMessage({
     type: "GWTP_ELEMENT_SELECTED",
     element: details
-  });
+  }).catch(() => {});
 }
 
 function onPickerKeyDown(event) {
   if (event.key !== "Escape") return;
 
   stopElementPicker();
-  chrome.runtime.sendMessage({ type: "GWTP_ELEMENT_SELECTION_CANCELLED" });
+  chrome.runtime.sendMessage({ type: "GWTP_ELEMENT_SELECTION_CANCELLED" }).catch(() => {});
 }
 
 function startElementPicker() {
