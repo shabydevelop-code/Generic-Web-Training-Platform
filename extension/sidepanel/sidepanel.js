@@ -1185,6 +1185,8 @@ function buildStepValidation() {
   let expression = "";
   if (type === "required") {
     expression = "^(?=.*\\S).+$";
+  } else if (type === "changed") {
+    expression = "__changed__";
   } else {
     if (!value) throw new Error(window.i18nService.translate("validationValueRequired", language));
     if (type === "equals") expression = "^" + escapeRegexValue(value) + "$";
@@ -1194,7 +1196,7 @@ function buildStepValidation() {
       expression = value;
     }
   }
-  return { engine: "regex", expression, errorMessage, builderType: type, builderValue: type === "required" ? "" : value };
+  return { engine: type === "changed" ? "changed" : "regex", expression, errorMessage, builderType: type, builderValue: (type === "required" || type === "changed") ? "" : value };
 }
 function updateStepSaveValidity() {
   const validationType = validationTypeSelect.value;
