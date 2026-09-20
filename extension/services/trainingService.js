@@ -1,7 +1,7 @@
 (() => {
   const steps = [];
 
-  function createStep({ selector, instruction, element, validation = null }) {
+  function createStep({ selector, instruction, screenName = "", element, validation = null }) {
     if (!selector || !selector.trim()) {
       throw new Error("A selector is required to create a step.");
     }
@@ -15,6 +15,7 @@
       order: steps.length + 1,
       selector: selector.trim(),
       instruction: instruction.trim(),
+      screenName: screenName.trim(),
       element: element
         ? {
             tagName: element.tagName || "",
@@ -29,7 +30,7 @@
     return { ...step };
   }
 
-  function updateStep(id, { selector, instruction, element, validation = null }) {
+  function updateStep(id, { selector, instruction, screenName = "", element, validation = null }) {
     const index = steps.findIndex((step) => step.id === id);
     if (index < 0) throw new Error("Step not found.");
     if (!selector || !selector.trim()) throw new Error("A selector is required to update a step.");
@@ -39,6 +40,7 @@
       ...steps[index],
       selector: selector.trim(),
       instruction: instruction.trim(),
+      screenName: screenName.trim(),
       element: element
         ? { tagName: element.tagName || "", text: element.text || "", frame: element.frame ? { ...element.frame } : null }
         : steps[index].element,
@@ -105,6 +107,7 @@
         order: index + 1,
         selector: step.selector.trim(),
         instruction: step.instruction.trim(),
+        screenName: (step.screenName || "").trim(),
         element: {
           tagName: "",
           text: "",
