@@ -1184,7 +1184,17 @@ function buildStepValidation() {
   return { engine: "regex", expression, errorMessage, builderType: type, builderValue: type === "required" ? "" : value };
 }
 function updateStepSaveValidity() {
-  saveStepButton.disabled = !currentSelectedElement || !selectorInput.value.trim() || !hasInstructionContent();
+  const validationType = validationTypeSelect.value;
+  const validationNeedsValue = validationType === "equals" || validationType === "contains" || validationType === "regex";
+  const validationComplete =
+    validationType === "none" ||
+    (Boolean(validationErrorInput.value.trim()) && (!validationNeedsValue || Boolean(validationValueInput.value)));
+
+  saveStepButton.disabled =
+    !currentSelectedElement ||
+    !selectorInput.value.trim() ||
+    !hasInstructionContent() ||
+    !validationComplete;
 }
 
 async function validateSelectedStepElement() {
