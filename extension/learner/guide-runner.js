@@ -196,6 +196,20 @@
     });
   }
 
+  async function canShowStep(current) {
+    if (!current?.step) return false;
+
+    try {
+      const response = await sendStepToTargetFrame({
+        type: "GWTP_CAN_SHOW_TRAINING_STEP",
+        step: current.step
+      }, current.step);
+      return response?.success === true;
+    } catch {
+      return false;
+    }
+  }
+
   async function showCurrentStep(current, options = {}) {
     if (!current?.step) return false;
 
@@ -239,6 +253,7 @@
     restart,
     preview,
     restoreActiveStep,
-    showCurrentStep
+    showCurrentStep,
+    canShowStep
   };
 })();
