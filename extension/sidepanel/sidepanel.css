@@ -206,6 +206,11 @@ select:focus {
   color: #b42318;
 }
 
+.selected-element__remove {
+  margin-top: 10px;
+  align-self: flex-start;
+}
+
 .step-item {
   position: relative;
   padding: 12px 36px 12px 12px;
