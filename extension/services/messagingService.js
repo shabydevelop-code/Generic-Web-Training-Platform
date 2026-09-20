@@ -13,6 +13,7 @@
   }
 
   const contentFiles = [
+    "config/visual-config.js",
     "content/dom/element-finder.js",
     "content/dom/selector-builder.js",
     "content/overlay/highlighter.js",
