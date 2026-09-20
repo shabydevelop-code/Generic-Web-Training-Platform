@@ -77,6 +77,11 @@ const learnerGuideSelect = document.getElementById("learnerGuideSelect");
 const startLearningButton = document.getElementById("startLearningButton");
 const restartLearningButton = document.getElementById("restartLearningButton");
 const exitLearningButton = document.getElementById("exitLearningButton");
+const learnerRecoveryPanel = document.getElementById("learnerRecoveryPanel");
+const learnerRecoveryMessage = document.getElementById("learnerRecoveryMessage");
+const retryLearningButton = document.getElementById("retryLearningButton");
+const recoveryRestartLearningButton = document.getElementById("recoveryRestartLearningButton");
+const recoveryExitLearningButton = document.getElementById("recoveryExitLearningButton");
 let learnerSessionActive = false;
 const learnerStatus = document.getElementById("learnerStatus");
 let learnerCatalog = [];
@@ -391,7 +396,21 @@ function refreshSelectedLearnerGuideUi() {
   }
 }
 
+function hideLearnerRecovery() {
+  learnerRecoveryPanel.hidden = true;
+  learnerRecoveryMessage.textContent = "";
+}
+
+function showLearnerRecovery() {
+  const language = window.i18nService.getLanguage();
+  learnerRecoveryMessage.textContent = window.i18nService.translate("resumeElementNotFound", language);
+  learnerRecoveryPanel.hidden = false;
+  learnerStatus.textContent = "";
+  learnerStatus.removeAttribute("data-type");
+}
+
 async function handleRestartLearning() {
+  hideLearnerRecovery();
   const guideId = Number(learnerGuideSelect.value);
   const language = window.i18nService.getLanguage();
   if (!guideId) return;
@@ -426,6 +445,7 @@ async function handleRestartLearning() {
 }
 
 async function handleStartLearning() {
+  hideLearnerRecovery();
   const guideId = Number(learnerGuideSelect.value);
   const language = window.i18nService.getLanguage();
 
@@ -445,8 +465,7 @@ async function handleStartLearning() {
     if (isInProgress) {
       const resumeResult = await window.guideRunner.resume(guide);
       if (!resumeResult?.success && resumeResult?.reason === "element-not-found") {
-        learnerStatus.textContent = window.i18nService.translate("resumeElementNotFound", language);
-        learnerStatus.dataset.type = "error";
+        showLearnerRecovery();
         restartLearningButton.hidden = false;
         return;
       }
@@ -477,6 +496,7 @@ async function handleStartLearning() {
 }
 
 async function handleExitLearning() {
+  hideLearnerRecovery();
   try {
     await window.messagingService.sendToAllFrames({ type: "GWTP_CLEAR_TRAINING_STEP" });
   } catch (error) {
@@ -2043,6 +2063,9 @@ learnerGuideSelect.addEventListener("change", handleLearnerGuideChange);
 startLearningButton.addEventListener("click", handleStartLearning);
 restartLearningButton.addEventListener("click", handleRestartLearning);
 exitLearningButton.addEventListener("click", handleExitLearning);
+retryLearningButton.addEventListener("click", handleStartLearning);
+recoveryRestartLearningButton.addEventListener("click", handleRestartLearning);
+recoveryExitLearningButton.addEventListener("click", handleExitLearning);
 openTopicsButton.addEventListener("click", openTopics);
 backFromTopicsButton.addEventListener("click", closeTopics);
 cancelDeleteButton.addEventListener("click", closeDeleteConfirmation);
