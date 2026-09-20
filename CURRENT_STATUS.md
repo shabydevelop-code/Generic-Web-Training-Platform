@@ -90,5 +90,8 @@ Reset was verified to delete both guide and step progress as intended.
 
 - Editor step-selection UX improved: opening an existing step now shows its step number in the editor heading and keeps that step card visually selected while it is being edited.
 
+- Navigation continuity was extended for highlighted native links: before a learner follows a highlighted `<a href>` target, GWTP persists forward pending-navigation. The destination `PAGE_READY` still checks that the next step target exists before DB progress moves; GWTP does not replay the business action or use arbitrary waits. This covers the Demo CRM `#btn-open-case-from-site` Site -> Case transition.
+- Closing the step editor now re-renders the step list after clearing `editingStepId`, so the editing selection is removed immediately.
+
 ## Immediate next tasks
 1. Review remaining editor/learner UX gaps before adding new capabilities.
