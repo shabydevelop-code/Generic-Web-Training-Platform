@@ -114,37 +114,50 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     return true;
   }
 
-  if (message?.type === "GWTP_VALIDATION_BASELINE_GET_OR_CREATE") {
+  if (message?.type === "GWTP_VALIDATION_STATE_GET_OR_CREATE") {
     const key = String(message.key || "");
-    if (!key.startsWith("gwtp:validation-baseline:")) {
-      sendResponse({ success: false, message: "Invalid validation baseline key." });
+    if (!key.startsWith("gwtp:validation-state:")) {
+      sendResponse({ success: false, message: "Invalid validation state key." });
       return;
     }
 
     chrome.storage.session.get(key)
       .then(async (stored) => {
         if (Object.prototype.hasOwnProperty.call(stored, key)) {
-          sendResponse({ success: true, value: stored[key] });
+          sendResponse({ success: true, state: stored[key] });
           return;
         }
 
-        const value = String(message.value ?? "");
-        await chrome.storage.session.set({ [key]: value });
-        sendResponse({ success: true, value });
+        const state = {
+          baseline: String(message.baseline ?? ""),
+          satisfied: false
+        };
+        await chrome.storage.session.set({ [key]: state });
+        sendResponse({ success: true, state });
       })
       .catch((error) => sendResponse({ success: false, message: error.message }));
     return true;
   }
 
-  if (message?.type === "GWTP_VALIDATION_BASELINE_REMOVE") {
+  if (message?.type === "GWTP_VALIDATION_STATE_SATISFY") {
     const key = String(message.key || "");
-    if (!key.startsWith("gwtp:validation-baseline:")) {
-      sendResponse({ success: false, message: "Invalid validation baseline key." });
+    if (!key.startsWith("gwtp:validation-state:")) {
+      sendResponse({ success: false, message: "Invalid validation state key." });
       return;
     }
 
-    chrome.storage.session.remove(key)
-      .then(() => sendResponse({ success: true }))
+    chrome.storage.session.get(key)
+      .then(async (stored) => {
+        const current = stored[key];
+        if (!current) {
+          sendResponse({ success: false, message: "Validation state was not initialized." });
+          return;
+        }
+
+        const state = { ...current, satisfied: true };
+        await chrome.storage.session.set({ [key]: state });
+        sendResponse({ success: true, state });
+      })
       .catch((error) => sendResponse({ success: false, message: error.message }));
     return true;
   }
