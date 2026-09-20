@@ -64,6 +64,7 @@ const learnModeView = document.getElementById("learnModeView");
 const learnerTopicSelect = document.getElementById("learnerTopicSelect");
 const learnerGuideSelect = document.getElementById("learnerGuideSelect");
 const startLearningButton = document.getElementById("startLearningButton");
+const restartLearningButton = document.getElementById("restartLearningButton");
 const learnerStatus = document.getElementById("learnerStatus");
 let learnerCatalog = [];
 const createModeView = document.getElementById("createModeView");
@@ -173,6 +174,7 @@ async function loadLearnerCatalog() {
   learnerGuideSelect.replaceChildren();
   learnerGuideSelect.disabled = true;
   startLearningButton.disabled = true;
+  restartLearningButton.hidden = true;
   learnerStatus.textContent = window.i18nService.translate("loadingLearnerCatalog", language);
   learnerStatus.dataset.type = "info";
 
@@ -256,13 +258,16 @@ function handleLearnerGuideChange() {
   const topicId = Number(learnerTopicSelect.value);
   const topic = learnerCatalog.find((item) => item.id === topicId);
   const guide = topic?.guides?.find((item) => item.id === guideId);
-  const key = guide?.progressStatus === "Completed"
+  const isCompleted = guide?.progressStatus === "Completed";
+  const isInProgress = guide?.progressStatus === "InProgress";
+  const key = isCompleted
     ? "restartLearningButton"
-    : guide?.progressStatus === "InProgress"
+    : isInProgress
       ? "continueLearningButton"
       : "startLearningButton";
 
   startLearningButton.textContent = window.i18nService.translate(key, window.i18nService.getLanguage());
+  restartLearningButton.hidden = !isInProgress;
 }
 
 function refreshSelectedLearnerGuideUi() {
@@ -275,6 +280,39 @@ function refreshSelectedLearnerGuideUi() {
     handleLearnerGuideChange();
   } else if (selectedTopicId) {
     learnerTopicSelect.value = String(selectedTopicId);
+  }
+}
+
+async function handleRestartLearning() {
+  const guideId = Number(learnerGuideSelect.value);
+  const language = window.i18nService.getLanguage();
+  if (!guideId) return;
+
+  restartLearningButton.disabled = true;
+  startLearningButton.disabled = true;
+  learnerStatus.textContent = window.i18nService.translate("startingGuide", language);
+  learnerStatus.dataset.type = "info";
+
+  try {
+    const guide = await window.apiService.request(`/api/learner/guides/${guideId}`);
+    await window.guideRunner.restart(guide);
+
+    const topic = learnerCatalog.find((item) => item.id === Number(learnerTopicSelect.value));
+    const catalogGuide = topic?.guides?.find((item) => item.id === guideId);
+    if (catalogGuide) {
+      catalogGuide.progressStatus = "InProgress";
+      refreshSelectedLearnerGuideUi();
+    }
+
+    learnerStatus.textContent = "";
+    learnerStatus.removeAttribute("data-type");
+  } catch (error) {
+    console.error("Could not restart learner guide.", error);
+    learnerStatus.textContent = window.i18nService.translate("guideStartError", language);
+    learnerStatus.dataset.type = "error";
+  } finally {
+    startLearningButton.disabled = !learnerGuideSelect.value;
+    restartLearningButton.disabled = false;
   }
 }
 
@@ -1578,6 +1616,7 @@ async function handleLogout() {
 learnerTopicSelect.addEventListener("change", handleLearnerTopicChange);
 learnerGuideSelect.addEventListener("change", handleLearnerGuideChange);
 startLearningButton.addEventListener("click", handleStartLearning);
+restartLearningButton.addEventListener("click", handleRestartLearning);
 openTopicsButton.addEventListener("click", openTopics);
 backFromTopicsButton.addEventListener("click", closeTopics);
 cancelDeleteButton.addEventListener("click", closeDeleteConfirmation);
