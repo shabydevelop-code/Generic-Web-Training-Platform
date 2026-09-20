@@ -70,6 +70,7 @@
       elementSelectionCancelled: "Element selection cancelled.",
       moveStepUp: "Move step up",
       moveStepDown: "Move step down",
+      reorderStep: "Drag to reorder. Use Up/Down arrow keys for keyboard reordering.",
       saveGuideButton: "Save Guide",
       updateGuideButton: "Update Guide",
       guideTopicRequired: "Select a topic.",
