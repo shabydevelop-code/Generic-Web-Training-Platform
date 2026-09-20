@@ -8,8 +8,14 @@ document.addEventListener("DOMContentLoaded", () => {
       await saveCase();
     }
   });
-  document.getElementById("case-category")?.addEventListener("change", () => form?.requestSubmit());
-  document.getElementById("case-assigned")?.addEventListener("change", () => form?.requestSubmit());
+
+  const postFieldChange = () => {
+    if (!form) return;
+    form.submit();
+  };
+
+  document.getElementById("case-category")?.addEventListener("change", postFieldChange);
+  document.getElementById("case-assigned")?.addEventListener("change", postFieldChange);
   document.getElementById("btn-escalate-case")?.addEventListener("click", escalateCase);
   initializeCase();
 });
