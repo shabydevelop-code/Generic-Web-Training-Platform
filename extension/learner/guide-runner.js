@@ -72,6 +72,7 @@
           type: "GWTP_SHOW_TRAINING_STEP",
           step: firstStep,
           navigation: {
+            mode: guide.mode || "learner",
             stepIndex: Number.isInteger(guide.stepIndex) ? guide.stepIndex : 0,
             totalSteps: guide.totalSteps || guide.steps.length,
             direction: window.i18nService.getLanguage() === "he" ? "rtl" : "ltr",
@@ -162,9 +163,24 @@
     await showFirstStep({
       steps: [current.step],
       stepIndex: current.stepIndex,
-      totalSteps: current.totalSteps || 1
+      totalSteps: current.totalSteps || 1,
+      mode: current.mode || "learner"
     });
     return true;
+  }
+
+  async function preview(guide) {
+    if (!guide?.startUrl || !guide?.steps?.length) {
+      throw new Error("A valid guide with a start URL and at least one step is required.");
+    }
+
+    await navigateToStartUrl(guide.startUrl);
+    return showFirstStep({
+      steps: [guide.steps[0]],
+      stepIndex: 0,
+      totalSteps: guide.steps.length,
+      mode: "preview"
+    });
   }
 
   async function restoreActiveStep() {
@@ -180,6 +196,7 @@
   window.guideRunner = {
     start,
     restart,
+    preview,
     restoreActiveStep,
     showCurrentStep
   };
