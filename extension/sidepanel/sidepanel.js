@@ -506,7 +506,6 @@ async function handleStartLearning() {
 }
 
 async function handleExitLearning() {
-  hideLearnerRecovery();
   try {
     await window.messagingService.sendToAllFrames({ type: "GWTP_CLEAR_TRAINING_STEP" });
   } catch (error) {
@@ -518,6 +517,7 @@ async function handleExitLearning() {
 
   learnerTopicSelect.disabled = false;
   learnerGuideSelect.disabled = !learnerTopicSelect.value;
+  hideLearnerRecovery();
   handleLearnerGuideChange();
 }
 
