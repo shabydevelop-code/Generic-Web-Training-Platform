@@ -1669,7 +1669,7 @@ static void EnsureDemoSiteGuide(string databasePath)
         ("#lead-email", "בדוק שקיימת כתובת דוא״ל לפני השמירה."),
         ("#btn-save-lead", "לחץ על <strong>שמור ליד</strong>. אם השמירה נדחית, תקן את השדה המסומן ונסה שוב. אם השמירה הסתיימה ללא שגיאות, לחץ על <strong>הבא</strong>."),
         ("#nav-360", "עבור למסך <strong>360</strong>."),
-        ("#c360-tier", "שנה את סיווג הלקוח."),
+        ("#c360-tier", "בחר סיווג לקוח שאינו <strong>Platinum</strong>."),
         ("#c360-manager", "עדכן את מנהל תיק הלקוח."),
         ("#c360-mrr", "בדוק את המחזור החודשי. השרת דורש שהערך יכיל מספר."),
         ("#btn-save-360", "לחץ על <strong>שמור פרטי לקוח</strong>. תקן שגיאות ולידציה אם יוצגו. אם השמירה הסתיימה ללא שגיאות, לחץ על <strong>הבא</strong>."),
@@ -1783,6 +1783,9 @@ static void EnsureDemoSiteGuide(string databasePath)
 
         var instructionMigrations = new (string Selector, string OldInstruction, string NewInstruction)[]
         {
+            ("#c360-tier",
+                "שנה את סיווג הלקוח.",
+                "בחר סיווג לקוח שאינו <strong>Platinum</strong>."),
             ("#lead-source",
                 "שנה את מקור הליד.",
                 "בחר מקור ליד שאינו <strong>אתר אינטרנט</strong>."),
