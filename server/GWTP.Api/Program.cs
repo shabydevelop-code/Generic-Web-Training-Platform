@@ -1814,8 +1814,8 @@ static void EnsureValidationTestGuide(string databasePath)
             "בדיקת שינוי: נסה לעבור הלאה בלי לשנות את מספר הטלפון. לאחר החסימה שנה את המספר.",
             new ValidationRule("changed", "__changed__", "יש לשנות את מספר הטלפון לפני המעבר לשלב הבא.", "changed", "")),
         ("#site-phone",
-            "בדיקת שינוי ותבנית: שנה את מספר הטלפון. ערך שלא נראה כמספר טלפון ישראלי צריך להיחסם; מספר חדש ותקין צריך לאפשר מעבר.",
-            new ValidationRule("changed_regex", "^0\\d{8,9}$", "יש להזין מספר טלפון חדש ותקין.", "changed_regex", "^0\\d{8,9}$"))
+            "שנה את מספר הטלפון למספר חדש ותקין.",
+            new ValidationRule("changed_regex", "^0\\d{1,2}-?\\d{7}$", "יש להזין מספר טלפון חדש ותקין.", "changed_regex", "^0\\d{1,2}-?\\d{7}$"))
     };
 
     for (var index = 0; index < steps.Length; index++)
