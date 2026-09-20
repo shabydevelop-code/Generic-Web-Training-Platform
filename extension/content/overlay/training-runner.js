@@ -187,13 +187,20 @@ async function showTrainingStep(step, navigation = {}) {
   };
 
   const sessionResponse = await chrome.runtime.sendMessage({ type: "GWTP_VALIDATION_SESSION_GET" });
-  const validationSessionId = sessionResponse?.sessionId || "default";
+  const validationContext = sessionResponse?.context;
+  if (!validationContext) {
+    return { success: false, message: "Validation session context was not found." };
+  }
+
   const stepKey = [
-    validationSessionId,
-    navigation.mode || "learner",
+    validationContext.userId,
+    validationContext.tabId,
+    validationContext.sessionId,
+    validationContext.guideId,
+    navigation.mode || validationContext.mode || "learner",
     Number.isInteger(navigation.stepIndex) ? navigation.stepIndex : 0,
     step.selector
-  ].join("|");
+  ].join(":");
 
   let validationState = null;
   const usesChangedValidation =
