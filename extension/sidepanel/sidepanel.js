@@ -282,6 +282,8 @@ async function loadLearnerCatalog() {
     if (learnerCatalog.length === 1) {
       learnerTopicSelect.value = String(learnerCatalog[0].id);
       handleLearnerTopicChange();
+      learnerGuideSelect.value = "";
+      handleLearnerGuideChange();
     }
 
     learnerStatus.textContent = learnerCatalog.length === 0
