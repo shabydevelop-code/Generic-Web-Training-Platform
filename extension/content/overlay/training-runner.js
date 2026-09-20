@@ -1,3 +1,6 @@
+const GWTP_GUIDANCE_ACCENT = globalThis.gwtpVisualConfig?.guidanceAccent || "#D6008F";
+const GWTP_GUIDANCE_ACCENT_SHADOW = globalThis.gwtpVisualConfig?.guidanceAccentShadow || "rgba(214, 0, 143, 0.14)";
+
 let gwtpTrainingOverlay = null;
 let gwtpTrainingTarget = null;
 
@@ -36,7 +39,7 @@ function showTrainingStep(step, navigation = {}) {
 
   gwtpTrainingTarget = target;
   target.scrollIntoView({ behavior: "smooth", block: "center", inline: "center" });
-  target.style.setProperty("outline", "3px solid #2563eb", "important");
+  target.style.setProperty("outline", `3px solid ${GWTP_GUIDANCE_ACCENT}`, "important");
   target.style.setProperty("outline-offset", "3px", "important");
 
   const overlay = document.createElement("div");
@@ -45,11 +48,11 @@ function showTrainingStep(step, navigation = {}) {
   overlay.style.zIndex = "2147483647";
   overlay.style.maxWidth = "340px";
   overlay.style.padding = "16px 16px 14px";
-  overlay.style.border = "2px solid #2563eb";
-  overlay.style.borderTop = "3px solid #2563eb";
+  overlay.style.border = `2px solid ${GWTP_GUIDANCE_ACCENT}`;
+  overlay.style.borderTop = `3px solid ${GWTP_GUIDANCE_ACCENT}`;
   overlay.style.borderRadius = "12px";
   overlay.style.background = "#ffffff";
-  overlay.style.boxShadow = "0 10px 28px rgba(15, 23, 42, 0.22), 0 2px 7px rgba(37, 99, 235, 0.12)";
+  overlay.style.boxShadow = `0 10px 28px rgba(15, 23, 42, 0.22), 0 2px 7px ${GWTP_GUIDANCE_ACCENT_SHADOW}`;
   overlay.style.color = "#172033";
   overlay.style.font = "14px/1.45 system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
   const dragHandle = document.createElement("div");
