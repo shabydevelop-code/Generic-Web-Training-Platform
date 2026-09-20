@@ -78,6 +78,8 @@ Reset was verified to delete both guide and step progress as intended.
 - Changes to persistent/test database content must be delivered through GitHub as versioned repository changes.
 - Do not distribute a replacement `GWTP.db` as the normal project workflow. The developer should receive repository changes with `git pull origin main`.
 
+- Demo CRM regression: the Customer 360 tier instruction now explicitly tells the learner to choose a tier other than Platinum, matching its validation rule.
+
 ## Immediate next tasks
 1. Verify learner continuity across live-application postback/partial DOM or frame replacement: learning position must remain stable, no business actions may be replayed, and the active step should resume only when the relevant page/frame is ready.
 2. After that regression passes, review remaining editor/learner UX gaps before adding new capabilities.
