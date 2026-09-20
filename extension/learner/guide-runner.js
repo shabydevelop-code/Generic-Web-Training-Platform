@@ -1,6 +1,7 @@
 (function () {
   const VALIDATION_SESSION_PREFIX = "gwtp:validation-session:";
   let learnerRenderVersion = 0;
+  let pendingNavigationResumePromise = null;
 
   async function getActiveTabId() {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
@@ -299,7 +300,7 @@
     });
   }
 
-  async function resumePendingNavigation() {
+  async function resumePendingNavigationCore() {
     const tabId = await getActiveTabId();
     const pendingResponse = await chrome.runtime.sendMessage({
       type: "GWTP_TRAINING_PENDING_GET",
@@ -336,6 +337,21 @@
     await chrome.runtime.sendMessage({ type: "GWTP_TRAINING_PENDING_CLEAR", tabId });
     await showCurrentStep(moveResponse.current);
     return true;
+  }
+
+
+  async function resumePendingNavigation() {
+    // PAGE_READY is emitted by every loaded frame. A top page and its content frame
+    // can therefore report readiness almost simultaneously. Serialize the resume so
+    // only one event can consume a pending move and advance learner progress.
+    if (pendingNavigationResumePromise) return pendingNavigationResumePromise;
+
+    pendingNavigationResumePromise = resumePendingNavigationCore();
+    try {
+      return await pendingNavigationResumePromise;
+    } finally {
+      pendingNavigationResumePromise = null;
+    }
   }
 
   async function restoreActiveStep() {
