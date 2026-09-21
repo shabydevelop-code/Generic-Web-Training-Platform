@@ -1889,18 +1889,19 @@ function renderSteps() {
 }
 
 selectButton.addEventListener("click", async () => {
+  const language = window.i18nService.getLanguage();
   try {
     await window.messagingService.sendToAllFrames({ type: "GWTP_CLEAR_HIGHLIGHT" }).catch(() => {});
     activeStepId = null;
     markActiveStep(null);
     const responses = await window.messagingService.sendToAllFrames({ type: "GWTP_START_ELEMENT_PICKER" });
     const started = responses.some((item) => item.response?.success);
-    setStatus(started ? "Selection mode active." : "Could not start selection mode.", started ? "info" : "error");
-  } catch (error) {
     setStatus(
-      "This page cannot currently be controlled. Try a regular http/https page and reload it after updating the extension.",
-      "error"
+      window.i18nService.translate(started ? "selectionModeActive" : "selectionModeStartError", language),
+      started ? "info" : "error"
     );
+  } catch (error) {
+    setStatus(window.i18nService.translate("pageControlUnavailable", language), "error");
     console.error(error);
   }
 });
