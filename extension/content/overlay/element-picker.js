@@ -2,6 +2,8 @@ const PICKER_ATTRIBUTE = "data-gwtp-picker-hovered";
 
 let pickerActive = false;
 let hoveredElement = null;
+let keyboardPickerElement = null;
+let keyboardPickerOriginalTabIndex = null;
 
 function getFrameContext() {
   const isTop = window.top === window;
@@ -51,6 +53,16 @@ function stopElementPicker() {
 
   pickerActive = false;
   clearPickerHover();
+
+  if (keyboardPickerElement) {
+    if (keyboardPickerOriginalTabIndex == null) {
+      keyboardPickerElement.removeAttribute("tabindex");
+    } else {
+      keyboardPickerElement.setAttribute("tabindex", keyboardPickerOriginalTabIndex);
+    }
+    keyboardPickerElement = null;
+    keyboardPickerOriginalTabIndex = null;
+  }
   document.removeEventListener("mouseover", onPickerMouseOver, true);
   document.removeEventListener("click", onPickerClick, true);
   document.removeEventListener("keydown", onPickerKeyDown, true);
@@ -109,7 +121,7 @@ function onPickerKeyDown(event) {
   selectPickerElement(focusedElement);
 }
 
-function startElementPicker() {
+function startElementPicker(options = {}) {
   stopElementPicker();
   clearHighlight();
   pickerActive = true;
@@ -117,8 +129,34 @@ function startElementPicker() {
   document.addEventListener("click", onPickerClick, true);
   document.addEventListener("keydown", onPickerKeyDown, true);
 
+  if (options.keyboardStart === true) {
+    const candidates = [...document.querySelectorAll(
+      'a[href], button, input:not([type="hidden"]), select, textarea, [contenteditable="true"], [tabindex]'
+    )].filter((element) => {
+      if (!(element instanceof HTMLElement)) return false;
+      if (element.hidden || element.getAttribute("aria-hidden") === "true") return false;
+      if (element.matches("[disabled], [inert]")) return false;
+      const style = getComputedStyle(element);
+      if (style.display === "none" || style.visibility === "hidden") return false;
+      return element.getClientRects().length > 0;
+    });
+
+    const first = candidates[0] || document.body;
+    if (first instanceof HTMLElement) {
+      keyboardPickerElement = first;
+      keyboardPickerOriginalTabIndex = first.getAttribute("tabindex");
+      if (!first.matches('a[href], button, input, select, textarea, [contenteditable="true"], [tabindex]')) {
+        first.tabIndex = 0;
+      }
+      first.focus({ preventScroll: false });
+      first.scrollIntoView({ block: "nearest", inline: "nearest" });
+    }
+  }
+
   return {
     success: true,
-    message: "Selection mode active. Click an element, or focus it with the keyboard and press Enter. Press Escape to cancel."
+    message: options.keyboardStart === true
+      ? "Keyboard selection mode active. Focus moved to the page. Use Tab or Shift+Tab, press Enter to select, or Escape to cancel."
+      : "Selection mode active. Click an element, or focus it with the keyboard and press Enter. Press Escape to cancel."
   };
 }
