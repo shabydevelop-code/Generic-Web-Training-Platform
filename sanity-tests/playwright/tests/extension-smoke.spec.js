@@ -786,3 +786,102 @@ test("visual layout - Hebrew learner guidance uses RTL direction", async () => {
   await panel.close();
   await crm.close();
 });
+
+
+test("accessibility resilience - login supports keyboard submission", async () => {
+  const panel = await openPanel();
+  await panel.locator("#usernameInput").fill("sanity.learner");
+  await panel.locator("#passwordInput").fill(PASSWORD);
+  await panel.locator("#passwordInput").press("Enter");
+  await expect(panel.locator("#appView")).toBeVisible();
+  await expect(panel.locator("#learnModeView")).toBeVisible();
+  await panel.close();
+});
+
+test("accessibility resilience - learner primary controls are keyboard focusable", async () => {
+  const panel = await openPanel();
+  await login(panel, "sanity.learner");
+  const selectors = ["#learnerTopicSelect", "#learnerGuideSelect", "#startLearningButton"];
+  for (const selector of selectors) {
+    const control = panel.locator(selector);
+    await control.focus();
+    await expect(control).toBeFocused();
+  }
+  await panel.close();
+});
+
+test("accessibility resilience - completion dialog traps focus and closes with Escape", async () => {
+  const panel = await openPanel();
+  await login(panel, "sanity.learner");
+  const crm = await context.newPage();
+  await crm.goto(`${SITE_URL}/site.html`);
+  await crm.bringToFront();
+
+  const topic = panel.locator("#learnerTopicSelect option").filter({ hasText: "Demo CRM" });
+  await panel.locator("#learnerTopicSelect").selectOption(await topic.getAttribute("value"));
+  const validationGuide = panel.locator("#learnerGuideSelect option").filter({ hasText: "בדיקת כל חוקי הוולידציה" });
+  await panel.locator("#learnerGuideSelect").selectOption(await validationGuide.getAttribute("value"));
+  const restart = panel.locator("#restartLearningButton");
+  if (await restart.isVisible()) await restart.click();
+  else await panel.locator("#startLearningButton").click();
+
+  const content = crm.frameLocator('iframe[name="TargetContent"]');
+  const next = content.locator(".gwtp-training-overlay button").filter({ hasText: /הבא|Next/i });
+  await content.locator("#site-name").fill("TEST Accessibility");
+  await next.click();
+  await content.locator("#site-type").selectOption("branch");
+  await next.click();
+  await expect.poll(async () => panel.evaluate(async () => (await chrome.runtime.sendMessage({ type: "GWTP_TRAINING_GET_CURRENT" }))?.current?.stepIndex ?? null), { timeout: 10000 }).toBe(2);
+  await content.locator("#site-type").selectOption("hq");
+  await next.click();
+  await expect.poll(async () => panel.evaluate(async () => (await chrome.runtime.sendMessage({ type: "GWTP_TRAINING_GET_CURRENT" }))?.current?.stepIndex ?? null), { timeout: 10000 }).toBe(3);
+  await content.locator("#site-name").fill("TEST Accessibility");
+  await next.click();
+  await expect.poll(async () => panel.evaluate(async () => (await chrome.runtime.sendMessage({ type: "GWTP_TRAINING_GET_CURRENT" }))?.current?.stepIndex ?? null), { timeout: 10000 }).toBe(4);
+  let phone = content.locator("#site-phone");
+  const baseline = await phone.inputValue();
+  await phone.fill(baseline === "03-7654321" ? "03-7654322" : "03-7654321");
+  await next.click();
+  await expect.poll(async () => panel.evaluate(async () => (await chrome.runtime.sendMessage({ type: "GWTP_TRAINING_GET_CURRENT" }))?.current?.stepIndex ?? null), { timeout: 10000 }).toBe(5);
+  phone = content.locator("#site-phone");
+  const finalBaseline = await phone.inputValue();
+  await phone.fill(finalBaseline === "03-7654323" ? "03-7654324" : "03-7654323");
+  await content.locator(".gwtp-training-overlay button").filter({ hasText: /סיום|סיים|Finish/i }).click();
+
+  const dialog = content.locator('[role="dialog"][aria-modal="true"]');
+  await expect(dialog).toBeVisible({ timeout: 10000 });
+  await expect(dialog.locator("button")).toBeFocused();
+  await dialog.locator("button").press("Tab");
+  await expect(dialog.locator("button")).toBeFocused();
+  await dialog.locator("button").press("Escape");
+  await expect(dialog).toBeHidden();
+
+  await panel.close();
+  await crm.close();
+});
+
+test("accessibility resilience - learner recovery actions remain available after missing target", async () => {
+  const panel = await openPanel();
+  await login(panel, "sanity.learner");
+  const crm = await context.newPage();
+  await crm.goto(`${SITE_URL}/site.html`);
+  await crm.bringToFront();
+
+  const topic = panel.locator("#learnerTopicSelect option").filter({ hasText: "Demo CRM" });
+  await panel.locator("#learnerTopicSelect").selectOption(await topic.getAttribute("value"));
+  const guide = panel.locator("#learnerGuideSelect option").filter({ hasText: "תרגול מלא - Demo CRM" });
+  await panel.locator("#learnerGuideSelect").selectOption(await guide.getAttribute("value"));
+  const restart = panel.locator("#restartLearningButton");
+  if (await restart.isVisible()) await restart.click();
+  else await panel.locator("#startLearningButton").click();
+  await expect(crm.frameLocator('iframe[name="TargetContent"]').locator(".gwtp-training-overlay")).toBeVisible({ timeout: 10000 });
+
+  await crm.goto(`${SITE_URL}/leads.html`);
+  await panel.bringToFront();
+  await panel.locator("#exitLearningButton").click();
+  await expect(panel.locator("#learnerTopicSelect")).toBeEnabled();
+  await expect(panel.locator("#learnerGuideSelect")).toBeEnabled();
+
+  await panel.close();
+  await crm.close();
+});
