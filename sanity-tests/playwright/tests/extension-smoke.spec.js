@@ -261,6 +261,137 @@ test("learner required validation blocks Next until corrected", async () => {
 });
 
 
+test("stage 4 validation - equals, not-equals and contains block then allow Next", async () => {
+  const panel = await openPanel();
+  await login(panel, "sanity.learner");
+
+  const crm = await context.newPage();
+  await crm.goto(`${SITE_URL}/site.html`);
+  await crm.bringToFront();
+
+  const topic = panel.locator("#learnerTopicSelect option").filter({ hasText: "Demo CRM" });
+  await panel.locator("#learnerTopicSelect").selectOption(await topic.getAttribute("value"));
+  const guide = panel.locator("#learnerGuideSelect option").filter({ hasText: "בדיקת כל חוקי הוולידציה" });
+  await panel.locator("#learnerGuideSelect").selectOption(await guide.getAttribute("value"));
+
+  const restart = panel.locator("#restartLearningButton");
+  if (await restart.isVisible()) await restart.click();
+  else await panel.locator("#startLearningButton").click();
+
+  const content = crm.frameLocator('iframe[name="TargetContent"]');
+  const next = () => content.locator(".gwtp-training-overlay button").filter({ hasText: /הבא|Next/i });
+
+  // Step 1 required: satisfy it so this test can focus on the next three rule types.
+  await content.locator("#site-name").fill("Validation Site");
+  await next().click();
+  await expect(content.locator("#site-type")).toHaveCSS("outline-width", "3px");
+
+  // Step 2 equals(branch): a different value must block, branch must advance.
+  await content.locator("#site-type").selectOption("office");
+  await next().click();
+  await expect(content.locator(".gwtp-training-overlay")).toContainText("יש לבחור סניף מכירות");
+  await content.locator("#site-type").selectOption("branch");
+  await next().click();
+
+  // Step 3 not_equals(branch): branch must block, another real option must advance.
+  await content.locator("#site-type").selectOption("branch");
+  await next().click();
+  await expect(content.locator(".gwtp-training-overlay")).toContainText("יש לבחור סוג אתר שאינו סניף מכירות");
+  const alternativeValue = await content.locator("#site-type option").evaluateAll((options) =>
+    options.map((option) => option.value).find((value) => value && value !== "branch")
+  );
+  expect(alternativeValue).toBeTruthy();
+  await content.locator("#site-type").selectOption(alternativeValue);
+  await next().click();
+  await expect(content.locator("#site-name")).toHaveCSS("outline-width", "3px");
+
+  // Step 4 contains(TEST): missing token must block, token present must advance.
+  await content.locator("#site-name").fill("Validation Site");
+  await next().click();
+  await expect(content.locator(".gwtp-training-overlay")).toContainText("שם האתר חייב להכיל TEST");
+  await content.locator("#site-name").fill("Validation TEST Site");
+  await next().click();
+  await expect(content.locator("#site-phone")).toHaveCSS("outline-width", "3px");
+
+  await panel.close();
+  await crm.close();
+});
+
+
+test("stage 4 validation - changed and changed-regex block then allow Next", async () => {
+  const panel = await openPanel();
+  await login(panel, "sanity.learner");
+
+  const crm = await context.newPage();
+  await crm.goto(`${SITE_URL}/site.html`);
+  await crm.bringToFront();
+
+  const topic = panel.locator("#learnerTopicSelect option").filter({ hasText: "Demo CRM" });
+  await panel.locator("#learnerTopicSelect").selectOption(await topic.getAttribute("value"));
+  const guideOption = panel.locator("#learnerGuideSelect option").filter({ hasText: "בדיקת כל חוקי הוולידציה" });
+  const guideId = await guideOption.getAttribute("value");
+  await panel.locator("#learnerGuideSelect").selectOption(guideId);
+
+  // QA setup: use the same background progress API to position the dedicated sanity
+  // learner at step 5. This does not bypass validation during the assertions below.
+  const guide = await panel.evaluate(async (id) => {
+    const stored = await chrome.storage.local.get("gwtp.auth.user");
+    const auth = stored["gwtp.auth.user"];
+    const response = await fetch(`${globalThis.appConfig.api.baseUrl}/api/learner/guides/${id}`, {
+      headers: { Authorization: `Bearer ${auth.accessToken}` }
+    });
+    if (!response.ok) throw new Error("Unable to load validation guide.");
+    return response.json();
+  }, guideId);
+
+  await panel.evaluate(async (guideValue) => {
+    const restart = await chrome.runtime.sendMessage({ type: "GWTP_TRAINING_RESTART", guide: guideValue });
+    if (!restart?.success) throw new Error(restart?.message || "Unable to restart validation guide.");
+    for (let index = 0; index < 4; index += 1) {
+      const moved = await chrome.runtime.sendMessage({ type: "GWTP_TRAINING_NEXT" });
+      if (!moved?.success) throw new Error(moved?.message || "Unable to prepare changed validation step.");
+    }
+  }, guide);
+
+  // Continue from saved step 5 instead of navigating from step 1.
+  const start = panel.locator("#startLearningButton");
+  await expect(start).toContainText(/המשך למידה|Continue/i);
+  await crm.bringToFront();
+  await start.click();
+
+  const content = crm.frameLocator('iframe[name="TargetContent"]');
+  const phone = content.locator("#site-phone");
+  const next = () => content.locator(".gwtp-training-overlay button").filter({ hasText: /הבא|Next/i });
+  await expect(phone).toHaveCSS("outline-width", "3px", { timeout: 10000 });
+
+  // Step 5 changed: untouched baseline must block; a changed value must advance.
+  const baseline = await phone.inputValue();
+  await next().click();
+  await expect(content.locator(".gwtp-training-overlay")).toContainText("יש לשנות את מספר הטלפון");
+  const changed = baseline === "03-7654321" ? "03-7654322" : "03-7654321";
+  await phone.fill(changed);
+  await next().click();
+
+  // Step 6 changed_regex: unchanged value must block. Changed but invalid must also
+  // block. Only a new value matching the authored regex may complete the guide.
+  await expect(phone).toHaveCSS("outline-width", "3px");
+  const step6Baseline = await phone.inputValue();
+  await next().click();
+  await expect(content.locator(".gwtp-training-overlay")).toContainText("יש להזין מספר טלפון חדש ותקין");
+  await phone.fill("invalid-phone");
+  await next().click();
+  await expect(content.locator(".gwtp-training-overlay")).toContainText("יש להזין מספר טלפון חדש ותקין");
+
+  const validNewPhone = step6Baseline === "03-7654323" ? "03-7654324" : "03-7654323";
+  await phone.fill(validNewPhone);
+  await next().click();
+  await expect(content.locator(".gwtp-completion-dialog")).toBeVisible({ timeout: 10000 });
+
+  await panel.close();
+  await crm.close();
+});
+
+
 test("learner continues automatically across the Site to Case page transition", async () => {
   const panel = await openPanel();
   await login(panel, "sanity.learner");
