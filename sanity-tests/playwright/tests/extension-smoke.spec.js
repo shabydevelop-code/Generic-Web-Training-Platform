@@ -347,6 +347,46 @@ test("stage 5 management CRUD - editor creates, edits and deletes a guide and it
 });
 
 
+test("stage 5 editor management - metadata-only step edit does not require the target screen", async () => {
+  const panel = await openPanel();
+  await login(panel, "sanity.editor");
+
+  const guideCard = panel.locator("[data-guide-id]").filter({ hasText: "תרגול מלא - Demo CRM" }).first();
+  await expect(guideCard).toBeVisible();
+  await guideCard.click();
+
+  const firstStep = panel.locator("#stepsList .step-item").first();
+  await firstStep.click();
+  const originalScreenName = await panel.locator("#screenNameInput").inputValue();
+  const temporaryScreenName = `Stage5 Metadata ${Date.now()}`;
+
+  try {
+    // Keep the active browser page away from Demo CRM. Updating persisted metadata
+    // must not revalidate the unchanged business target against the current page.
+    const unrelated = await context.newPage();
+    await unrelated.goto("about:blank");
+    await unrelated.bringToFront();
+
+    await panel.locator("#screenNameInput").fill(temporaryScreenName);
+    await panel.locator("#saveStepButton").click();
+    await expect(panel.locator("#stepEditor")).toBeHidden();
+
+    await panel.locator("#stepsList .step-item").first().click();
+    await expect(panel.locator("#screenNameInput")).toHaveValue(temporaryScreenName);
+    await panel.locator("#screenNameInput").fill(originalScreenName);
+    await panel.locator("#saveStepButton").click();
+    await unrelated.close();
+  } finally {
+    // Best-effort restore if an assertion interrupted the normal restore path.
+    if (await panel.locator("#stepEditor").isVisible().catch(() => false)) {
+      await panel.locator("#screenNameInput").fill(originalScreenName).catch(() => {});
+      await panel.locator("#saveStepButton").click().catch(() => {});
+    }
+    await panel.close().catch(() => {});
+  }
+});
+
+
 test("stage 5 editor preview - navigation, validation and exit cleanup work through the real UI", async () => {
   const guideName = "Stage 5 Preview " + Date.now();
   const panel = await openPanel();
