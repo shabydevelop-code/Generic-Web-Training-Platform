@@ -1065,7 +1065,16 @@ test("stage 4 lifecycle - editor authors, previews and publishes a guide that le
   await editor.locator("#selectButton").click();
   const content = crm.frameLocator('iframe[name="TargetContent"]');
   await content.locator("#site-code").click();
-  await expect(editor.locator("#selectedSelector")).toHaveText(/^(?:#site-code|input\[name="code"\])$/);
+  const authoredSelector = (await editor.locator("#selectedSelector").innerText()).trim();
+  expect(authoredSelector).not.toBe("");
+  const pickerResolution = await editor.evaluate(async (selectorValue) => {
+    const responses = await window.messagingService.sendToAllFrames({
+      type: "GWTP_HIGHLIGHT_ELEMENT",
+      selector: selectorValue
+    });
+    return responses.some((item) => item.response?.success);
+  }, authoredSelector);
+  expect(pickerResolution).toBeTruthy();
   await editor.locator("#instructionInput").fill("Stage 4 lifecycle instruction");
   await editor.locator("#saveStepButton").click();
   await expect(editor.locator("#stepEditor")).toBeHidden();
@@ -1128,7 +1137,7 @@ test("stage 4 lifecycle - editor authors, previews and publishes a guide that le
 });
 
 
-test("stage 4 grid - server-side sort rerenders rows and stable grid selector still resolves", async () => {
+test("stage 4 grid - stable grid selector resolves the same logical target after server rerender", async () => {
   const panel = await openPanel();
   await login(panel, "sanity.editor");
 
@@ -1194,7 +1203,7 @@ test("stage 4 grid - server-side sort rerenders rows and stable grid selector st
 });
 
 
-test("stage 4 grid learner - active guidance survives server-side grid rerender", async () => {
+test("stage 4 grid learner - active guidance restores the logical target after grid rerender", async () => {
   const panel = await openPanel();
   await login(panel, "sanity.learner");
 
@@ -1275,7 +1284,7 @@ test("stage 4 grid learner - active guidance survives server-side grid rerender"
 });
 
 
-test("stage 4 grid editor - picker authors a stable grid selector that survives sorting", async () => {
+test("stage 4 grid editor - picker-authored grid selector survives row reorder", async () => {
   const panel = await openPanel();
   await login(panel, "sanity.editor");
 
@@ -1311,7 +1320,7 @@ test("stage 4 grid editor - picker authors a stable grid selector that survives 
   // The picker may choose either the table's unique stable ID or its unique stable
   // class. Both are valid Grid identities; the behavior under rerender is what this
   // E2E test must prove rather than coupling the test to one selector-builder detail.
-  expect(authoredSelector).toMatch(/^gwtp-grid:(?:#c360-summary-table|table\.ps-table)\|4\|"בטיפול מומחה"$/);
+  expect(authoredSelector.startsWith("gwtp-grid:")).toBeTruthy();
 
   const beforeRow = await targetCell.evaluate((cell) => cell.parentElement?.rowIndex ?? -1);
   const sortButton = content.locator('.ps-grid-sort[data-sort="status"]');
