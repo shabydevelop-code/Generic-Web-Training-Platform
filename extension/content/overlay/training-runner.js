@@ -80,6 +80,16 @@ async function showTrainingStep(step, navigation = {}) {
         }
       }).catch(() => {});
     }, { once: true });
+    target.addEventListener("keydown", (event) => {
+      if (event.key !== "Enter") return;
+      chrome.runtime.sendMessage({
+        type: "GWTP_TRAINING_PENDING_SET",
+        pending: {
+          direction: 1,
+          stepIndex: navigation.stepIndex
+        }
+      }).catch(() => {});
+    }, { once: true });
   }
 
   if (target && step.selector.startsWith("gwtp-grid:")) {
@@ -111,7 +121,10 @@ async function showTrainingStep(step, navigation = {}) {
   overlay.style.color = "#172033";
   overlay.style.font = "14px/1.45 system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
   const dragHandle = document.createElement("div");
-  dragHandle.setAttribute("aria-hidden", "true");
+  dragHandle.setAttribute("role", "button");
+  dragHandle.tabIndex = 0;
+  dragHandle.setAttribute("aria-label", navigation.labels?.moveGuidance || "Move guidance");
+  dragHandle.setAttribute("aria-keyshortcuts", "ArrowUp ArrowDown ArrowLeft ArrowRight");
   dragHandle.style.height = "14px";
   dragHandle.style.margin = "-10px -10px 8px";
   dragHandle.style.cursor = "move";
@@ -183,6 +196,29 @@ async function showTrainingStep(step, navigation = {}) {
 
   dragHandle.addEventListener("pointerup", stopDragging);
   dragHandle.addEventListener("pointercancel", stopDragging);
+  dragHandle.addEventListener("focus", () => {
+    dragHandle.style.outline = "2px solid #2563eb";
+    dragHandle.style.outlineOffset = "2px";
+  });
+  dragHandle.addEventListener("blur", () => {
+    dragHandle.style.outline = "none";
+  });
+  dragHandle.addEventListener("keydown", (event) => {
+    const offsets = {
+      ArrowUp: [0, -10],
+      ArrowDown: [0, 10],
+      ArrowLeft: [-10, 0],
+      ArrowRight: [10, 0]
+    };
+    const offset = offsets[event.key];
+    if (!offset) return;
+
+    event.preventDefault();
+    const rect = overlay.getBoundingClientRect();
+    const position = clampOverlayPosition(rect.left + offset[0], rect.top + offset[1]);
+    overlay.style.left = `${position.left}px`;
+    overlay.style.top = `${position.top}px`;
+  });
 
   const instructionHost = document.createElement("div");
   instructionHost.id = `gwtp-training-instruction-${Date.now()}`;
@@ -403,6 +439,21 @@ async function showTrainingStep(step, navigation = {}) {
         // Otherwise its blur/change handler may start a postback and destroy this frame
         // before chrome.storage.session has received the navigation intent.
         event.preventDefault();
+        focusBeforeNavigation = document.activeElement;
+        pendingNavigationPromise = chrome.runtime.sendMessage({
+          type: "GWTP_TRAINING_PENDING_SET",
+          pending: {
+            direction: action === "GWTP_TRAINING_NEXT" ? 1 : -1,
+            stepIndex: Number.isInteger(navigation.stepIndex) ? navigation.stepIndex : 0
+          }
+        });
+      });
+      button.addEventListener("keydown", (event) => {
+        if (
+          (event.key !== "Enter" && event.key !== " ") ||
+          (action !== "GWTP_TRAINING_NEXT" && action !== "GWTP_TRAINING_PREVIOUS")
+        ) return;
+
         focusBeforeNavigation = document.activeElement;
         pendingNavigationPromise = chrome.runtime.sendMessage({
           type: "GWTP_TRAINING_PENDING_SET",
