@@ -924,14 +924,39 @@ test("stage 4 grid - server-side sort rerenders rows and stable grid selector st
   const originalRow = await targetCell.evaluate((cell) => cell.parentElement?.rowIndex ?? -1);
 
   const stableSelector = 'gwtp-grid:#c360-summary-table|1|"LD-3094"';
-  const initialResolve = await content.locator("body").evaluate((_, selector) => {
-    const result = findElement(selector);
-    return {
-      found: Boolean(result?.element),
-      text: result?.element?.innerText?.trim() || ""
-    };
-  }, stableSelector);
-  expect(initialResolve).toEqual({ found: true, text: "LD-3094" });
+  const resolveGridSelector = async (selector) => {
+    const result = await crm.evaluate(async ({ selector, frameName }) => {
+      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      if (!tab?.id) return { found: false, text: "", error: "Active tab not found." };
+
+      const executions = await chrome.scripting.executeScript({
+        target: { tabId: tab.id, allFrames: true },
+        func: (candidateSelector, candidateFrameName) => {
+          if (window.name !== candidateFrameName || typeof findElement !== "function") {
+            return null;
+          }
+          const found = findElement(candidateSelector);
+          return {
+            found: Boolean(found?.element),
+            text: found?.element?.innerText?.trim() || "",
+            error: found?.error || null
+          };
+        },
+        args: [selector, frameName]
+      });
+
+      return executions.map((entry) => entry.result).find(Boolean) || {
+        found: false,
+        text: "",
+        error: "Matching frame or GWTP content script not found."
+      };
+    }, { selector, frameName: "TargetContent" });
+
+    return result;
+  };
+
+  const initialResolve = await resolveGridSelector(stableSelector);
+  expect(initialResolve).toEqual({ found: true, text: "LD-3094", error: null });
 
   const sortButton = content.locator('.ps-grid-sort[data-sort="referenceNumber"]');
   await sortButton.click();
@@ -948,14 +973,8 @@ test("stage 4 grid - server-side sort rerenders rows and stable grid selector st
   const sortedRow = await targetCell.evaluate((cell) => cell.parentElement?.rowIndex ?? -1);
   expect(sortedRow).not.toBe(originalRow);
 
-  const afterSortResolve = await content.locator("body").evaluate((_, selector) => {
-    const result = findElement(selector);
-    return {
-      found: Boolean(result?.element),
-      text: result?.element?.innerText?.trim() || ""
-    };
-  }, stableSelector);
-  expect(afterSortResolve).toEqual({ found: true, text: "LD-3094" });
+  const afterSortResolve = await resolveGridSelector(stableSelector);
+  expect(afterSortResolve).toEqual({ found: true, text: "LD-3094", error: null });
 
   await panel.close();
   await crm.close();
