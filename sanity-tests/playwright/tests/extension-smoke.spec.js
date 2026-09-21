@@ -306,6 +306,17 @@ test("learner continues automatically across the Site to Case page transition", 
     const next = overlay.locator("button").filter({ hasText: /הבא|Next/i });
     await expect(next).toBeEnabled();
     await next.click();
+
+    // Do not race the runner. The target for the following step may already be
+    // highlighted while the asynchronous progress move is still being persisted.
+    // Advance the test only after the engine confirms the new current step.
+    await expect.poll(async () => panel.evaluate(async () => {
+      const response = await chrome.runtime.sendMessage({ type: "GWTP_TRAINING_GET_CURRENT" });
+      return response?.current?.stepIndex ?? null;
+    }), {
+      message: `GWTP progress did not advance after Site step ${step}`,
+      timeout: 10000
+    }).toBe(step);
   }
 
   // Verify the engine itself reached the native-link step before testing the
