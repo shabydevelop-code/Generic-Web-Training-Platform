@@ -170,7 +170,8 @@ Later accessibility phases must add their own concrete regression checks to this
 ## Automated sanity testing
 - A repeatable non-destructive Stage 1/2 sanity runner now exists at `sanity-tests/gwtp-sanity.ps1`.
 - It verifies API health, database health/schema availability, Demo CRM site availability, anonymous authorization boundaries for learner/admin APIs, and rejection of invalid credentials.
-- Stage 2 adds read-only authenticated checks: development-admin login/token/role, protected users access, editor-only role separation, and authenticated learner catalog access.
+- Stage 2 adds read-only authenticated checks: dedicated sanity-admin login/token/role, protected users access, editor-only role separation, and authenticated learner catalog access.
+- Versioned migration `20260921_sanity_test_users_v1` creates isolated `sanity.admin`, `sanity.editor`, and `sanity.learner` fixtures with deterministic test credentials so sanity runs do not depend on passwords or state of normal working accounts.
 - The runner does not create/update/delete guides, users, topics, or learner progress and is safe to run against the normal local development stack.
 - It returns process exit code 0 on full success and 1 on any failure, allowing later CI/deployment integration.
 - `sanity-tests/README.md` documents execution and the staged plan. The next sanity stage is visual browser/extension end-to-end coverage; destructive API fixture tests can be added later only where they provide additional value.
