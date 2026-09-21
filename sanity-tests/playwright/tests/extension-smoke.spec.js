@@ -1458,6 +1458,52 @@ test("editor sidepanel fits a narrow viewport", async () => {
 });
 
 
+test("stage 6 accessibility - editor reflows at 200 percent zoom", async () => {
+  const panel = await openPanel();
+  await panel.setViewportSize({ width: 640, height: 720 });
+  await login(panel, "sanity.editor");
+  await expect(panel.locator("#createModeView")).toBeVisible();
+
+  // Chromium page zoom is not exposed as a stable Playwright API for extension
+  // pages. Emulate 200% reflow by halving the available CSS viewport width while
+  // keeping the normal Side Panel content contract under test.
+  await panel.setViewportSize({ width: 320, height: 720 });
+
+  const guideCard = panel.locator("[data-guide-id]").filter({ hasText: "תרגול מלא - Demo CRM" }).first();
+  await expect(guideCard).toBeVisible();
+  await guideCard.click();
+
+  const firstStep = panel.locator("#stepsList .step-item").first();
+  await expect(firstStep).toBeVisible();
+  await firstStep.click();
+  await expect(panel.locator("#stepEditor")).toBeVisible();
+
+  const layout = await panel.evaluate(() => ({
+    viewport: document.documentElement.clientWidth,
+    page: document.documentElement.scrollWidth
+  }));
+  expect(layout.page).toBeLessThanOrEqual(layout.viewport + 1);
+
+  const controls = panel.locator("#createModeView button:visible, #createModeView input:visible, #createModeView select:visible, #createModeView [contenteditable='true']:visible");
+  const count = await controls.count();
+  expect(count).toBeGreaterThan(0);
+
+  for (let index = 0; index < count; index++) {
+    const control = controls.nth(index);
+    const box = await control.boundingBox();
+    if (!box) continue;
+    expect(box.x).toBeGreaterThanOrEqual(-1);
+    expect(box.x + box.width).toBeLessThanOrEqual(321);
+  }
+
+  for (const selector of ["#selectButton", "#screenNameInput", "#instructionInput", "#saveStepButton", "#cancelStepButton"]) {
+    await expect(panel.locator(selector)).toBeVisible();
+  }
+
+  await panel.close();
+});
+
+
 test("visual layout - admin sidepanel fits a narrow viewport", async () => {
   const panel = await openPanel();
   await panel.setViewportSize({ width: 320, height: 720 });
