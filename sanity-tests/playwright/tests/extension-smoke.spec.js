@@ -422,11 +422,17 @@ test("stage 5 editor preview - navigation, validation and exit cleanup work thro
 });
 
 test("stage 5 editor management - persisted step reorder survives reopening the guide", async () => {
+  // Diagnostic guard: this test should never need the suite-wide 30s timeout.
+  // Fail the exact Playwright action/assertion quickly so a hang identifies its stage.
+  test.setTimeout(20000);
   const guideName = "Stage 5 Reorder " + Date.now();
   const panel = await openPanel();
+  panel.setDefaultTimeout(4000);
   let crm = null;
   try {
-    await login(panel, "sanity.editor");
+    await test.step("login as editor", async () => {
+      await login(panel, "sanity.editor");
+    });
     crm = await context.newPage();
     await crm.goto(SITE_URL + "/site.html");
     await crm.bringToFront();
