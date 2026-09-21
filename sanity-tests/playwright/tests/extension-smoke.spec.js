@@ -1563,6 +1563,192 @@ test("stage 6 resilience batch - logout during learning clears UI session withou
 });
 
 
+test("stage 6 GUI forms batch - required markers and error regions are adjacent and programmatic", async () => {
+  const panel = await openPanel();
+
+  const loginChecks = [
+    ["#usernameInput", "#loginStatus"],
+    ["#passwordInput", "#loginStatus"]
+  ];
+  for (const [field, status] of loginChecks) {
+    await expect(panel.locator(field)).toHaveAttribute("aria-describedby", status.slice(1));
+    await expect(panel.locator(`label[for="${field.slice(1)}"] .required-marker`)).toBeVisible();
+  }
+  const loginOrder = await panel.evaluate(() => {
+    const button = document.querySelector("#loginButton");
+    const status = document.querySelector("#loginStatus");
+    return Boolean(button && status && (button.compareDocumentPosition(status) & Node.DOCUMENT_POSITION_FOLLOWING));
+  });
+  expect(loginOrder).toBeTruthy();
+
+  await panel.locator("#usernameInput").fill("x");
+  await panel.locator("#loginButton").click();
+  await expect(panel.locator("#loginStatus")).not.toHaveText("");
+  await expect(panel.locator("#loginView")).toBeVisible();
+
+  await panel.close();
+});
+
+test("stage 6 GUI forms batch - admin required validation stays local, visible and reflow-safe", async () => {
+  const panel = await openPanel();
+  await panel.setViewportSize({ width: 320, height: 720 });
+  await login(panel, "sanity.admin");
+  await panel.locator("#openCreateUserButton").click();
+
+  for (const selector of ["#newDisplayName", "#newUsername", "#newPassword", "#newRole"]) {
+    await expect(panel.locator(selector)).toHaveAttribute("required", "");
+    await expect(panel.locator(selector)).toHaveAttribute("aria-required", "true");
+    await expect(panel.locator(`label[for="${selector.slice(1)}"] .required-marker`)).toBeVisible();
+  }
+
+  await panel.locator("#createUserButton").click();
+  const status = panel.locator("#createUserStatus");
+  await expect(status).not.toHaveText("");
+  await expect(status).toHaveAttribute("data-type", "error");
+  await expect(panel.locator("#createUserCard")).toBeVisible();
+
+  const geometry = await panel.evaluate(() => {
+    const card = document.querySelector("#createUserCard").getBoundingClientRect();
+    const status = document.querySelector("#createUserStatus").getBoundingClientRect();
+    const actions = document.querySelector("#createUserCard .actions").getBoundingClientRect();
+    return {
+      overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+      statusInside: status.left >= card.left - 1 && status.right <= card.right + 1,
+      statusBeforeActions: status.bottom <= actions.top + 1
+    };
+  });
+  expect(geometry.overflow).toBeLessThanOrEqual(1);
+  expect(geometry.statusInside).toBeTruthy();
+  expect(geometry.statusBeforeActions).toBeTruthy();
+
+  await panel.locator("#closeCreateUserButton").click();
+  await panel.locator("#openCreateUserButton").click();
+  await expect(panel.locator("#createUserStatus")).toHaveText("");
+
+  await panel.close();
+});
+
+test("stage 6 GUI forms batch - topic required error is local and clears when editor is reopened", async () => {
+  const panel = await openPanel();
+  await login(panel, "sanity.editor");
+  await panel.locator("#openTopicsButton").click();
+  await panel.locator("#openCreateTopicButton").click();
+
+  await expect(panel.locator("#newTopicInput")).toHaveAttribute("required", "");
+  await expect(panel.locator("#newTopicInput")).toHaveAttribute("aria-required", "true");
+  await expect(panel.locator('label[for="newTopicInput"] .required-marker')).toBeVisible();
+
+  await panel.locator("#createTopicButton").click();
+  await expect(panel.locator("#topicStatus")).not.toHaveText("");
+  await expect(panel.locator("#topicStatus")).toHaveAttribute("data-type", "error");
+
+  const local = await panel.evaluate(() => {
+    const input = document.querySelector("#newTopicInput").getBoundingClientRect();
+    const status = document.querySelector("#topicStatus").getBoundingClientRect();
+    return status.top >= input.bottom && status.left >= document.querySelector("#createTopicEditor").getBoundingClientRect().left - 1;
+  });
+  expect(local).toBeTruthy();
+
+  await panel.locator("#cancelCreateTopicButton").click();
+  await panel.locator("#openCreateTopicButton").click();
+  await expect(panel.locator("#topicStatus")).toHaveText("");
+
+  await panel.close();
+});
+
+test("stage 6 GUI forms batch - guide required errors stay with guide details and recover after correction", async () => {
+  const panel = await openPanel();
+  await login(panel, "sanity.editor");
+  await panel.locator("#openNewGuideButton").click();
+
+  for (const selector of ["#topicSelect", "#guideNameInput", "#guideStartUrlInput"]) {
+    await expect(panel.locator(selector)).toHaveAttribute("required", "");
+    await expect(panel.locator(selector)).toHaveAttribute("aria-required", "true");
+    await expect(panel.locator(`label[for="${selector.slice(1)}"] .required-marker`)).toBeVisible();
+  }
+
+  await panel.locator("#guideNameInput").fill("");
+  await panel.locator("#guideStartUrlInput").fill("not-a-url");
+  await panel.locator("#saveGuideButton").click();
+  await expect(panel.locator("#saveGuideStatus")).not.toHaveText("");
+  await expect(panel.locator("#saveGuideStatus")).toHaveAttribute("data-type", "error");
+  await expect(panel.locator("#guideEditorView")).toBeVisible();
+
+  const placement = await panel.evaluate(() => {
+    const status = document.querySelector("#saveGuideStatus").getBoundingClientRect();
+    const actions = document.querySelector(".guide-editor-actions").getBoundingClientRect();
+    return status.bottom <= actions.top + 1;
+  });
+  expect(placement).toBeTruthy();
+
+  await panel.locator("#guideNameInput").fill("Stage 6 GUI temporary");
+  await panel.locator("#guideStartUrlInput").fill(`${SITE_URL}/site.html`);
+  await expect(panel.locator("#saveGuideButton")).toBeEnabled();
+
+  await panel.close();
+});
+
+test("stage 6 GUI forms batch - step required feedback is local, semantic and does not leak after close", async () => {
+  const panel = await openPanel();
+  await login(panel, "sanity.editor");
+
+  const guideCard = panel.locator("[data-guide-id]").filter({ hasText: "תרגול מלא - Demo CRM" }).first();
+  await guideCard.click();
+  await panel.locator("#addStepButton").click();
+
+  await expect(panel.locator("#instructionInput")).toHaveAttribute("aria-required", "true");
+  await expect(panel.locator("#instructionInput")).toHaveAttribute("aria-describedby", "status");
+  await expect(panel.locator('label[for="instructionInput"] .required-marker')).toBeVisible();
+
+  await panel.locator("#saveStepButton").click();
+  await expect(panel.locator("#status")).not.toHaveText("");
+  await expect(panel.locator("#status")).toHaveAttribute("data-type", "error");
+  await expect(panel.locator("#stepEditor")).toBeVisible();
+
+  const placement = await panel.evaluate(() => {
+    const status = document.querySelector("#status").getBoundingClientRect();
+    const actions = document.querySelector("#stepEditor .actions").getBoundingClientRect();
+    return status.bottom <= actions.top + 1;
+  });
+  expect(placement).toBeTruthy();
+
+  await panel.locator("#cancelStepButton").click();
+  await expect(panel.locator("#stepEditor")).toBeHidden();
+  await panel.locator("#addStepButton").click();
+  await expect(panel.locator("#status")).toHaveText("");
+
+  await panel.close();
+});
+
+test("stage 6 GUI forms batch - long error messages remain contained at narrow reflow", async () => {
+  const panel = await openPanel();
+  await panel.setViewportSize({ width: 320, height: 720 });
+  await login(panel, "sanity.editor");
+  await panel.locator("#openNewGuideButton").click();
+
+  await panel.locator("#guideNameInput").fill("");
+  await panel.locator("#guideStartUrlInput").fill("x");
+  await panel.locator("#saveGuideButton").click();
+  await expect(panel.locator("#saveGuideStatus")).not.toHaveText("");
+
+  const metrics = await panel.evaluate(() => {
+    const status = document.querySelector("#saveGuideStatus");
+    status.textContent = status.textContent + " " + "LongErrorSegmentWithoutSpaces".repeat(8);
+    const rect = status.getBoundingClientRect();
+    const card = document.querySelector(".guide-details-card").getBoundingClientRect();
+    return {
+      pageWidth: document.documentElement.scrollWidth,
+      viewportWidth: document.documentElement.clientWidth,
+      contained: rect.left >= card.left - 1 && rect.right <= card.right + 1
+    };
+  });
+  expect(metrics.pageWidth).toBeLessThanOrEqual(metrics.viewportWidth + 1);
+  expect(metrics.contained).toBeTruthy();
+
+  await panel.close();
+});
+
+
 test("learner sidepanel fits a narrow viewport", async () => {
   const panel = await openPanel();
   await panel.setViewportSize({ width: 320, height: 720 });
