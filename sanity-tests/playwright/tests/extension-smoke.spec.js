@@ -900,3 +900,63 @@ test("accessibility resilience - learner recovery actions remain available after
   await panel.close();
   await crm.close();
 });
+
+
+test("stage 4 grid - server-side sort rerenders rows and stable grid selector still resolves", async () => {
+  const panel = await openPanel();
+  await login(panel, "sanity.editor");
+
+  const crm = await context.newPage();
+  const sortResponses = [];
+  crm.on("response", (response) => {
+    if (response.url().includes("/api/customers/10082?") && response.request().method() === "GET") {
+      sortResponses.push(response.url());
+    }
+  });
+
+  await crm.goto(`${SITE_URL}/customer360.html`);
+  const content = crm.frameLocator('iframe[name="TargetContent"]');
+  const table = content.locator("#c360-summary-table");
+  await expect(table).toBeVisible({ timeout: 10000 });
+
+  const targetCell = table.locator("tbody td").filter({ hasText: "LD-3094" }).first();
+  await expect(targetCell).toBeVisible();
+  const originalRow = await targetCell.evaluate((cell) => cell.parentElement?.rowIndex ?? -1);
+
+  const stableSelector = 'gwtp-grid:#c360-summary-table|1|"LD-3094"';
+  const initialResolve = await content.locator("body").evaluate((_, selector) => {
+    const result = findElement(selector);
+    return {
+      found: Boolean(result?.element),
+      text: result?.element?.innerText?.trim() || ""
+    };
+  }, stableSelector);
+  expect(initialResolve).toEqual({ found: true, text: "LD-3094" });
+
+  const sortButton = content.locator('.ps-grid-sort[data-sort="referenceNumber"]');
+  await sortButton.click();
+
+  await expect.poll(() => sortResponses.some((url) =>
+    url.includes("sort=referenceNumber") && url.includes("direction=desc")
+  ), {
+    message: "Customer 360 sort did not issue the expected server request",
+    timeout: 10000
+  }).toBeTruthy();
+
+  await expect(sortButton).toHaveAttribute("aria-sort", "descending");
+  await expect(targetCell).toBeVisible();
+  const sortedRow = await targetCell.evaluate((cell) => cell.parentElement?.rowIndex ?? -1);
+  expect(sortedRow).not.toBe(originalRow);
+
+  const afterSortResolve = await content.locator("body").evaluate((_, selector) => {
+    const result = findElement(selector);
+    return {
+      found: Boolean(result?.element),
+      text: result?.element?.innerText?.trim() || ""
+    };
+  }, stableSelector);
+  expect(afterSortResolve).toEqual({ found: true, text: "LD-3094" });
+
+  await panel.close();
+  await crm.close();
+});
