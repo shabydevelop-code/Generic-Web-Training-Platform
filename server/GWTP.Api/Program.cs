@@ -47,6 +47,7 @@ if (!File.Exists(schemaPath))
 
 InitializeDatabase(databasePath, schemaPath);
 ApplyDatabaseMigrations(databasePath);
+ApplySanityTestUsersMigration(databasePath);
 EnsureDevelopmentAdmin(databasePath);
 EnsureDemoSiteGuide(databasePath);
 ApplyDemoScreenNameMigration(databasePath);
@@ -1456,6 +1457,82 @@ static void ApplyOneTimeMigration(SqliteConnection connection, string migrationI
     markCommand.CommandText = "INSERT INTO SchemaMigrations (Id) VALUES ($id);";
     markCommand.Parameters.AddWithValue("$id", migrationId);
     markCommand.ExecuteNonQuery();
+}
+
+static void ApplySanityTestUsersMigration(string databasePath)
+{
+    const string migrationId = "20260921_sanity_test_users_v1";
+    var testUsers = new (string Username, string DisplayName, string Password, string Role)[]
+    {
+        ("sanity.admin", "GWTP Sanity Admin", "Sanity2026!", "admin"),
+        ("sanity.editor", "GWTP Sanity Editor", "Sanity2026!", "editor"),
+        ("sanity.learner", "GWTP Sanity Learner", "Sanity2026!", "learner")
+    };
+
+    using var connection = OpenConnection(databasePath);
+    ApplyOneTimeMigration(connection, migrationId, () =>
+    {
+        var passwordHasher = new PasswordHasher<object>();
+
+        foreach (var testUser in testUsers)
+        {
+            using var transaction = connection.BeginTransaction();
+
+            using var lookupCommand = connection.CreateCommand();
+            lookupCommand.Transaction = transaction;
+            lookupCommand.CommandText = "SELECT Id FROM Users WHERE Username = $username COLLATE NOCASE;";
+            lookupCommand.Parameters.AddWithValue("$username", testUser.Username);
+            var existingId = lookupCommand.ExecuteScalar();
+
+            long userId;
+            var passwordHash = passwordHasher.HashPassword(new object(), testUser.Password);
+
+            if (existingId is null)
+            {
+                using var userCommand = connection.CreateCommand();
+                userCommand.Transaction = transaction;
+                userCommand.CommandText = """
+                    INSERT INTO Users (Username, DisplayName, PasswordHash, IsActive)
+                    VALUES ($username, $displayName, $passwordHash, 1);
+                    SELECT last_insert_rowid();
+                    """;
+                userCommand.Parameters.AddWithValue("$username", testUser.Username);
+                userCommand.Parameters.AddWithValue("$displayName", testUser.DisplayName);
+                userCommand.Parameters.AddWithValue("$passwordHash", passwordHash);
+                userId = Convert.ToInt64(userCommand.ExecuteScalar());
+            }
+            else
+            {
+                userId = Convert.ToInt64(existingId);
+                using var userCommand = connection.CreateCommand();
+                userCommand.Transaction = transaction;
+                userCommand.CommandText = """
+                    UPDATE Users
+                    SET DisplayName = $displayName, PasswordHash = $passwordHash, IsActive = 1
+                    WHERE Id = $id;
+                    """;
+                userCommand.Parameters.AddWithValue("$displayName", testUser.DisplayName);
+                userCommand.Parameters.AddWithValue("$passwordHash", passwordHash);
+                userCommand.Parameters.AddWithValue("$id", userId);
+                userCommand.ExecuteNonQuery();
+            }
+
+            using var deleteRolesCommand = connection.CreateCommand();
+            deleteRolesCommand.Transaction = transaction;
+            deleteRolesCommand.CommandText = "DELETE FROM UserRoles WHERE UserId = $userId;";
+            deleteRolesCommand.Parameters.AddWithValue("$userId", userId);
+            deleteRolesCommand.ExecuteNonQuery();
+
+            using var roleCommand = connection.CreateCommand();
+            roleCommand.Transaction = transaction;
+            roleCommand.CommandText = "INSERT INTO UserRoles (UserId, Role) VALUES ($userId, $role);";
+            roleCommand.Parameters.AddWithValue("$userId", userId);
+            roleCommand.Parameters.AddWithValue("$role", testUser.Role);
+            roleCommand.ExecuteNonQuery();
+
+            transaction.Commit();
+        }
+    });
 }
 
 static void ApplyDatabaseMigrations(string databasePath)
