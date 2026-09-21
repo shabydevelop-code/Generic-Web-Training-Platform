@@ -1184,3 +1184,18 @@ body {
 .step-validation .form-field {
   margin: 0;
 }
+
+
+.guide-item__meta {
+  display: grid;
+  gap: 3px;
+  margin-top: 7px;
+}
+
+.guide-item .guide-item__meta-row {
+  display: block;
+  margin-top: 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: #667085;
+}
