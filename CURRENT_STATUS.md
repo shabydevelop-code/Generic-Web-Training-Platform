@@ -199,6 +199,7 @@ Later accessibility phases must add their own concrete regression checks to this
 - Initial coverage verifies the Demo CRM receives the GWTP content script and checks role-specific UI boundaries for `sanity.learner`, `sanity.editor`, and `sanity.admin`.
 - Stage 3 currently requires a headed Chromium run because extension loading is part of the test environment.
 - No application data is mutated by the initial suite.
+- Added the first real learner E2E smoke: Playwright opens Demo CRM, logs in as the sanity learner, selects `Demo CRM` / `תרגול מלא - Demo CRM`, starts learning, and verifies that a visible guidance overlay and highlighted target are rendered in the live CRM frame.
 - Initial Stage 3 Playwright foundation was executed locally on 2026-09-21 and verified successfully: 4/4 PASS (Demo CRM/content-script readiness, learner role UI, editor role UI, admin role UI).
 - Playwright/browser sanity assets are development/QA-only and must not be included in the future customer installation/package.
 
