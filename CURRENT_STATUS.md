@@ -13,6 +13,12 @@ Last updated: 2026-09-21
 - Deployment now treats an already-stopped service as valid and waits on the observed service state rather than relying on the transient return code from `sc.exe stop`.
 - This fixes the failure where a cleanly stopped service was incorrectly reported as a deployment failure before published files were copied.
 
+### API role authorization status handling
+- Stage 2 sanity testing exposed that role-mismatch endpoint filters were producing HTTP 500 when returning `Results.Forbid()` without an ASP.NET authentication scheme.
+- Admin, editor topics, and editor guides filters now return an explicit HTTP 403 response for authenticated users lacking the required role.
+- Anonymous or invalid session tokens continue to return HTTP 401.
+- Re-run Stage 1/2 sanity after deployment; expected result is 10/10 PASS before Stage 3 visual E2E begins.
+
 ## Repository rule
 Every functional or architectural code change must update this file in the same change set. Completed work must not remain documented as pending.
 
