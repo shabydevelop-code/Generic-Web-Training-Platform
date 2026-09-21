@@ -237,3 +237,5 @@ Later accessibility phases must add their own concrete regression checks to this
 - Stage 3 Playwright suite verified locally at **9/9 PASS** after making the tests independent of iframe replacement and persisted Demo CRM phone data. Test 9 confirms a real Site server save, TargetContent reload, preserved learner progress, and restored guidance/highlight.
 
 - Stage 3 test 10 added (pending local verification): `learner can reopen the extension and resume saved progress`. It restarts the full Demo CRM guide, advances to zero-based stepIndex 1 (`#site-name`), closes the extension page without resetting server progress, opens a fresh sidepanel document using the persisted authenticated session, verifies `Continue Learning` plus `Restart` are offered, resumes, and verifies both engine progress and visible guidance return to `#site-name`.
+
+- Stage 3 Playwright suite verified locally at **10/10 PASS**. Test 10 confirms persisted learner progress survives closing/reopening the extension UI, the learner is offered Continue/Restart, and Continue restores zero-based stepIndex 1 with visible guidance on `#site-name` without replaying prior business actions.
