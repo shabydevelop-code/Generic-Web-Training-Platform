@@ -218,6 +218,130 @@ test("stage 4 filters - step screen filter changes visibility without changing s
 });
 
 
+
+test("stage 5 management CRUD - admin creates, edits and deletes a user through the UI", async () => {
+  const suffix = Date.now();
+  const username = "stage5.user." + suffix;
+  const displayName = "Stage 5 User " + suffix;
+  const updatedName = "Stage 5 Updated " + suffix;
+  const panel = await openPanel();
+  await login(panel, "sanity.admin");
+  try {
+    await panel.locator("#openCreateUserButton").click();
+    await panel.locator("#newDisplayName").fill(displayName);
+    await panel.locator("#newUsername").fill(username);
+    await panel.locator("#newPassword").fill("Stage5Pass!");
+    await panel.locator("#newRole").selectOption("editor");
+    await panel.locator("#createUserButton").click();
+    let card = panel.locator("#usersList [data-user-id]").filter({ hasText: username }).first();
+    await expect(card).toBeVisible();
+    await expect(card).toContainText(/עורך|Editor/i);
+    await card.click();
+    await panel.locator("#editDisplayName").fill(updatedName);
+    await panel.locator("#editRole").selectOption("learner");
+    await panel.locator("#editIsActive").uncheck();
+    await panel.locator("#saveUserButton").click();
+    card = panel.locator("#usersList [data-user-id]").filter({ hasText: username }).first();
+    await expect(card).toBeVisible();
+    await expect(card).toContainText(updatedName);
+    await expect(card).toContainText(/לומד|Learner/i);
+    await expect(card).toContainText(/לא פעיל|Inactive/i);
+    await card.click();
+    await panel.locator("#deleteEditedUserButton").click();
+    await panel.locator("#confirmDeleteButton").click();
+    await expect(panel.locator("#usersList [data-user-id]").filter({ hasText: username })).toHaveCount(0);
+  } finally {
+    const leftover = panel.locator("#usersList [data-user-id]").filter({ hasText: username }).first();
+    if (await leftover.count()) { try { await leftover.click(); await panel.locator("#deleteEditedUserButton").click(); if (await panel.locator("#deleteConfirmOverlay").isVisible()) await panel.locator("#confirmDeleteButton").click(); } catch {} }
+    await panel.close();
+  }
+});
+
+test("stage 5 management CRUD - editor creates, renames and deletes a topic through the UI", async () => {
+  const suffix = Date.now();
+  const topicName = "Stage 5 Topic " + suffix;
+  const renamedTopic = "Stage 5 Topic Updated " + suffix;
+  const panel = await openPanel();
+  await login(panel, "sanity.editor");
+  try {
+    await panel.locator("#openTopicsButton").click();
+    await panel.locator("#openCreateTopicButton").click();
+    await panel.locator("#newTopicInput").fill(topicName);
+    await panel.locator("#createTopicButton").click();
+    let card = panel.locator("#topicsList [data-topic-id]").filter({ hasText: topicName }).first();
+    await expect(card).toBeVisible();
+    await card.click();
+    await panel.locator("#editTopicInput").fill(renamedTopic);
+    await panel.locator("#saveTopicButton").click();
+    card = panel.locator("#topicsList [data-topic-id]").filter({ hasText: renamedTopic }).first();
+    await expect(card).toBeVisible();
+    await card.click();
+    await panel.locator("#deleteEditedTopicButton").click();
+    await panel.locator("#confirmDeleteButton").click();
+    await expect(panel.locator("#topicsList [data-topic-id]").filter({ hasText: renamedTopic })).toHaveCount(0);
+  } finally {
+    for (const name of [renamedTopic, topicName]) { const leftover = panel.locator("#topicsList [data-topic-id]").filter({ hasText: name }).first(); if (await leftover.count()) { try { await leftover.click(); await panel.locator("#deleteEditedTopicButton").click(); if (await panel.locator("#deleteConfirmOverlay").isVisible()) await panel.locator("#confirmDeleteButton").click(); } catch {} } }
+    await panel.close();
+  }
+});
+
+test("stage 5 management CRUD - editor creates, edits and deletes a guide and its step through the UI", async () => {
+  const suffix = Date.now();
+  const guideName = "Stage 5 Guide " + suffix;
+  const updatedGuideName = "Stage 5 Guide Updated " + suffix;
+  const panel = await openPanel();
+  let crm = null;
+  try {
+    await login(panel, "sanity.editor");
+    crm = await context.newPage();
+    await crm.goto(SITE_URL + "/site.html");
+    await crm.bringToFront();
+    await panel.locator("#openNewGuideButton").click();
+    const demoTopic = panel.locator("#topicSelect option").filter({ hasText: "Demo CRM" });
+    await panel.locator("#topicSelect").selectOption(await demoTopic.getAttribute("value"));
+    await panel.locator("#guideNameInput").fill(guideName);
+    await panel.locator("#guideStartUrlInput").fill(SITE_URL + "/site.html");
+    await panel.locator("#addStepButton").click();
+    await panel.locator("#selectButton").click();
+    const content = crm.frameLocator('iframe[name="TargetContent"]');
+    await content.locator("#site-code").click();
+    await panel.locator("#screenNameInput").fill("Stage5 Screen");
+    await panel.locator("#instructionInput").fill("Stage 5 original instruction");
+    await panel.locator("#saveStepButton").click();
+    await panel.locator("#saveGuideButton").click();
+    let guideCard = panel.locator("[data-guide-id]").filter({ hasText: guideName }).first();
+    await expect(guideCard).toBeVisible();
+    await guideCard.click();
+    await panel.locator("#stepsList .step-item").first().click();
+    await panel.locator("#instructionInput").fill("Stage 5 updated instruction");
+    await panel.locator("#screenNameInput").fill("Stage5 Updated Screen");
+    await panel.locator("#saveStepButton").click();
+    await panel.locator("#stepsList .step-item").first().click();
+    await expect(panel.locator("#instructionInput")).toContainText("Stage 5 updated instruction");
+    await expect(panel.locator("#screenNameInput")).toHaveValue("Stage5 Updated Screen");
+    await panel.locator("#cancelStepButton").click();
+    await panel.locator("#guideNameInput").fill(updatedGuideName);
+    await panel.locator("#saveGuideButton").click();
+    guideCard = panel.locator("[data-guide-id]").filter({ hasText: updatedGuideName }).first();
+    await expect(guideCard).toBeVisible();
+    await guideCard.click();
+    await panel.locator("#stepsList .step-item").first().click();
+    await panel.locator("#deleteEditedStepButton").click();
+    await panel.locator("#confirmDeleteButton").click();
+    await expect(panel.locator("#stepsList .step-item")).toHaveCount(0);
+    await panel.locator("#deleteEditedGuideButton").click();
+    await panel.locator("#confirmDeleteButton").click();
+    await expect(panel.locator("[data-guide-id]").filter({ hasText: updatedGuideName })).toHaveCount(0);
+  } finally {
+    try {
+      if (await panel.locator("#guideEditorView").isVisible()) await panel.locator("#backToGuidesButton").click();
+      for (const name of [updatedGuideName, guideName]) { const leftover = panel.locator("[data-guide-id]").filter({ hasText: name }).first(); if (await leftover.count()) { await leftover.click(); await panel.locator("#deleteEditedGuideButton").click(); if (await panel.locator("#deleteConfirmOverlay").isVisible()) await panel.locator("#confirmDeleteButton").click(); } }
+    } catch {}
+    await panel.close();
+    if (crm) await crm.close();
+  }
+});
+
 test("learner can start a real Demo CRM guide and receives visible guidance", async () => {
   const panel = await openPanel();
   await login(panel, "sanity.learner");
