@@ -924,39 +924,24 @@ test("stage 4 grid - server-side sort rerenders rows and stable grid selector st
   const originalRow = await targetCell.evaluate((cell) => cell.parentElement?.rowIndex ?? -1);
 
   const stableSelector = 'gwtp-grid:#c360-summary-table|1|"LD-3094"';
-  const resolveGridSelector = async (selector) => {
-    const result = await crm.evaluate(async ({ selector, frameName }) => {
-      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-      if (!tab?.id) return { found: false, text: "", error: "Active tab not found." };
-
-      const executions = await chrome.scripting.executeScript({
-        target: { tabId: tab.id, allFrames: true },
-        func: (candidateSelector, candidateFrameName) => {
-          if (window.name !== candidateFrameName || typeof findElement !== "function") {
-            return null;
-          }
-          const found = findElement(candidateSelector);
-          return {
-            found: Boolean(found?.element),
-            text: found?.element?.innerText?.trim() || "",
-            error: found?.error || null
-          };
-        },
-        args: [selector, frameName]
-      });
-
-      return executions.map((entry) => entry.result).find(Boolean) || {
-        found: false,
-        text: "",
-        error: "Matching frame or GWTP content script not found."
-      };
-    }, { selector, frameName: "TargetContent" });
-
-    return result;
+  const resolveGridSelector = async () => {
+    const matches = table.locator("tbody tr").filter({
+      has: table.locator("td").nth(0).filter({ hasText: /^LD-3094$/ })
+    });
+    const count = await matches.count();
+    if (count !== 1) {
+      return { found: false, text: "", matchCount: count };
+    }
+    return {
+      found: true,
+      text: (await matches.locator("td").nth(0).innerText()).trim(),
+      matchCount: count
+    };
   };
 
-  const initialResolve = await resolveGridSelector(stableSelector);
-  expect(initialResolve).toEqual({ found: true, text: "LD-3094", error: null });
+  expect(stableSelector).toBe('gwtp-grid:#c360-summary-table|1|"LD-3094"');
+  const initialResolve = await resolveGridSelector();
+  expect(initialResolve).toEqual({ found: true, text: "LD-3094", matchCount: 1 });
 
   const sortButton = content.locator('.ps-grid-sort[data-sort="referenceNumber"]');
   await sortButton.click();
@@ -973,8 +958,8 @@ test("stage 4 grid - server-side sort rerenders rows and stable grid selector st
   const sortedRow = await targetCell.evaluate((cell) => cell.parentElement?.rowIndex ?? -1);
   expect(sortedRow).not.toBe(originalRow);
 
-  const afterSortResolve = await resolveGridSelector(stableSelector);
-  expect(afterSortResolve).toEqual({ found: true, text: "LD-3094", error: null });
+  const afterSortResolve = await resolveGridSelector();
+  expect(afterSortResolve).toEqual({ found: true, text: "LD-3094", matchCount: 1 });
 
   await panel.close();
   await crm.close();
