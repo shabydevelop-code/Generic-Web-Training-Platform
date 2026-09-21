@@ -1864,16 +1864,23 @@ function renderSteps() {
       await persistReorder();
     });
 
-    item.addEventListener("click", async () => {
+    item.addEventListener("click", () => {
       openStepEditor(step);
-      await highlightEditorStep(step);
+      // Highlighting is best-effort editor feedback. The current application tab
+      // may intentionally be on another screen (or have no GWTP content script),
+      // so never let a missing receiver become an unhandled promise rejection.
+      highlightEditorStep(step).catch((error) => {
+        console.info("GWTP editor highlight skipped:", error);
+      });
     });
-    item.addEventListener("keydown", async (event) => {
+    item.addEventListener("keydown", (event) => {
       if (event.target !== item) return;
       if (event.key === "Enter" || event.key === " ") {
         event.preventDefault();
         openStepEditor(step);
-        await highlightEditorStep(step);
+        highlightEditorStep(step).catch((error) => {
+          console.info("GWTP editor highlight skipped:", error);
+        });
       }
     });
 
