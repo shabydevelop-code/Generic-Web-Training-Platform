@@ -453,8 +453,15 @@ test("stage 5 editor management - persisted step reorder survives reopening the 
     expect(before.map((x) => x.trim())).toEqual(["Reorder first", "Reorder second"]);
 
     const secondHandle = panel.locator("#stepsList .step-item").nth(1).locator(".step-item__drag-handle");
+    const reorderSave = panel.waitForResponse((response) =>
+      response.request().method() === "PUT" &&
+      /\/api\/guides\/\d+\/steps(?:\?|$)/.test(response.url())
+    );
     await secondHandle.focus();
     await secondHandle.press("ArrowUp");
+    const reorderResponse = await reorderSave;
+    expect(reorderResponse.ok()).toBeTruthy();
+    await expect(panel.locator("#stepsSaveStatus")).toHaveAttribute("data-type", "success");
     await expect.poll(async () => (await panel.locator("#stepsList .step-item .step-item__instruction").allTextContents()).map((x) => x.trim())).toEqual(["Reorder second", "Reorder first"]);
 
     await panel.locator("#backToGuidesButton").click();
