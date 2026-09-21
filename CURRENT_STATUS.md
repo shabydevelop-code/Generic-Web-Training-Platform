@@ -253,3 +253,5 @@ Later accessibility phases must add their own concrete regression checks to this
 - Stage 3 test 13 added (pending local verification): editor Side Panel narrow-width layout at 320x720. It verifies no horizontal document overflow and checks every visible editor button/input/select/textarea remains within the viewport.
 
 - Stage 3 test 13 verified locally: **PASS**. The editor Side Panel at 320x720 has no horizontal document overflow and all visible editor form controls/actions remain inside the viewport. Full suite regression remains 12/12 from the preceding run; test 13 was intentionally verified point-by-point.
+
+- Stage 3 visual-layout batch added (pending local verification): four grouped Playwright tests named `visual layout - ...`: Admin Side Panel at 320x720, learner guidance containment in a 360px target viewport, guidance controls/overflow under enlarged text, and Hebrew learner guidance RTL direction. Run them together with `npx playwright test -g "visual layout"`.
