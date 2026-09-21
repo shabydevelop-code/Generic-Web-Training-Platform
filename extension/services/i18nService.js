@@ -2,6 +2,9 @@
   const translations = Object.freeze({
     en: Object.freeze({
       elementSelectionTitle: "Element Selection",
+      selectionModeActive: "Selection mode active.",
+      selectionModeStartError: "Could not start selection mode.",
+      pageControlUnavailable: "This page cannot currently be controlled. Open a regular http/https page and reload it after updating the extension.",
       richTextToolbarLabel: "Text formatting",
       richTextBoldLabel: "Bold",
       richTextItalicLabel: "Italic",
@@ -236,6 +239,9 @@
     }),
     he: Object.freeze({
       elementSelectionTitle: "בחירת אלמנט",
+      selectionModeActive: "מצב בחירת אלמנט פעיל.",
+      selectionModeStartError: "לא ניתן להפעיל מצב בחירת אלמנט במסך הנוכחי.",
+      pageControlUnavailable: "לא ניתן לשלוט במסך הנוכחי. יש לפתוח עמוד http/https רגיל ולרענן אותו לאחר עדכון התוסף.",
       richTextToolbarLabel: "עיצוב טקסט",
       richTextBoldLabel: "מודגש",
       richTextItalicLabel: "נטוי",
