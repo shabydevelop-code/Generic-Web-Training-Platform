@@ -38,6 +38,28 @@
     return context;
   }
 
+  async function ensureValidationSessionForTab(tabId, mode, guideId) {
+    const sessionKey = `${VALIDATION_SESSION_PREFIX}${tabId}`;
+    const stored = await chrome.storage.session.get(sessionKey);
+    if (stored[sessionKey]) return stored[sessionKey];
+
+    const user = window.authService?.getCurrentUser?.();
+    const userId = user?.id ?? user?.username;
+    if (userId == null || userId === "") {
+      throw new Error("No authenticated user was found for the validation session.");
+    }
+
+    const context = {
+      userId: String(userId),
+      tabId,
+      guideId: String(guideId || "draft"),
+      mode: mode || "learner",
+      sessionId: crypto.randomUUID()
+    };
+    await chrome.storage.session.set({ [sessionKey]: context });
+    return context;
+  }
+
   function waitForTabComplete(tabId) {
     return new Promise((resolve, reject) => {
       const timeoutId = setTimeout(() => {
@@ -334,6 +356,15 @@
 
     const moveResponse = await chrome.runtime.sendMessage({ type: moveType });
     if (!moveResponse?.success || !moveResponse.current?.step) return false;
+
+    // Cross-document navigation destroys the old frame but the validation session
+    // belongs to the browser tab. Ensure the destination content script can resolve
+    // that context before showTrainingStep asks for it.
+    await ensureValidationSessionForTab(
+      tabId,
+      moveResponse.current.mode || "learner",
+      moveResponse.current.guideId
+    );
 
     await chrome.runtime.sendMessage({ type: "GWTP_TRAINING_PENDING_CLEAR", tabId });
     await showCurrentStep(moveResponse.current);
