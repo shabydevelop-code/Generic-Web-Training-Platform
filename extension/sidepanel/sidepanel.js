@@ -182,6 +182,21 @@ let editingUserId = null;
 let editingStepId = null;
 let editingGuideId = null;
 
+function setFieldInvalid(field, invalid, statusElement = null) {
+  if (!field) return;
+  if (invalid) {
+    field.setAttribute("aria-invalid", "true");
+    if (statusElement?.id) field.setAttribute("aria-describedby", statusElement.id);
+  } else {
+    field.removeAttribute("aria-invalid");
+  }
+}
+
+function clearFieldInvalid(...fields) {
+  fields.forEach((field) => setFieldInvalid(field, false));
+}
+
+
 
 function updatePreviewUi() {
   const active = Boolean(previewSession);
@@ -938,13 +953,18 @@ async function handleCreateUser() {
   const role = newRole.value;
   const language = window.i18nService.getLanguage();
 
+  clearFieldInvalid(newDisplayName, newUsername, newPassword, newRole);
   if (!displayName || !username || !password) {
+    setFieldInvalid(newDisplayName, !displayName, createUserStatus);
+    setFieldInvalid(newUsername, !username, createUserStatus);
+    setFieldInvalid(newPassword, !password, createUserStatus);
     createUserStatus.textContent = window.i18nService.translate("createUserRequired", language);
     createUserStatus.dataset.type = "error";
     return;
   }
 
   if (username.length < 5 || username.length > 30) {
+    setFieldInvalid(newUsername, true, createUserStatus);
     createUserStatus.textContent = window.i18nService.translate("usernameLengthInvalid", language);
     createUserStatus.dataset.type = "error";
     newUsername.focus();
@@ -952,6 +972,7 @@ async function handleCreateUser() {
   }
 
   if (!/^[a-zA-Z0-9._]+$/.test(username)) {
+    setFieldInvalid(newUsername, true, createUserStatus);
     createUserStatus.textContent = window.i18nService.translate("usernameInvalidCharacters", language);
     createUserStatus.dataset.type = "error";
     newUsername.focus();
@@ -959,6 +980,7 @@ async function handleCreateUser() {
   }
 
   if (password.length < 6 || password.length > 20 || /\s/.test(password)) {
+    setFieldInvalid(newPassword, true, createUserStatus);
     createUserStatus.textContent = window.i18nService.translate("passwordRequirementsInvalid", language);
     createUserStatus.dataset.type = "error";
     newPassword.focus();
@@ -1029,6 +1051,7 @@ function closeUserEditor() {
 }
 
 function clearEditUserFeedback() {
+  clearFieldInvalid(editDisplayName, editNewPassword, editRole);
   editUserStatus.textContent = "";
   editUserStatus.removeAttribute("data-type");
 }
@@ -1040,7 +1063,9 @@ async function handleSaveUser() {
   const displayName = editDisplayName.value.trim();
   const newUserPassword = editNewPassword.value;
 
+  clearFieldInvalid(editDisplayName, editNewPassword, editRole);
   if (newUserPassword && (newUserPassword.length < 6 || newUserPassword.length > 20 || /\s/.test(newUserPassword))) {
+    setFieldInvalid(editNewPassword, true, editUserStatus);
     editUserStatus.textContent = window.i18nService.translate("passwordRequirementsInvalid", language);
     editUserStatus.dataset.type = "error";
     editNewPassword.focus();
@@ -1049,6 +1074,7 @@ async function handleSaveUser() {
 
 
   if (!displayName) {
+    setFieldInvalid(editDisplayName, true, editUserStatus);
     editUserStatus.textContent = window.i18nService.translate("editUserDisplayNameRequired", language);
     editUserStatus.dataset.type = "error";
     editDisplayName.focus();
@@ -1864,13 +1890,16 @@ async function persistExistingGuide() {
 saveStepButton.addEventListener("click", async () => {
   const language = window.i18nService.getLanguage();
 
+  clearFieldInvalid(topicSelect, guideNameInput, instructionInput, validationValueInput, validationErrorInput);
   if (!topicSelect.value) {
+    setFieldInvalid(topicSelect, true, statusElement);
     setStatus(window.i18nService.translate("guideTopicRequired", language), "error");
     topicSelect.focus();
     return;
   }
 
   if (!guideNameInput.value.trim()) {
+    setFieldInvalid(guideNameInput, true, statusElement);
     setStatus(window.i18nService.translate("guideNameRequired", language), "error");
     guideNameInput.focus();
     return;
@@ -1886,6 +1915,7 @@ saveStepButton.addEventListener("click", async () => {
   }
 
   if (!hasInstructionContent()) {
+    setFieldInvalid(instructionInput, true, statusElement);
     setStatus(window.i18nService.translate("stepInstructionRequired", language), "error");
     instructionInput.focus();
     return;
@@ -1900,6 +1930,10 @@ saveStepButton.addEventListener("click", async () => {
   try {
     validation = buildStepValidation();
   } catch (error) {
+    const validationType = validationTypeSelect.value;
+    const needsValue = ["equals", "not_equals", "contains", "changed_regex"].includes(validationType);
+    if (needsValue && !validationValueInput.value) setFieldInvalid(validationValueInput, true, statusElement);
+    if (validationType !== "none" && !validationErrorInput.value.trim()) setFieldInvalid(validationErrorInput, true, statusElement);
     setStatus(error.message, "error");
     return;
   }
@@ -2030,7 +2064,9 @@ saveGuideButton.addEventListener("click", async () => {
   const steps = window.trainingService.getSteps();
   const language = window.i18nService.getLanguage();
 
+  clearFieldInvalid(topicSelect, guideNameInput, guideStartUrlInput);
   if (!topicId) {
+    setFieldInvalid(topicSelect, true, saveGuideStatus);
     saveGuideStatus.textContent = window.i18nService.translate("guideTopicRequired", language);
     saveGuideStatus.dataset.type = "error";
     topicSelect.focus();
@@ -2038,6 +2074,7 @@ saveGuideButton.addEventListener("click", async () => {
   }
 
   if (!guideName) {
+    setFieldInvalid(guideNameInput, true, saveGuideStatus);
     saveGuideStatus.textContent = window.i18nService.translate("guideNameRequired", language);
     saveGuideStatus.dataset.type = "error";
     guideNameInput.focus();
@@ -2045,6 +2082,7 @@ saveGuideButton.addEventListener("click", async () => {
   }
 
   if (!startUrl) {
+    setFieldInvalid(guideStartUrlInput, true, saveGuideStatus);
     saveGuideStatus.textContent = window.i18nService.translate("guideStartUrlRequired", language);
     saveGuideStatus.dataset.type = "error";
     guideStartUrlInput.focus();
@@ -2162,7 +2200,10 @@ async function handleLogin() {
 
   const language = window.i18nService.getLanguage();
 
+  clearFieldInvalid(usernameInput, passwordInput);
   if (!username || !password) {
+    setFieldInvalid(usernameInput, !username, loginStatus);
+    setFieldInvalid(passwordInput, !password, loginStatus);
     loginStatus.textContent = window.i18nService.translate("loginRequiredFields", language);
     loginStatus.dataset.type = "error";
     (!username ? usernameInput : passwordInput).focus();
@@ -2170,6 +2211,7 @@ async function handleLogin() {
   }
 
   if (username.length < 5 || username.length > 30) {
+    setFieldInvalid(usernameInput, true, loginStatus);
     loginStatus.textContent = window.i18nService.translate("usernameLengthInvalid", language);
     loginStatus.dataset.type = "error";
     usernameInput.focus();
@@ -2177,6 +2219,7 @@ async function handleLogin() {
   }
 
   if (!/^[a-zA-Z0-9._]+$/.test(username)) {
+    setFieldInvalid(usernameInput, true, loginStatus);
     loginStatus.textContent = window.i18nService.translate("usernameInvalidCharacters", language);
     loginStatus.dataset.type = "error";
     usernameInput.focus();
@@ -2184,6 +2227,7 @@ async function handleLogin() {
   }
 
   if (password.length < 6 || password.length > 20 || /\\s/.test(password)) {
+    setFieldInvalid(passwordInput, true, loginStatus);
     loginStatus.textContent = window.i18nService.translate("passwordRequirementsInvalid", language);
     loginStatus.dataset.type = "error";
     passwordInput.focus();
@@ -2204,12 +2248,15 @@ async function handleLogin() {
     loginStatus.dataset.type = "error";
 
     if (result.reason === "invalidCredentials") {
+      setFieldInvalid(usernameInput, true, loginStatus);
+      setFieldInvalid(passwordInput, true, loginStatus);
       passwordInput.select();
     }
 
     return;
   }
 
+  clearFieldInvalid(usernameInput, passwordInput);
   loginStatus.textContent = "";
   passwordInput.value = "";
   loginView.hidden = true;
@@ -2413,6 +2460,17 @@ passwordInput.addEventListener("keydown", (event) => {
     handleLogin();
   }
 });
+usernameInput.addEventListener("input", () => setFieldInvalid(usernameInput, false));
+passwordInput.addEventListener("input", () => setFieldInvalid(passwordInput, false));
+newDisplayName.addEventListener("input", () => setFieldInvalid(newDisplayName, false));
+newUsername.addEventListener("input", () => setFieldInvalid(newUsername, false));
+newPassword.addEventListener("input", () => setFieldInvalid(newPassword, false));
+topicSelect.addEventListener("change", () => setFieldInvalid(topicSelect, false));
+guideNameInput.addEventListener("input", () => setFieldInvalid(guideNameInput, false));
+guideStartUrlInput.addEventListener("input", () => setFieldInvalid(guideStartUrlInput, false));
+instructionInput.addEventListener("input", () => setFieldInvalid(instructionInput, false));
+validationValueInput.addEventListener("input", () => setFieldInvalid(validationValueInput, false));
+validationErrorInput.addEventListener("input", () => setFieldInvalid(validationErrorInput, false));
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   const role = window.authService.getCurrentRole();
