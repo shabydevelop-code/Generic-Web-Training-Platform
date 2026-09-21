@@ -315,6 +315,15 @@ select:focus {
   overflow-wrap: anywhere;
 }
 
+.step-item__screen {
+  margin: -2px 0 7px;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.4;
+  color: #667085;
+  overflow-wrap: anywhere;
+}
+
 .step-item code {
   display: block;
   padding-top: 8px;
