@@ -173,6 +173,7 @@ const deleteConfirmMessage = document.getElementById("deleteConfirmMessage");
 const cancelDeleteButton = document.getElementById("cancelDeleteButton");
 const confirmDeleteButton = document.getElementById("confirmDeleteButton");
 let pendingDeleteAction = null;
+let deleteConfirmationReturnFocus = null;
 
 let currentSelectedElement = null;
 let activeStepId = null;
@@ -659,6 +660,7 @@ function handleDeleteTopic(topic) {
 function requestDeleteConfirmation(message, action) {
   deleteConfirmMessage.textContent = message;
   pendingDeleteAction = action;
+  deleteConfirmationReturnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
   deleteConfirmOverlay.hidden = false;
   confirmDeleteButton.focus();
 }
@@ -666,6 +668,41 @@ function requestDeleteConfirmation(message, action) {
 function closeDeleteConfirmation() {
   deleteConfirmOverlay.hidden = true;
   pendingDeleteAction = null;
+
+  const returnFocus = deleteConfirmationReturnFocus;
+  deleteConfirmationReturnFocus = null;
+  if (returnFocus?.isConnected && !returnFocus.hidden) {
+    returnFocus.focus();
+  }
+}
+
+function handleDeleteConfirmationKeydown(event) {
+  if (deleteConfirmOverlay.hidden) return;
+
+  if (event.key === "Escape") {
+    event.preventDefault();
+    closeDeleteConfirmation();
+    return;
+  }
+
+  if (event.key !== "Tab") return;
+
+  const focusable = [...deleteConfirmOverlay.querySelectorAll(
+    'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+  )].filter((element) => !element.hidden);
+
+  if (focusable.length === 0) return;
+
+  const first = focusable[0];
+  const last = focusable[focusable.length - 1];
+
+  if (event.shiftKey && document.activeElement === first) {
+    event.preventDefault();
+    last.focus();
+  } else if (!event.shiftKey && document.activeElement === last) {
+    event.preventDefault();
+    first.focus();
+  }
 }
 
 async function confirmPendingDelete() {
@@ -2282,6 +2319,7 @@ confirmDeleteButton.addEventListener("click", confirmPendingDelete);
 deleteConfirmOverlay.addEventListener("click", (event) => {
   if (event.target === deleteConfirmOverlay) closeDeleteConfirmation();
 });
+deleteConfirmOverlay.addEventListener("keydown", handleDeleteConfirmationKeydown);
 openNewGuideButton.addEventListener("click", openNewGuide);
 previewGuideButton.addEventListener("click", startGuidePreview);
 exitPreviewButton.addEventListener("click", exitGuidePreview);
