@@ -6,6 +6,13 @@ using System.Text.RegularExpressions;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Allows the same API executable to run interactively during development
+// or under the Windows Service Control Manager in a server-like deployment.
+builder.Host.UseWindowsService(options =>
+{
+    options.ServiceName = "GWTP API";
+});
+
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("Extension", policy =>
