@@ -268,3 +268,59 @@ test("learner required validation blocks Next until corrected", async () => {
   await panel.close();
   await crm.close();
 });
+
+
+test("learner continues automatically across the Site to Case page transition", async () => {
+  const panel = await openPanel();
+  await login(panel, "sanity.learner");
+
+  const crm = await context.newPage();
+  await crm.goto(`${SITE_URL}/site.html`);
+  await crm.bringToFront();
+
+  const topic = panel.locator("#learnerTopicSelect option").filter({ hasText: "Demo CRM" });
+  await panel.locator("#learnerTopicSelect").selectOption(await topic.getAttribute("value"));
+  const guide = panel.locator("#learnerGuideSelect option").filter({ hasText: "תרגול מלא - Demo CRM" });
+  await panel.locator("#learnerGuideSelect").selectOption(await guide.getAttribute("value"));
+
+  const restart = panel.locator("#restartLearningButton");
+  if (await restart.isVisible()) await restart.click();
+  else await panel.locator("#startLearningButton").click();
+
+  const content = crm.frameLocator('iframe[name="TargetContent"]');
+  let overlay = content.locator(".gwtp-training-overlay");
+  await expect(overlay).toBeVisible({ timeout: 10000 });
+
+  // Move from step 1 through step 6. Step 3 requires a changed phone value and
+  // step 4 requires site type branch; satisfy those authored validations.
+  for (let step = 1; step < 6; step++) {
+    if (step === 3) {
+      await content.locator("#site-phone").fill("03-7654321");
+    }
+    if (step === 4) {
+      await content.locator("#site-type").selectOption("branch");
+      await expect(content.locator("#site-type")).toHaveValue("branch", { timeout: 10000 });
+    }
+
+    overlay = content.locator(".gwtp-training-overlay");
+    const next = overlay.locator("button").filter({ hasText: /הבא|Next/i });
+    await expect(next).toBeEnabled();
+    await next.click();
+  }
+
+  const openCase = content.locator("#btn-open-case-from-site");
+  await expect(openCase).toHaveCSS("outline-width", "3px");
+
+  // The native link targets _top. GWTP persists the forward learning intent before
+  // the document is destroyed; PAGE_READY on case.html must then resume at step 7.
+  await openCase.click();
+
+  await expect(crm).toHaveURL(/\/case\.html(?:[?#].*)?$/, { timeout: 10000 });
+
+  const caseContent = crm.frameLocator('iframe[name="TargetContent"]');
+  await expect(caseContent.locator(".gwtp-training-overlay")).toBeVisible({ timeout: 10000 });
+  await expect(caseContent.locator("#case-category")).toHaveCSS("outline-width", "3px");
+
+  await panel.close();
+  await crm.close();
+});
