@@ -171,3 +171,51 @@ test("learner can start a real Demo CRM guide and receives visible guidance", as
   await panel.close();
   await crm.close();
 });
+
+
+test("learner Next and Previous move between real Demo CRM steps", async () => {
+  const panel = await openPanel();
+  await login(panel, "sanity.learner");
+
+  const crm = await context.newPage();
+  await crm.goto(`${SITE_URL}/site.html`);
+  await crm.bringToFront();
+
+  const demoTopic = panel.locator("#learnerTopicSelect option").filter({ hasText: "Demo CRM" });
+  await panel.locator("#learnerTopicSelect").selectOption(await demoTopic.getAttribute("value"));
+  const fullGuide = panel.locator("#learnerGuideSelect option").filter({ hasText: "תרגול מלא - Demo CRM" });
+  await panel.locator("#learnerGuideSelect").selectOption(await fullGuide.getAttribute("value"));
+
+  // Always begin this navigation test from step 1 even if the dedicated sanity
+  // learner retained progress from an earlier E2E run.
+  const restart = panel.locator("#restartLearningButton");
+  if (await restart.isVisible()) {
+    await restart.click();
+  } else {
+    await panel.locator("#startLearningButton").click();
+  }
+
+  const contentFrame = crm.frame({ name: "TargetContent" });
+  expect(contentFrame, "Demo CRM TargetContent frame must exist").toBeTruthy();
+
+  const overlay = contentFrame.locator(".gwtp-training-overlay");
+  await expect(overlay).toBeVisible({ timeout: 10000 });
+  await expect(contentFrame.locator("#site-code")).toHaveCSS("outline-width", "3px");
+
+  const next = overlay.locator("button").filter({ hasText: /הבא|Next/i });
+  await expect(next).toBeEnabled();
+  await next.click();
+
+  await expect(contentFrame.locator("#site-name")).toHaveCSS("outline-width", "3px");
+  await expect(contentFrame.locator("#site-code")).not.toHaveCSS("outline-width", "3px");
+
+  const previous = contentFrame.locator(".gwtp-training-overlay button").filter({ hasText: /הקודם|Previous/i });
+  await expect(previous).toBeEnabled();
+  await previous.click();
+
+  await expect(contentFrame.locator("#site-code")).toHaveCSS("outline-width", "3px");
+  await expect(contentFrame.locator("#site-name")).not.toHaveCSS("outline-width", "3px");
+
+  await panel.close();
+  await crm.close();
+});
