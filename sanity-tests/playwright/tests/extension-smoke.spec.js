@@ -1613,7 +1613,7 @@ test("stage 6 accessibility batch - required editor fields expose programmatic s
   await login(panel, "sanity.editor");
 
   await panel.locator("#openNewGuideButton").click();
-  for (const selector of ["#guideNameInput", "#guideTopicSelect", "#guideStartUrlInput"]) {
+  for (const selector of ["#guideNameInput", "#topicSelect", "#guideStartUrlInput"]) {
     await expect(panel.locator(selector)).toHaveAttribute("required", "");
     await expect(panel.locator(selector)).toHaveAttribute("aria-required", "true");
   }
