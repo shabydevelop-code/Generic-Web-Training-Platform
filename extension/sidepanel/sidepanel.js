@@ -147,6 +147,11 @@ const guideLibraryView = document.getElementById("guideLibraryView");
 const guideEditorView = document.getElementById("guideEditorView");
 const guidesList = document.getElementById("guidesList");
 const guidesStatus = document.getElementById("guidesStatus");
+const guideTopicFilter = document.getElementById("guideTopicFilter");
+const guideAvailabilityFilter = document.getElementById("guideAvailabilityFilter");
+const stepScreenFilterWrap = document.getElementById("stepScreenFilterWrap");
+const stepScreenFilter = document.getElementById("stepScreenFilter");
+const stepsFilterStatus = document.getElementById("stepsFilterStatus");
 const openNewGuideButton = document.getElementById("openNewGuideButton");
 const backToGuidesButton = document.getElementById("backToGuidesButton");
 const guideAvailableInput = document.getElementById("guideAvailableInput");
@@ -681,13 +686,41 @@ async function loadGuides() {
 
   guidesList.replaceChildren();
   const language = window.i18nService.getLanguage();
+  const selectedTopic = guideTopicFilter.value || "all";
+  const selectedAvailability = guideAvailabilityFilter.value || "all";
   guidesStatus.textContent = window.i18nService.translate("loadingGuides", language);
   guidesStatus.dataset.type = "info";
 
   try {
     const guides = await window.apiService.request("/api/guides");
 
-    guides.forEach((guide) => {
+    const topicNames = [...new Set(guides.map((guide) => guide.topicName).filter(Boolean))]
+      .sort((left, right) => left.localeCompare(right, language));
+
+    guideTopicFilter.replaceChildren();
+    const allTopicsOption = document.createElement("option");
+    allTopicsOption.value = "all";
+    allTopicsOption.textContent = window.i18nService.translate("filterAllTopics", language);
+    guideTopicFilter.appendChild(allTopicsOption);
+    topicNames.forEach((topicName) => {
+      const option = document.createElement("option");
+      option.value = topicName;
+      option.textContent = topicName;
+      guideTopicFilter.appendChild(option);
+    });
+    guideTopicFilter.value = topicNames.includes(selectedTopic) ? selectedTopic : "all";
+
+    const activeTopic = guideTopicFilter.value;
+    const filteredGuides = guides.filter((guide) => {
+      const topicMatches = activeTopic === "all" || guide.topicName === activeTopic;
+      const availabilityMatches =
+        selectedAvailability === "all" ||
+        (selectedAvailability === "available" && guide.isAvailable) ||
+        (selectedAvailability === "unavailable" && !guide.isAvailable);
+      return topicMatches && availabilityMatches;
+    });
+
+    filteredGuides.forEach((guide) => {
       const item = document.createElement("div");
       item.className = "guide-item";
 
@@ -719,7 +752,7 @@ async function loadGuides() {
       item.tabIndex = 0;
       item.setAttribute("role", "button");
       item.addEventListener("click", () => openExistingGuide(guide.id));
-      item.addEventListener("keydown", async (event) => {
+      item.addEventListener("keydown", (event) => {
         if (event.key === "Enter" || event.key === " ") {
           event.preventDefault();
           openExistingGuide(guide.id);
@@ -730,7 +763,14 @@ async function loadGuides() {
       guidesList.appendChild(item);
     });
 
-    guidesStatus.textContent = guides.length ? "" : window.i18nService.translate("noGuides", language);
+    if (guides.length === 0) {
+      guidesStatus.textContent = window.i18nService.translate("noGuides", language);
+    } else if (filteredGuides.length === 0) {
+      guidesStatus.textContent = window.i18nService.translate("noGuidesForFilter", language);
+    } else {
+      guidesStatus.textContent = "";
+      guidesStatus.removeAttribute("data-type");
+    }
   } catch (error) {
     guidesStatus.textContent = window.i18nService.translate(
       error?.status == null ? "serverUnavailable" : "guidesLoadError",
@@ -1591,10 +1631,37 @@ async function runStep(step) {
 
 function renderSteps() {
   const steps = window.trainingService.getSteps();
+  const language = window.i18nService.getLanguage();
+  const selectedScreen = stepScreenFilter.value || "all";
+  const screenNames = [...new Set(steps.map((step) => (step.screenName || "").trim()).filter(Boolean))];
+
+  stepScreenFilter.replaceChildren();
+  const allScreensOption = document.createElement("option");
+  allScreensOption.value = "all";
+  allScreensOption.textContent = window.i18nService.translate("filterAllScreens", language);
+  stepScreenFilter.appendChild(allScreensOption);
+  screenNames.forEach((screenName) => {
+    const option = document.createElement("option");
+    option.value = screenName;
+    option.textContent = screenName;
+    stepScreenFilter.appendChild(option);
+  });
+  stepScreenFilter.value = screenNames.includes(selectedScreen) ? selectedScreen : "all";
+  stepScreenFilterWrap.hidden = screenNames.length === 0;
+
+  const visibleSteps = stepScreenFilter.value === "all"
+    ? steps
+    : steps.filter((step) => (step.screenName || "").trim() === stepScreenFilter.value);
+
   stepsList.replaceChildren();
   stepsSection.hidden = false;
+  stepsFilterStatus.textContent = "";
 
   if (steps.length === 0) return;
+  if (visibleSteps.length === 0) {
+    stepsFilterStatus.textContent = window.i18nService.translate("noStepsForFilter", language);
+    return;
+  }
 
   let draggedStepId = null;
 
@@ -1603,7 +1670,7 @@ function renderSteps() {
     await persistStepChanges();
   };
 
-  steps.forEach((step) => {
+  visibleSteps.forEach((step) => {
     const item = document.createElement("div");
     item.className = "step-item";
     item.dataset.stepId = step.id;
@@ -1614,8 +1681,6 @@ function renderSteps() {
 
     if (step.id === activeStepId) item.classList.add("step-item--active");
     if (step.id === editingStepId) item.classList.add("step-item--editing");
-
-    const language = window.i18nService.getLanguage();
 
     const header = document.createElement("div");
     header.className = "step-item__header";
@@ -2201,6 +2266,9 @@ userRoleFilter.addEventListener("change", () => {
   closeUserEditor();
   loadAdminUsers();
 });
+guideTopicFilter.addEventListener("change", loadGuides);
+guideAvailabilityFilter.addEventListener("change", loadGuides);
+stepScreenFilter.addEventListener("change", renderSteps);
 startLearningButton.addEventListener("click", handleStartLearning);
 restartLearningButton.addEventListener("click", handleRestartLearning);
 exitLearningButton.addEventListener("click", handleExitLearning);
