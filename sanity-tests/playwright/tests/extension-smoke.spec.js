@@ -58,9 +58,7 @@ test("Demo CRM loads with the GWTP content script", async () => {
   await expect(page).toHaveTitle(/.+/);
 
   const contentScriptReady = await page.evaluate(() =>
-    document.documentElement.hasAttribute("data-gwtp-content-ready")
-      || typeof window.GWTP !== "undefined"
-      || true
+    globalThis.__GWTP_CONTENT_READY__ === true
   );
   expect(contentScriptReady).toBeTruthy();
   await page.close();
