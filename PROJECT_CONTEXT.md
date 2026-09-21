@@ -30,6 +30,9 @@ Database:
 - UI text should be localized through the existing i18n mechanism.
 - Learners see published guides only; editor Preview may run unpublished guides.
 - Tabs/screens should be lazy-loaded where applicable rather than rendering all application screens at startup.
+- Admin user management includes a role filter for All / Editors / Learners; administrators remain in their dedicated section.
+- Editor guide library includes client-side filters for Topic and learner Availability over the existing guides API result.
+- Editor guide steps include a Screen filter populated from explicit `ScreenName` values. This filter changes list visibility only; it must not change `StepOrder` or persisted guide data.
 
 ## Learner navigation architecture
 - During an active guide, the learner moves only with Previous/Next; there is no arbitrary step jumping.
