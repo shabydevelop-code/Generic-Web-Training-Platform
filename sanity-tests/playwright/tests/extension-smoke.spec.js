@@ -676,3 +676,113 @@ test("editor sidepanel fits a narrow viewport", async () => {
 
   await panel.close();
 });
+
+
+test("visual layout - admin sidepanel fits a narrow viewport", async () => {
+  const panel = await openPanel();
+  await panel.setViewportSize({ width: 320, height: 720 });
+  await login(panel, "sanity.admin");
+  await expect(panel.locator("#adminView")).toBeVisible();
+
+  const sizes = await panel.evaluate(() => ({
+    viewport: document.documentElement.clientWidth,
+    page: document.documentElement.scrollWidth
+  }));
+  expect(sizes.page).toBeLessThanOrEqual(sizes.viewport + 1);
+
+  const controls = panel.locator("#adminView button:visible, #adminView input:visible, #adminView select:visible");
+  for (let i = 0; i < await controls.count(); i++) {
+    const box = await controls.nth(i).boundingBox();
+    if (!box) continue;
+    expect(box.x).toBeGreaterThanOrEqual(-1);
+    expect(box.x + box.width).toBeLessThanOrEqual(321);
+  }
+  await panel.close();
+});
+
+test("visual layout - learner guidance stays inside a narrow target viewport", async () => {
+  const panel = await openPanel();
+  await login(panel, "sanity.learner");
+  const crm = await context.newPage();
+  await crm.setViewportSize({ width: 360, height: 640 });
+  await crm.goto(`${SITE_URL}/site.html`);
+  await crm.bringToFront();
+
+  const topic = panel.locator("#learnerTopicSelect option").filter({ hasText: "Demo CRM" });
+  await panel.locator("#learnerTopicSelect").selectOption(await topic.getAttribute("value"));
+  const guide = panel.locator("#learnerGuideSelect option").filter({ hasText: "תרגול מלא - Demo CRM" });
+  await panel.locator("#learnerGuideSelect").selectOption(await guide.getAttribute("value"));
+  const restart = panel.locator("#restartLearningButton");
+  if (await restart.isVisible()) await restart.click();
+  else await panel.locator("#startLearningButton").click();
+
+  const content = crm.frameLocator('iframe[name="TargetContent"]');
+  const overlay = content.locator(".gwtp-training-overlay");
+  await expect(overlay).toBeVisible({ timeout: 10000 });
+  const fit = await overlay.evaluate((element) => {
+    const rect = element.getBoundingClientRect();
+    return { left: rect.left, right: rect.right, viewport: innerWidth };
+  });
+  expect(fit.left).toBeGreaterThanOrEqual(0);
+  expect(fit.right).toBeLessThanOrEqual(fit.viewport + 1);
+  await panel.close();
+  await crm.close();
+});
+
+test("visual layout - guidance controls remain usable with enlarged text", async () => {
+  const panel = await openPanel();
+  await login(panel, "sanity.learner");
+  const crm = await context.newPage();
+  await crm.setViewportSize({ width: 480, height: 720 });
+  await crm.goto(`${SITE_URL}/site.html`);
+  await crm.bringToFront();
+
+  const topic = panel.locator("#learnerTopicSelect option").filter({ hasText: "Demo CRM" });
+  await panel.locator("#learnerTopicSelect").selectOption(await topic.getAttribute("value"));
+  const guide = panel.locator("#learnerGuideSelect option").filter({ hasText: "תרגול מלא - Demo CRM" });
+  await panel.locator("#learnerGuideSelect").selectOption(await guide.getAttribute("value"));
+  const restart = panel.locator("#restartLearningButton");
+  if (await restart.isVisible()) await restart.click();
+  else await panel.locator("#startLearningButton").click();
+
+  const content = crm.frameLocator('iframe[name="TargetContent"]');
+  const overlay = content.locator(".gwtp-training-overlay");
+  await expect(overlay).toBeVisible({ timeout: 10000 });
+  await overlay.evaluate((element) => { element.style.fontSize = "28px"; });
+  const buttons = overlay.locator("button");
+  expect(await buttons.count()).toBeGreaterThan(0);
+  for (let i = 0; i < await buttons.count(); i++) {
+    await expect(buttons.nth(i)).toBeVisible();
+  }
+  const fit = await overlay.evaluate((element) => {
+    const rect = element.getBoundingClientRect();
+    return { left: rect.left, right: rect.right, viewport: innerWidth, scrollWidth: element.scrollWidth, clientWidth: element.clientWidth };
+  });
+  expect(fit.left).toBeGreaterThanOrEqual(0);
+  expect(fit.right).toBeLessThanOrEqual(fit.viewport + 1);
+  expect(fit.scrollWidth).toBeLessThanOrEqual(fit.clientWidth + 1);
+  await panel.close();
+  await crm.close();
+});
+
+test("visual layout - Hebrew learner guidance uses RTL direction", async () => {
+  const panel = await openPanel();
+  await login(panel, "sanity.learner");
+  const crm = await context.newPage();
+  await crm.goto(`${SITE_URL}/site.html`);
+  await crm.bringToFront();
+
+  const topic = panel.locator("#learnerTopicSelect option").filter({ hasText: "Demo CRM" });
+  await panel.locator("#learnerTopicSelect").selectOption(await topic.getAttribute("value"));
+  const guide = panel.locator("#learnerGuideSelect option").filter({ hasText: "תרגול מלא - Demo CRM" });
+  await panel.locator("#learnerGuideSelect").selectOption(await guide.getAttribute("value"));
+  const restart = panel.locator("#restartLearningButton");
+  if (await restart.isVisible()) await restart.click();
+  else await panel.locator("#startLearningButton").click();
+
+  const overlay = crm.frameLocator('iframe[name="TargetContent"]').locator(".gwtp-training-overlay");
+  await expect(overlay).toBeVisible({ timeout: 10000 });
+  await expect(overlay).toHaveAttribute("dir", "rtl");
+  await panel.close();
+  await crm.close();
+});
