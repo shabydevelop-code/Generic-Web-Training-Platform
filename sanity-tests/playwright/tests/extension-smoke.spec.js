@@ -506,6 +506,170 @@ test("stage 5 editor management - delete confirmation can be cancelled without d
   }
 });
 
+
+test("stage 5 management validation - admin user form rejects invalid and duplicate identities", async () => {
+  const suffix = Date.now();
+  const username = "stage5.valid." + suffix;
+  const panel = await openPanel();
+  await login(panel, "sanity.admin");
+  try {
+    await panel.locator("#openCreateUserButton").click();
+    await panel.locator("#createUserButton").click();
+    await expect(panel.locator("#createUserStatus")).toHaveAttribute("data-type", "error");
+    await expect(panel.locator("#newDisplayName")).toHaveAttribute("aria-invalid", "true");
+    await expect(panel.locator("#newUsername")).toHaveAttribute("aria-invalid", "true");
+    await expect(panel.locator("#newPassword")).toHaveAttribute("aria-invalid", "true");
+
+    await panel.locator("#newDisplayName").fill("Stage 5 Invalid");
+    await panel.locator("#newUsername").fill("bad user");
+    await panel.locator("#newPassword").fill("Stage5Pass!");
+    await panel.locator("#createUserButton").click();
+    await expect(panel.locator("#newUsername")).toHaveAttribute("aria-invalid", "true");
+
+    await panel.locator("#newUsername").fill(username);
+    await panel.locator("#newPassword").fill("bad pass");
+    await panel.locator("#createUserButton").click();
+    await expect(panel.locator("#newPassword")).toHaveAttribute("aria-invalid", "true");
+
+    await panel.locator("#newPassword").fill("Stage5Pass!");
+    await panel.locator("#createUserButton").click();
+    await expect(panel.locator("[data-user-id]").filter({ hasText: username })).toHaveCount(1);
+
+    await panel.locator("#openCreateUserButton").click();
+    await panel.locator("#newDisplayName").fill("Duplicate Stage 5");
+    await panel.locator("#newUsername").fill(username.toUpperCase());
+    await panel.locator("#newPassword").fill("Stage5Pass!");
+    await panel.locator("#createUserButton").click();
+    await expect(panel.locator("#createUserStatus")).toHaveAttribute("data-type", "error");
+    await expect(panel.locator("[data-user-id]").filter({ hasText: username })).toHaveCount(1);
+  } finally {
+    try {
+      const card = panel.locator("[data-user-id]").filter({ hasText: username }).first();
+      if (await card.count()) {
+        await card.click();
+        await panel.locator("#deleteEditedUserButton").click();
+        if (await panel.locator("#deleteConfirmOverlay").isVisible()) await panel.locator("#confirmDeleteButton").click();
+      }
+    } catch {}
+    await panel.close();
+  }
+});
+
+test("stage 5 management validation - topic required duplicate and guide dependency rules are enforced", async () => {
+  const topicName = "Stage 5 Dependency " + Date.now();
+  const guideName = "Stage 5 Dependency Guide " + Date.now();
+  const panel = await openPanel();
+  await login(panel, "sanity.editor");
+  try {
+    await panel.locator("#openTopicsButton").click();
+    await panel.locator("#openCreateTopicButton").click();
+    await panel.locator("#createTopicButton").click();
+    await expect(panel.locator("#topicStatus")).toHaveAttribute("data-type", "error");
+
+    await panel.locator("#newTopicInput").fill(topicName);
+    await panel.locator("#createTopicButton").click();
+    await expect(panel.locator("#topicsList [data-topic-id]").filter({ hasText: topicName })).toHaveCount(1);
+
+    await panel.locator("#openCreateTopicButton").click();
+    await panel.locator("#newTopicInput").fill(topicName.toUpperCase());
+    await panel.locator("#createTopicButton").click();
+    await expect(panel.locator("#topicStatus")).toHaveAttribute("data-type", "error");
+    await panel.locator("#cancelCreateTopicButton").click();
+    await panel.locator("#backFromTopicsButton").click();
+
+    await panel.locator("#openNewGuideButton").click();
+    const topicOption = panel.locator("#topicSelect option").filter({ hasText: topicName });
+    await panel.locator("#topicSelect").selectOption(await topicOption.getAttribute("value"));
+    await panel.locator("#guideNameInput").fill(guideName);
+    await panel.locator("#guideStartUrlInput").fill(SITE_URL + "/site.html");
+    await panel.locator("#saveGuideButton").click();
+    await expect(panel.locator("[data-guide-id]").filter({ hasText: guideName })).toHaveCount(1);
+
+    await panel.locator("#openTopicsButton").click();
+    let topicCard = panel.locator("#topicsList [data-topic-id]").filter({ hasText: topicName }).first();
+    await topicCard.click();
+    await panel.locator("#deleteEditedTopicButton").click();
+    await panel.locator("#confirmDeleteButton").click();
+    await expect(panel.locator("#editTopicStatus")).toHaveAttribute("data-type", "error");
+    await expect(panel.locator("#editTopicEditor")).toBeVisible();
+    await panel.locator("#cancelEditTopicButton").click();
+    await panel.locator("#backFromTopicsButton").click();
+
+    const guideCard = panel.locator("[data-guide-id]").filter({ hasText: guideName }).first();
+    await guideCard.click();
+    await panel.locator("#deleteEditedGuideButton").click();
+    await panel.locator("#confirmDeleteButton").click();
+
+    await panel.locator("#openTopicsButton").click();
+    topicCard = panel.locator("#topicsList [data-topic-id]").filter({ hasText: topicName }).first();
+    await topicCard.click();
+    await panel.locator("#deleteEditedTopicButton").click();
+    await panel.locator("#confirmDeleteButton").click();
+    await expect(panel.locator("#topicsList [data-topic-id]").filter({ hasText: topicName })).toHaveCount(0);
+  } finally {
+    try {
+      if (await panel.locator("#topicsView").isVisible()) await panel.locator("#backFromTopicsButton").click();
+      const guide = panel.locator("[data-guide-id]").filter({ hasText: guideName }).first();
+      if (await guide.count()) { await guide.click(); await panel.locator("#deleteEditedGuideButton").click(); if (await panel.locator("#deleteConfirmOverlay").isVisible()) await panel.locator("#confirmDeleteButton").click(); }
+      await panel.locator("#openTopicsButton").click();
+      const topic = panel.locator("#topicsList [data-topic-id]").filter({ hasText: topicName }).first();
+      if (await topic.count()) { await topic.click(); await panel.locator("#deleteEditedTopicButton").click(); if (await panel.locator("#deleteConfirmOverlay").isVisible()) await panel.locator("#confirmDeleteButton").click(); }
+    } catch {}
+    await panel.close();
+  }
+});
+
+test("stage 5 management validation - guide identity and availability rules block invalid saves", async () => {
+  const guideName = "Stage 5 Guide Validation " + Date.now();
+  const panel = await openPanel();
+  let crm = null;
+  await login(panel, "sanity.editor");
+  try {
+    await panel.locator("#openNewGuideButton").click();
+    await expect(panel.locator("#addStepButton")).toBeDisabled();
+
+    const demoTopic = panel.locator("#topicSelect option").filter({ hasText: "Demo CRM" });
+    await panel.locator("#topicSelect").selectOption(await demoTopic.getAttribute("value"));
+    await panel.locator("#guideNameInput").fill(guideName);
+    await expect(panel.locator("#addStepButton")).toBeDisabled();
+    await panel.locator("#guideStartUrlInput").fill(SITE_URL + "/site.html");
+    await expect(panel.locator("#addStepButton")).toBeEnabled();
+
+    // Availability cannot be enabled for a guide that has no authored steps.
+    await panel.locator("#guideAvailableInput").check();
+    await panel.locator("#saveGuideButton").click();
+    await expect(panel.locator("#saveGuideStatus")).toHaveAttribute("data-type", "error");
+    await expect(panel.locator("#guideEditorView")).toBeVisible();
+
+    crm = await context.newPage();
+    await crm.goto(SITE_URL + "/site.html");
+    await crm.bringToFront();
+    const content = crm.frameLocator('iframe[name="TargetContent"]');
+    await panel.locator("#guideAvailableInput").uncheck();
+    await panel.locator("#addStepButton").click();
+    await panel.locator("#selectButton").click();
+    await content.locator("#site-code").click();
+    await panel.locator("#saveStepButton").click();
+    await expect(panel.locator("#stepEditor")).toBeVisible();
+    await expect(panel.locator("#status")).toHaveAttribute("data-type", "error");
+
+    await panel.locator("#instructionInput").fill("Valid authored step");
+    await panel.locator("#saveStepButton").click();
+    await expect(panel.locator("#stepEditor")).toBeHidden();
+    await panel.locator("#guideAvailableInput").check();
+    await panel.locator("#saveGuideButton").click();
+    await expect(panel.locator("[data-guide-id]").filter({ hasText: guideName })).toHaveCount(1);
+  } finally {
+    try {
+      if (await panel.locator("#guideEditorView").isVisible()) await panel.locator("#backToGuidesButton").click();
+      const guide = panel.locator("[data-guide-id]").filter({ hasText: guideName }).first();
+      if (await guide.count()) { await guide.click(); await panel.locator("#deleteEditedGuideButton").click(); if (await panel.locator("#deleteConfirmOverlay").isVisible()) await panel.locator("#confirmDeleteButton").click(); }
+    } catch {}
+    await panel.close().catch(() => {});
+    await crm?.close().catch(() => {});
+  }
+});
+
 test("learner can start a real Demo CRM guide and receives visible guidance", async () => {
   const panel = await openPanel();
   await login(panel, "sanity.learner");
