@@ -373,6 +373,12 @@ test("stage 5 editor management - metadata-only step edit does not require the t
     await expect(panel.locator("#stepEditor")).toBeVisible();
     expect(pageErrors.filter((message) => message.includes("Receiving end does not exist"))).toEqual([]);
 
+    // Element Picker feedback must follow the configured UI language even when the
+    // active page cannot host a picker/content-script receiver.
+    await panel.locator("#selectButton").click();
+    await expect(panel.locator("#status")).toContainText(/לא ניתן (להפעיל מצב בחירת אלמנט במסך הנוכחי|לשלוט במסך הנוכחי)/);
+    await expect(panel.locator("#status")).not.toContainText("Could not start selection mode");
+
     await panel.locator("#screenNameInput").fill(temporaryScreenName);
     await panel.locator("#saveStepButton").click();
     await expect(panel.locator("#stepEditor")).toBeHidden();
