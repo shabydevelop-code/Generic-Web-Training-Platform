@@ -649,11 +649,14 @@ test("stage 5 management validation - guide identity and availability rules bloc
     await panel.locator("#addStepButton").click();
     await panel.locator("#selectButton").click();
     await content.locator("#site-code").click();
-    await panel.locator("#saveStepButton").click();
+
+    // Missing Instruction is prevented proactively by the editor: Save Step stays
+    // disabled until both an element and non-empty instruction are present.
     await expect(panel.locator("#stepEditor")).toBeVisible();
-    await expect(panel.locator("#status")).toHaveAttribute("data-type", "error");
+    await expect(panel.locator("#saveStepButton")).toBeDisabled();
 
     await panel.locator("#instructionInput").fill("Valid authored step");
+    await expect(panel.locator("#saveStepButton")).toBeEnabled();
     await panel.locator("#saveStepButton").click();
     await expect(panel.locator("#stepEditor")).toBeHidden();
     await panel.locator("#guideAvailableInput").check();
