@@ -127,6 +127,23 @@ Reset was verified to delete both guide and step progress as intended.
 ## Learner selection UX
 - Changing the learner topic now clears any recovery/error state that belonged to the previously selected guide, so a stale "step not found" panel is not shown under a newly selected topic.
 
+## Accessibility
+- An initial accessibility audit was performed across the Side Panel, learner guidance overlay, Element Picker, and learner flow. The extension has a useful accessibility baseline but is not yet considered fully WCAG 2.2 AA verified.
+- Accessibility hardening phase 1 has started in the Side Panel.
+- Native buttons, inputs, selects, textareas, custom role=button controls, and contenteditable controls now receive a consistent visible keyboard focus indicator.
+- The rich-text instruction editor now has a visible focus-within state, is marked required for assistive technology, and is associated with its status/error region.
+- Login fields are associated with the login status region for assistive technology.
+- The delete/reset confirmation dialog now has an accessible description, moves focus into the dialog, traps Tab/Shift+Tab inside it, closes with Escape, and returns focus to the control that opened it when possible.
+- Remaining accessibility work includes field-level aria-invalid/error association, learner overlay/dialog semantics and focus behavior, keyboard alternatives for pointer-only overlay movement/Element Picker behavior, contrast verification, zoom/reflow testing, and screen-reader regression testing.
+
+## Accessibility regression checks
+For every accessibility change, verify the affected behavior with keyboard-only interaction before continuing:
+- Focus visibility: use Tab and Shift+Tab throughout the Side Panel and confirm the active control always has a visible focus indicator.
+- Confirmation dialog: open any delete/reset confirmation; confirm focus enters the dialog, Tab/Shift+Tab cannot leave it, Escape closes it, and focus returns to the opening control.
+- Rich-text editor: Tab to the instruction editor and its formatting controls; confirm both the toolbar controls and editor have visible focus.
+- Login: navigate username -> password -> Continue using the keyboard and verify validation/status feedback remains exposed without requiring the mouse.
+Later accessibility phases must add their own concrete regression checks to this section.
+
 ## Immediate next tasks
 1. Verify `deploy-gwtp-service.bat` on the next backend code change; the initial Windows Service installation and extension connectivity are already verified.
-2. Review remaining editor/learner UX gaps before adding new capabilities.
+2. Continue the accessibility hardening plan: field-level error semantics, then learner overlay/completion accessibility, then pointer-independent authoring interactions and WCAG verification.
