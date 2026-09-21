@@ -1072,7 +1072,9 @@ test("stage 4 lifecycle - editor authors, previews and publishes a guide that le
       type: "GWTP_HIGHLIGHT_ELEMENT",
       selector: selectorValue
     });
-    return responses.some((item) => item.response?.success);
+    const resolved = responses.some((item) => item.response?.success);
+    await window.messagingService.sendToAllFrames({ type: "GWTP_CLEAR_HIGHLIGHT" });
+    return resolved;
   }, authoredSelector);
   expect(pickerResolution).toBeTruthy();
   await editor.locator("#instructionInput").fill("Stage 4 lifecycle instruction");
