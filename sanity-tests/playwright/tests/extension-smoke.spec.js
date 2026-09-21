@@ -224,3 +224,47 @@ test("learner Next and Previous move between real Demo CRM steps", async () => {
   await panel.close();
   await crm.close();
 });
+
+
+test("learner required validation blocks Next until corrected", async () => {
+  const panel = await openPanel();
+  await login(panel, "sanity.learner");
+
+  const crm = await context.newPage();
+  await crm.goto(`${SITE_URL}/site.html`);
+  await crm.bringToFront();
+
+  const topic = panel.locator("#learnerTopicSelect option").filter({ hasText: "Demo CRM" });
+  await panel.locator("#learnerTopicSelect").selectOption(await topic.getAttribute("value"));
+
+  const guide = panel.locator("#learnerGuideSelect option").filter({ hasText: "בדיקת כל חוקי הוולידציה" });
+  await expect(guide).toHaveCount(1);
+  await panel.locator("#learnerGuideSelect").selectOption(await guide.getAttribute("value"));
+
+  const restart = panel.locator("#restartLearningButton");
+  if (await restart.isVisible()) await restart.click();
+  else await panel.locator("#startLearningButton").click();
+
+  const content = crm.frameLocator('iframe[name="TargetContent"]');
+  const overlay = content.locator(".gwtp-training-overlay");
+  const siteName = content.locator("#site-name");
+
+  await expect(overlay).toBeVisible({ timeout: 10000 });
+  await siteName.fill("");
+
+  const next = overlay.locator("button").filter({ hasText: /הבא|Next/i });
+  await next.click();
+
+  await expect(overlay).toBeVisible();
+  await expect(siteName).toHaveCSS("outline-width", "3px");
+  await expect(overlay).toContainText("יש להזין שם אתר לפני המעבר לשלב הבא.");
+
+  await siteName.fill("Playwright Validation Site");
+  await next.click();
+
+  await expect(content.locator("#site-type")).toHaveCSS("outline-width", "3px");
+  await expect(content.locator(".gwtp-training-overlay")).toBeVisible();
+
+  await panel.close();
+  await crm.close();
+});
