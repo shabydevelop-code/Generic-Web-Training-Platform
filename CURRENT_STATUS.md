@@ -2,6 +2,12 @@
 
 Last updated: 2026-09-21
 
+### Windows Service database location
+- The installed Windows Service uses `C:\\ProgramData\\GWTP\\Data\\GWTP.db` through `GWTP_DATA_PATH`; it does not use the repository `database/GWTP.db`.
+- The repository database remains the local/interactive fallback when no external data path is configured.
+- The Stage 2 sanity-user migration was verified against the actual service database in ProgramData: `sanity.admin`, `sanity.editor`, and `sanity.learner` exist there.
+- Future Windows Service migration/debug checks must inspect the ProgramData database to avoid false negatives from checking the repository DB.
+
 ### Windows Service deployment reliability
 - Fixed `deploy-gwtp-service.bat` service-state parsing: `sc.exe query` exposes the textual state in token 4, not token 3.
 - Deployment now treats an already-stopped service as valid and waits on the observed service state rather than relying on the transient return code from `sc.exe stop`.
