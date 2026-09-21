@@ -2034,13 +2034,39 @@ async function handleLogin() {
   const username = usernameInput.value.trim();
   const password = passwordInput.value;
 
+  const language = window.i18nService.getLanguage();
+
   if (!username || !password) {
-    loginStatus.textContent = window.i18nService.translate("invalidPassword", window.i18nService.getLanguage());
+    loginStatus.textContent = window.i18nService.translate("loginRequiredFields", language);
     loginStatus.dataset.type = "error";
+    (!username ? usernameInput : passwordInput).focus();
     return;
   }
 
-  const result = await window.authService.authenticate(username, password);
+  if (username.length < 5 || username.length > 30) {
+    loginStatus.textContent = window.i18nService.translate("usernameLengthInvalid", language);
+    loginStatus.dataset.type = "error";
+    usernameInput.focus();
+    return;
+  }
+
+  if (!/^[a-zA-Z0-9._]+$/.test(username)) {
+    loginStatus.textContent = window.i18nService.translate("usernameInvalidCharacters", language);
+    loginStatus.dataset.type = "error";
+    usernameInput.focus();
+    return;
+  }
+
+  // Do not enforce the new-user password length here: the built-in development
+  // admin is a legacy account whose password predates that creation rule.
+  if (/\\s/.test(password)) {
+    loginStatus.textContent = window.i18nService.translate("loginPasswordWhitespaceInvalid", language);
+    loginStatus.dataset.type = "error";
+    passwordInput.focus();
+    return;
+  }
+
+  const result = await window.authService.authenticate(username.toLowerCase(), password);
 
   if (!result.success) {
     const messageKey =
