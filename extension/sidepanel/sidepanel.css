@@ -1223,3 +1223,27 @@ body {
 .user-role-section .users-list {
   margin-top: 0;
 }
+
+
+/* Shared compact filters for list-heavy editor screens. */
+.list-filters {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.list-filter label {
+  margin-bottom: 7px;
+}
+
+.guide-library__filters {
+  margin-bottom: 14px;
+}
+
+.step-screen-filter {
+  margin-bottom: 14px;
+}
+
+#stepsFilterStatus:empty {
+  display: none;
+}
