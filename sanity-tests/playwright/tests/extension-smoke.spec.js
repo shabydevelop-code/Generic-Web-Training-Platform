@@ -1673,11 +1673,14 @@ test("stage 6 full authoring lifecycle - new topic guide reopen edit steps previ
     // Preview must consume the reopened, updated persisted Step order/content.
     await crm.bringToFront();
     await panel.locator("#previewGuideButton").click();
-    const overlay = crm.locator("[data-gwtp-training-overlay]");
+    const overlay = content.locator(".gwtp-training-overlay");
     await expect(overlay).toContainText(updatedFirstInstruction);
-    await crm.locator("[data-gwtp-training-next]").click();
+    await overlay.locator("button").filter({ hasText: /הבא|Next/i }).click();
     await expect(overlay).toContainText(thirdInstruction);
-    await panel.locator("#exitPreviewButton").dispatchEvent("click");
+    // Playwright hosts the Side Panel as a tab. Keep the CRM active while invoking
+    // Exit so cleanup is sent to the real application tab, matching Chrome Side Panel.
+    await crm.bringToFront();
+    await panel.locator("#exitPreviewButton").evaluate((button) => button.click());
     await expect(overlay).toHaveCount(0);
 
     // Close the Editor session, sign in as Learner, and verify the newly created
@@ -1695,9 +1698,9 @@ test("stage 6 full authoring lifecycle - new topic guide reopen edit steps previ
     await crm.bringToFront();
     await panel.locator("#startLearningButton").click();
     await expect(overlay).toContainText(updatedFirstInstruction);
-    await crm.locator("[data-gwtp-training-next]").click();
+    await overlay.locator("button").filter({ hasText: /הבא|Next/i }).click();
     await expect(overlay).toContainText(thirdInstruction);
-    await crm.locator("[data-gwtp-training-finish]").click();
+    await overlay.locator("button").filter({ hasText: /סיום|Finish/i }).click();
   } finally {
     // Clean up through the same public UI so the journey remains rerunnable.
     try {
