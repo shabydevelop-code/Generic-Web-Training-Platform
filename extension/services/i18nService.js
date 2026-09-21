@@ -3,8 +3,8 @@
     en: Object.freeze({
       elementSelectionTitle: "Element Selection",
       selectionModeActive: "Selection mode active.",
-      selectionModeStartError: "Could not start selection mode.",
-      pageControlUnavailable: "This page cannot currently be controlled. Open a regular http/https page and reload it after updating the extension.",
+      selectionModeStartError: "Could not start element selection on this page. Reload the page and try again.",
+      pageControlUnavailable: "Could not start element selection on this page. Reload the page and try again. Browser-internal pages are not supported.",
       richTextToolbarLabel: "Text formatting",
       richTextBoldLabel: "Bold",
       richTextItalicLabel: "Italic",
@@ -240,8 +240,8 @@
     he: Object.freeze({
       elementSelectionTitle: "בחירת אלמנט",
       selectionModeActive: "מצב בחירת אלמנט פעיל.",
-      selectionModeStartError: "לא ניתן להפעיל מצב בחירת אלמנט במסך הנוכחי.",
-      pageControlUnavailable: "לא ניתן לשלוט במסך הנוכחי. יש לפתוח עמוד http/https רגיל ולרענן אותו לאחר עדכון התוסף.",
+      selectionModeStartError: "לא ניתן להתחיל בחירת אלמנט בעמוד זה. רענן את העמוד ונסה שוב.",
+      pageControlUnavailable: "לא ניתן להתחיל בחירת אלמנט בעמוד זה. רענן את העמוד ונסה שוב. עמודים פנימיים של הדפדפן אינם נתמכים.",
       richTextToolbarLabel: "עיצוב טקסט",
       richTextBoldLabel: "מודגש",
       richTextItalicLabel: "נטוי",
