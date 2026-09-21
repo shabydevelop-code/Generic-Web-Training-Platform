@@ -1,8 +1,8 @@
 param(
     [string]$ApiBaseUrl = "http://localhost:5000",
     [string]$SiteBaseUrl = "http://localhost:5100",
-    [string]$AdminUsername = "admin",
-    [string]$AdminPassword = "admin"
+    [string]$AdminUsername = "sanity.admin",
+    [string]$AdminPassword = "Sanity2026!"
 )
 
 $ErrorActionPreference = "Stop"
