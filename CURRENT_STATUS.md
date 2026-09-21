@@ -201,9 +201,10 @@ Later accessibility phases must add their own concrete regression checks to this
 - No application data is mutated by the initial suite.
 - Added the first real learner E2E smoke: Playwright opens Demo CRM, logs in as the sanity learner, selects `Demo CRM` / `תרגול מלא - Demo CRM`, starts learning, and verifies that a visible guidance overlay and highlighted target are rendered in the live CRM frame.
 - Initial Stage 3 Playwright foundation was executed locally on 2026-09-21 and verified successfully: 4/4 PASS (Demo CRM/content-script readiness, learner role UI, editor role UI, admin role UI).
+- First real learner Playwright E2E was then executed successfully: total suite 5/5 PASS. The learner test logs in, selects `Demo CRM` / `תרגול מלא - Demo CRM`, starts the guide against the active Demo CRM tab, and verifies visible guidance plus target highlighting.
 - Playwright/browser sanity assets are development/QA-only and must not be included in the future customer installation/package.
 
 ## Immediate next tasks
 1. Verify `deploy-gwtp-service.bat` on the next backend code change; the initial Windows Service installation and extension connectivity are already verified.
-2. Expand Stage 3 Playwright coverage beyond the verified 4/4 foundation into real learner visual/E2E flows against Demo CRM, while keeping all Playwright/test tooling development-only and outside the future customer package.
+2. Expand the now-verified 5/5 Stage 3 Playwright suite through learner navigation behavior: Next/Previous, validation blocking, cross-screen/frame transitions, recovery, and completion. Keep all Playwright/test tooling development-only and outside the future customer package.
 3. Continue accessibility runtime verification separately with reflow and screen-reader regression testing.
