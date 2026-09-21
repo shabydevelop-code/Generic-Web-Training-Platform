@@ -538,13 +538,23 @@ async function showTrainingStep(step, navigation = {}) {
           clearTrainingStep();
           clearHighlight();
 
-          if (!isPreview) {
-            chrome.runtime.sendMessage({ type: "GWTP_TRAINING_PENDING_CLEAR" }).catch(() => {});
-          }
-          chrome.runtime.sendMessage({
+          const notifyStepChanged = () => chrome.runtime.sendMessage({
             type: isPreview ? "GWTP_PREVIEW_STEP_CHANGED" : "GWTP_TRAINING_STEP_CHANGED",
             current: response.current
           }).catch(() => {});
+
+          if (isPreview) {
+            notifyStepChanged();
+            return;
+          }
+
+          // Do not leave the just-completed navigation intent visible while the
+          // new step is being rendered. PAGE_READY/restore paths use this key to
+          // decide whether a move still needs to be resumed; clearing it first
+          // prevents the same successful click from being applied a second time.
+          chrome.runtime.sendMessage({ type: "GWTP_TRAINING_PENDING_CLEAR" })
+            .catch(() => null)
+            .then(notifyStepChanged);
         }).catch(() => {
           button.disabled = false;
         });
