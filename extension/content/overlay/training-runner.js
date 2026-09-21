@@ -621,6 +621,7 @@ async function showTrainingStep(step, navigation = {}) {
 
           moveStep();
         }).catch(() => {
+          navigationInProgress = false;
           button.disabled = false;
         });
       });
