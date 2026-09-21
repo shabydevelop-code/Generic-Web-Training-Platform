@@ -166,6 +166,35 @@ let previewSession = null;
 let previewStarting = false;
 let previewRestorePromise = null;
 let previewRestoreQueued = false;
+let learnerStepRenderPromise = null;
+let learnerStepRenderQueuedCurrent = null;
+
+function renderLearnerStepSerialized(current) {
+  if (!current?.step) return Promise.resolve(false);
+
+  if (learnerStepRenderPromise) {
+    learnerStepRenderQueuedCurrent = current;
+    return learnerStepRenderPromise;
+  }
+
+  learnerStepRenderPromise = (async () => {
+    let nextCurrent = current;
+    let result = false;
+
+    do {
+      learnerStepRenderQueuedCurrent = null;
+      result = await window.guideRunner.showCurrentStep(nextCurrent);
+      nextCurrent = learnerStepRenderQueuedCurrent;
+    } while (nextCurrent);
+
+    return result;
+  })();
+
+  return learnerStepRenderPromise.finally(() => {
+    learnerStepRenderPromise = null;
+    learnerStepRenderQueuedCurrent = null;
+  });
+}
 const deleteEditedGuideButton = document.getElementById("deleteEditedGuideButton");
 let editingGuideSnapshot = null;
 const editStepDeleteSection = document.getElementById("editStepDeleteSection");
@@ -2593,7 +2622,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   }
 
   if (message?.type === "GWTP_TRAINING_STEP_CHANGED") {
-    window.guideRunner.showCurrentStep(message.current).catch((error) => {
+    renderLearnerStepSerialized(message.current).catch((error) => {
       console.info("GWTP learner step change skipped:", error);
     });
     return;
