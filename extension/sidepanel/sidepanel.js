@@ -690,8 +690,25 @@ async function loadGuides() {
       const name = document.createElement("strong");
       name.textContent = guide.name;
 
-      const meta = document.createElement("span");
-      meta.textContent = `${guide.topicName} · ${guide.stepCount} ${window.i18nService.translate("stepCount", language)}`;
+      const meta = document.createElement("div");
+      meta.className = "guide-item__meta";
+
+      const topicMeta = document.createElement("span");
+      topicMeta.className = "guide-item__meta-row";
+      topicMeta.textContent = `${window.i18nService.translate("guideTopicMetaLabel", language)}: ${guide.topicName}`;
+
+      const stepsMeta = document.createElement("span");
+      stepsMeta.className = "guide-item__meta-row";
+      stepsMeta.textContent = `${window.i18nService.translate("guideStepsMetaLabel", language)}: ${guide.stepCount}`;
+
+      const availabilityMeta = document.createElement("span");
+      availabilityMeta.className = "guide-item__meta-row";
+      availabilityMeta.textContent = `${window.i18nService.translate("guideAvailabilityMetaLabel", language)}: ${window.i18nService.translate(
+        guide.isAvailable ? "guideAvailabilityYes" : "guideAvailabilityNo",
+        language
+      )}`;
+
+      meta.append(topicMeta, stepsMeta, availabilityMeta);
 
       item.dataset.guideId = String(guide.id);
       item.classList.add("entity-card--clickable");
