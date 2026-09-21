@@ -287,7 +287,7 @@ test("stage 4 validation - equals, not-equals and contains block then allow Next
   await expect(content.locator("#site-type")).toHaveCSS("outline-width", "3px");
 
   // Step 2 equals(branch): a different value must block, branch must advance.
-  await content.locator("#site-type").selectOption("office");
+  await content.locator("#site-type").selectOption("hq");
   await next().click();
   await expect(content.locator(".gwtp-training-overlay")).toContainText("יש לבחור סניף מכירות");
   await content.locator("#site-type").selectOption("branch");
@@ -372,19 +372,21 @@ test("stage 4 validation - changed and changed-regex block then allow Next", asy
   await phone.fill(changed);
   await next().click();
 
-  // Step 6 changed_regex: unchanged value must block. Changed but invalid must also
-  // block. Only a new value matching the authored regex may complete the guide.
+  // Step 6 changed_regex: the last step intentionally renders Finish disabled
+  // until the changed+regex condition becomes true. Verify invalid changed input
+  // keeps completion disabled, then a new matching value enables and completes it.
   await expect(phone).toHaveCSS("outline-width", "3px");
   const step6Baseline = await phone.inputValue();
-  await next().click();
-  await expect(content.locator(".gwtp-training-overlay")).toContainText("יש להזין מספר טלפון חדש ותקין");
+  const finish = () => content.locator(".gwtp-training-overlay button").filter({ hasText: /סיום|Finish/i });
+  await expect(finish()).toBeDisabled();
+
   await phone.fill("invalid-phone");
-  await next().click();
-  await expect(content.locator(".gwtp-training-overlay")).toContainText("יש להזין מספר טלפון חדש ותקין");
+  await expect(finish()).toBeDisabled();
 
   const validNewPhone = step6Baseline === "03-7654323" ? "03-7654324" : "03-7654323";
   await phone.fill(validNewPhone);
-  await next().click();
+  await expect(finish()).toBeEnabled({ timeout: 10000 });
+  await finish().click();
   await expect(content.locator(".gwtp-completion-dialog")).toBeVisible({ timeout: 10000 });
 
   await panel.close();
