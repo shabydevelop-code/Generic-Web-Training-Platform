@@ -408,7 +408,13 @@ test("stage 5 editor preview - navigation, validation and exit cleanup work thro
     await expect(panel.locator("#previewGuideButton")).toBeVisible();
     await expect(panel.locator("#previewActiveControls")).toBeHidden();
     await expect(content.locator(".gwtp-training-overlay")).toHaveCount(0);
-    await expect(content.locator("#site-code")).not.toHaveCSS("outline-width", "3px");
+    // Assert GWTP's inline training highlight is gone. Computed outline-width is not
+    // reliable here because the input remains focused and the page/browser may render
+    // its native focus ring with the same 3px width.
+    await expect.poll(async () => content.locator("#site-code").evaluate((element) => ({
+      outline: element.style.getPropertyValue("outline"),
+      outlineOffset: element.style.getPropertyValue("outline-offset")
+    }))).toEqual({ outline: "", outlineOffset: "" });
   } finally {
     await panel.close().catch(() => {});
     await crm?.close().catch(() => {});
