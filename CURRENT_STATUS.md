@@ -116,7 +116,7 @@ Reset was verified to delete both guide and step progress as intended.
 ## Login validation UX
 - Username and password are marked as required on the login screen.
 - Login rejects missing fields and invalid username syntax locally before any API request. Username validation matches the currently implemented account rule: 5–30 characters using letters, digits, `.` or `_`.
-- Login also rejects whitespace in passwords locally. It intentionally does not enforce the 6–20 new-user password length at login because the built-in development admin is a legacy account whose current password predates that creation rule.
+- Login applies the same password format rule used for account creation before any API request: 6–20 characters with no whitespace.
 - Only locally valid credentials are sent to the authentication API; credential correctness remains server-side.
 
 ## Session UX
