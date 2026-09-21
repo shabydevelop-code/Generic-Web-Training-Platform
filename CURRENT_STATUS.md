@@ -156,7 +156,7 @@ For every accessibility change, verify the affected behavior with keyboard-only 
 - Learner validation: trigger a step validation failure and confirm the visible validation message appears while focus returns to/remains usable on the relevant business field.
 - Completion dialog: finish a guide using the keyboard. Confirm focus moves to Close, Tab does not escape the completion dialog, Escape closes it, and the dialog has no effect on the live application's page state.
 - Screen-reader check (when available): verify that moving to a new step announces the new instruction and that validation failures are announced as alerts.
-- Guidance movement: Tab to the bubble's drag handle and move it with all four arrow keys. Confirm the bubble stays within the viewport and mouse dragging still works.
+- Guidance movement: Tab to the bubble's drag handle and move it with all four arrow keys. Clicking the drag handle also explicitly gives it keyboard focus, so arrow-key movement must work immediately after clicking it. Confirm the bubble stays within the viewport and mouse dragging still works.
 - Element Picker: start selection, use the live application's normal Tab navigation to focus a control, press Enter, and confirm that focused control is selected. Verify Escape still cancels selection and mouse selection still works.
 - Keyboard learner navigation: run a guide using Tab plus Enter/Space on Previous/Next. Include a cross-screen/postback transition and confirm progress advances exactly once and resumes on the correct destination step.
 - Highlighted link navigation: focus a highlighted native link with Tab and activate it with Enter. Confirm the destination page resumes the expected next learning step.
