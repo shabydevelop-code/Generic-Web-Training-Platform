@@ -103,8 +103,10 @@ Reset was verified to delete both guide and step progress as intended.
 ## Server deployment architecture
 - `GWTP.Api` is now Windows-Service aware through `UseWindowsService`, while preserving normal interactive `dotnet run` development behavior.
 - This is the first step toward running the API as an independently managed, always-on central service rather than a console process manually started by the extension user.
-- The API and SQLite deployment location are not separated from the repository yet; service installation/publishing is intentionally the next step.
+- The API now supports a service-safe `GWTP_DATA_PATH`; when omitted, normal repository-based development behavior is preserved.
+- `install-gwtp-service.bat` publishes the API to `%ProgramData%\\GWTP\\Api`, copies the initial SQLite/schema data to `%ProgramData%\\GWTP\\Data` without overwriting existing service data, registers an automatic Windows Service, and binds it to `127.0.0.1:5000`.
+- `uninstall-gwtp-service.bat` removes the service while preserving its database data. This deployment workflow is implemented but still requires local installation/verification.
 
 ## Immediate next tasks
-1. Add a publish/install workflow for the local Windows Service simulation, including a service-safe configurable database/data path.
+1. Install and verify the local `GWTP.Api` Windows Service simulation and confirm extension/API/database operation without manually running `start-server.bat`.
 2. Review remaining editor/learner UX gaps before adding new capabilities.
