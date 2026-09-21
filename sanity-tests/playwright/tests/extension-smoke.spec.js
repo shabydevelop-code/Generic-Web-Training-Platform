@@ -649,3 +649,30 @@ test("learner sidepanel fits a narrow viewport", async () => {
 
   await panel.close();
 });
+
+
+test("editor sidepanel fits a narrow viewport", async () => {
+  const panel = await openPanel();
+  await panel.setViewportSize({ width: 320, height: 720 });
+  await login(panel, "sanity.editor");
+  await expect(panel.locator("#createModeView")).toBeVisible();
+
+  const sizes = await panel.evaluate(() => ({
+    viewport: document.documentElement.clientWidth,
+    page: document.documentElement.scrollWidth
+  }));
+  expect(sizes.page).toBeLessThanOrEqual(sizes.viewport + 1);
+
+  const visibleControls = panel.locator("#createModeView button:visible, #createModeView input:visible, #createModeView select:visible, #createModeView textarea:visible");
+  const count = await visibleControls.count();
+  expect(count).toBeGreaterThan(0);
+
+  for (let index = 0; index < count; index++) {
+    const box = await visibleControls.nth(index).boundingBox();
+    if (!box) continue;
+    expect(box.x).toBeGreaterThanOrEqual(-1);
+    expect(box.x + box.width).toBeLessThanOrEqual(321);
+  }
+
+  await panel.close();
+});
