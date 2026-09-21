@@ -117,6 +117,102 @@ test("admin sees administration UI only", async () => {
 });
 
 
+test("stage 4 filters - admin user role filter shows the requested role", async () => {
+  const panel = await openPanel();
+  await login(panel, "sanity.admin");
+
+  const regularUsers = panel.locator("#usersList [data-user-id]");
+  await panel.locator("#userRoleFilter").selectOption("editor");
+  await expect(regularUsers).not.toHaveCount(0);
+  await expect(regularUsers).toHaveCount(await regularUsers.filter({ hasText: /GWTP Sanity Editor/i }).count());
+  await expect(regularUsers.filter({ hasText: /GWTP Sanity Learner/i })).toHaveCount(0);
+
+  await panel.locator("#userRoleFilter").selectOption("learner");
+  await expect(regularUsers).not.toHaveCount(0);
+  await expect(regularUsers.filter({ hasText: /GWTP Sanity Editor/i })).toHaveCount(0);
+  await expect(regularUsers.filter({ hasText: /GWTP Sanity Learner/i })).toHaveCount(1);
+
+  await panel.locator("#userRoleFilter").selectOption("all");
+  await expect(regularUsers.filter({ hasText: /GWTP Sanity Editor/i })).toHaveCount(1);
+  await expect(regularUsers.filter({ hasText: /GWTP Sanity Learner/i })).toHaveCount(1);
+
+  await panel.close();
+});
+
+test("stage 4 filters - guide topic filter limits the editor library", async () => {
+  const panel = await openPanel();
+  await login(panel, "sanity.editor");
+
+  const topicFilter = panel.locator("#guideTopicFilter");
+  const demoOption = topicFilter.locator("option").filter({ hasText: "Demo CRM" });
+  await expect(demoOption).toHaveCount(1);
+  await topicFilter.selectOption(await demoOption.getAttribute("value"));
+
+  const cards = panel.locator("#guidesList [data-guide-id]");
+  await expect(cards).not.toHaveCount(0);
+  const cardCount = await cards.count();
+  for (let index = 0; index < cardCount; index += 1) {
+    await expect(cards.nth(index)).toContainText("Demo CRM");
+  }
+
+  await topicFilter.selectOption("all");
+  await expect(panel.locator("#guidesList [data-guide-id]")).not.toHaveCount(0);
+  await panel.close();
+});
+
+test("stage 4 filters - guide availability filter limits the editor library", async () => {
+  const panel = await openPanel();
+  await login(panel, "sanity.editor");
+
+  const cards = panel.locator("#guidesList [data-guide-id]");
+  await panel.locator("#guideAvailabilityFilter").selectOption("available");
+  await expect(cards).not.toHaveCount(0);
+  const availableCount = await cards.count();
+  for (let index = 0; index < availableCount; index += 1) {
+    await expect(cards.nth(index)).toContainText(/זמין ללומדים:\s*כן|Available to learners:\s*Yes/i);
+  }
+
+  await panel.locator("#guideAvailabilityFilter").selectOption("unavailable");
+  const unavailableCount = await cards.count();
+  for (let index = 0; index < unavailableCount; index += 1) {
+    await expect(cards.nth(index)).toContainText(/זמין ללומדים:\s*לא|Available to learners:\s*No/i);
+  }
+
+  await panel.locator("#guideAvailabilityFilter").selectOption("all");
+  await expect(cards).not.toHaveCount(0);
+  await panel.close();
+});
+
+test("stage 4 filters - step screen filter changes visibility without changing step order", async () => {
+  const panel = await openPanel();
+  await login(panel, "sanity.editor");
+
+  const guideCard = panel.locator("[data-guide-id]").filter({ hasText: "תרגול מלא - Demo CRM" }).first();
+  await expect(guideCard).toBeVisible();
+  await guideCard.click();
+  await expect(panel.locator("#stepsSection")).toBeVisible();
+
+  const screenFilter = panel.locator("#stepScreenFilter");
+  await expect(screenFilter).toBeVisible();
+  const siteOption = screenFilter.locator("option").filter({ hasText: /^אתר$/ });
+  await expect(siteOption).toHaveCount(1);
+
+  const allStepNumbers = await panel.locator("#stepsList .step-item strong").allTextContents();
+  expect(allStepNumbers.length).toBeGreaterThan(6);
+
+  await screenFilter.selectOption(await siteOption.getAttribute("value"));
+  const filteredStepNumbers = await panel.locator("#stepsList .step-item strong").allTextContents();
+  expect(filteredStepNumbers).toHaveLength(6);
+  expect(filteredStepNumbers.map((text) => text.match(/\d+/)?.[0])).toEqual(["1", "2", "3", "4", "5", "6"]);
+
+  await screenFilter.selectOption("all");
+  const restoredStepNumbers = await panel.locator("#stepsList .step-item strong").allTextContents();
+  expect(restoredStepNumbers).toEqual(allStepNumbers);
+
+  await panel.close();
+});
+
+
 test("learner can start a real Demo CRM guide and receives visible guidance", async () => {
   const panel = await openPanel();
   await login(panel, "sanity.learner");
