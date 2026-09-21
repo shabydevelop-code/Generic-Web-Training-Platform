@@ -1,6 +1,6 @@
 # GWTP Current Status
 
-Last updated: 2026-09-21
+Last updated: 2026-09-22
 
 ### Windows Service database location
 - The installed Windows Service uses `C:\\ProgramData\\GWTP\\Data\\GWTP.db` through `GWTP_DATA_PATH`; it does not use the repository `database/GWTP.db`.
@@ -369,3 +369,11 @@ Later accessibility phases must add their own concrete regression checks to this
 - **Stage 5 persisted-reorder isolated checkpoint VERIFIED / PASS (2026-09-22): 1/1 passed (10.3s).** With the fast diagnostic guard in place, the complete persisted-reorder path succeeded: authoring, keyboard reorder handler, asynchronous step persistence, guide reopen, and persisted order. The earlier 30s hangs are not currently reproducible in the isolated test. Full 40-test regression is still required before Stage 5 can close.
 
 - **Stage 5 CLOSED / PASS (2026-09-22): full Playwright regression 40/40 passed (1.5m).** This closes the Management CRUD E2E stage after the verified targeted batches for User/Topic/Guide/Step CRUD, Editor Preview and management integrity, management validation/dependencies, and persisted Step reorder. The final full suite also re-verified all previously closed Stage 3/4 learner, validation, navigation/postback, resume/completion, layout/accessibility, lifecycle, filter, and Grid coverage. The real Chrome browser-shell Side Panel smoke remains a release-time boundary outside normal Playwright page-DOM automation.
+
+## Stage 6 — Release/readiness verification
+
+- **Stage 6 started (2026-09-22).** Repository review after Stage 5 closure found no unclosed functional E2E milestone in the current roadmap. The remaining explicit verification boundaries are release/readiness checks that normal Playwright page-DOM automation cannot fully prove.
+- Stage 6 scope is therefore release/readiness verification rather than adding product behavior: (1) real Chrome browser-shell Side Panel smoke using the documented six-step checklist, and (2) remaining runtime accessibility verification called out by the existing accessibility audit (rendered-state contrast/reflow/zoom and screen-reader checks).
+- The real Side Panel smoke remains intentionally manual because Playwright opens the Side Panel document as an extension tab and cannot assert Chrome's browser-level Side Panel container. Do not weaken this boundary by treating the existing 40/40 page-DOM regression as proof of browser-shell behavior.
+- Element Picker full keyboard parity remains intentionally deferred by the existing architecture decision; manual CSS selector entry remains the keyboard-accessible authoring fallback and is not a Stage 6 blocker.
+- **Immediate next checkpoint:** execute the documented real Chrome Side Panel six-step smoke against the current 40/40 build, record each result, then assess the remaining runtime accessibility checks. Stage 6 remains OPEN until these release/readiness boundaries are explicitly verified.
