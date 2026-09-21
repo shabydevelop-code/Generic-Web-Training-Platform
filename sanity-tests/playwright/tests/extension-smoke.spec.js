@@ -317,7 +317,20 @@ test("learner continues automatically across the Site to Case page transition", 
 
   await expect(crm).toHaveURL(/\/case\.html(?:[?#].*)?$/, { timeout: 10000 });
 
+  // Diagnose the cross-document handoff independently from rendering. The server
+  // progress must advance from zero-based stepIndex 5 (Site link) to 6 (Case field).
+  // If this fails, the pending-navigation handoff did not resume. If it passes but
+  // the overlay assertion below fails, the defect is isolated to destination render.
+  await expect.poll(async () => panel.evaluate(async () => {
+    const response = await chrome.runtime.sendMessage({ type: "GWTP_TRAINING_GET_CURRENT" });
+    return response?.current?.stepIndex ?? null;
+  }), {
+    message: "GWTP progress did not advance to the Case step after navigation",
+    timeout: 10000
+  }).toBe(6);
+
   const caseContent = crm.frameLocator('iframe[name="TargetContent"]');
+  await expect(caseContent.locator("#case-category")).toBeVisible({ timeout: 10000 });
   await expect(caseContent.locator(".gwtp-training-overlay")).toBeVisible({ timeout: 10000 });
   await expect(caseContent.locator("#case-category")).toHaveCSS("outline-width", "3px");
 
