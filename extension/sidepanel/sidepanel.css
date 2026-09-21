@@ -1268,3 +1268,13 @@ select:focus-visible,
 .rich-text-toolbar__button:focus-visible {
   background: #eef2f6;
 }
+
+
+/* Accessibility: invalid fields remain visually identifiable without relying on status text alone. */
+input[aria-invalid="true"],
+textarea[aria-invalid="true"],
+select[aria-invalid="true"],
+[contenteditable="true"][aria-invalid="true"] {
+  border-color: #b42318;
+  box-shadow: 0 0 0 2px rgba(180, 35, 24, 0.12);
+}
