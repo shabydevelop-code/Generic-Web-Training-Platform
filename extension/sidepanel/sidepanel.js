@@ -1890,18 +1890,23 @@ function renderSteps() {
 
 selectButton.addEventListener("click", async () => {
   const language = window.i18nService.getLanguage();
+  const setElementPickerStatus = (messageKey, type) => {
+    elementPickerStatus.textContent = window.i18nService.translate(messageKey, language);
+    elementPickerStatus.dataset.type = type;
+  };
+
+  elementPickerStatus.textContent = "";
+  delete elementPickerStatus.dataset.type;
+
   try {
     await window.messagingService.sendToAllFrames({ type: "GWTP_CLEAR_HIGHLIGHT" }).catch(() => {});
     activeStepId = null;
     markActiveStep(null);
     const responses = await window.messagingService.sendToAllFrames({ type: "GWTP_START_ELEMENT_PICKER" });
     const started = responses.some((item) => item.response?.success);
-    setStatus(
-      window.i18nService.translate(started ? "selectionModeActive" : "selectionModeStartError", language),
-      started ? "info" : "error"
-    );
+    setElementPickerStatus(started ? "selectionModeActive" : "selectionModeStartError", started ? "info" : "error");
   } catch (error) {
-    setStatus(window.i18nService.translate("pageControlUnavailable", language), "error");
+    setElementPickerStatus("pageControlUnavailable", "error");
     console.error(error);
   }
 });
