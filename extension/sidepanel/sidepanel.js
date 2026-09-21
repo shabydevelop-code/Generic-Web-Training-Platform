@@ -101,6 +101,10 @@ const currentUserRole = document.getElementById("currentUserRole");
 const adminButton = document.getElementById("adminButton");
 const adminView = document.getElementById("adminView");
 const usersList = document.getElementById("usersList");
+const adminUsersList = document.getElementById("adminUsersList");
+const adminUsersSection = document.getElementById("adminUsersSection");
+const regularUsersSection = document.getElementById("regularUsersSection");
+const userRoleFilter = document.getElementById("userRoleFilter");
 const usersStatus = document.getElementById("usersStatus");
 const newDisplayName = document.getElementById("newDisplayName");
 const newUsername = document.getElementById("newUsername");
@@ -1013,11 +1017,19 @@ async function loadAdminUsers() {
   usersStatus.textContent = window.i18nService.translate("loadingUsers", language);
   usersStatus.dataset.type = "info";
   usersList.replaceChildren();
+  adminUsersList.replaceChildren();
 
   try {
     const users = await window.apiService.request("/api/users");
+    const selectedRole = userRoleFilter.value || "all";
+    const adminUsers = users.filter((user) => Array.isArray(user.roles) && user.roles.includes("admin"));
+    const regularUsers = users.filter((user) => {
+      const roles = Array.isArray(user.roles) ? user.roles : [];
+      if (roles.includes("admin")) return false;
+      return selectedRole === "all" || roles.includes(selectedRole);
+    });
 
-    users.forEach((user) => {
+    const renderUser = (user, targetList) => {
       const item = document.createElement("div");
       item.className = "user-item";
       item.dataset.userId = String(user.id);
@@ -1062,10 +1074,22 @@ async function loadAdminUsers() {
       }
 
       item.append(identity, meta);
-      usersList.appendChild(item);
-    });
+      targetList.appendChild(item);
+    };
 
-    usersStatus.textContent = users.length ? "" : window.i18nService.translate("noUsers", language);
+    adminUsers.forEach((user) => renderUser(user, adminUsersList));
+    regularUsers.forEach((user) => renderUser(user, usersList));
+
+    adminUsersSection.hidden = adminUsers.length === 0;
+    regularUsersSection.hidden = regularUsers.length === 0;
+
+    if (users.length === 0) {
+      usersStatus.textContent = window.i18nService.translate("noUsers", language);
+    } else if (regularUsers.length === 0 && selectedRole !== "all") {
+      usersStatus.textContent = window.i18nService.translate("noUsersForFilter", language);
+    } else {
+      usersStatus.textContent = "";
+    }
   } catch (error) {
     usersStatus.textContent = window.i18nService.translate(
       error?.status == null ? "serverUnavailable" : "usersLoadError",
@@ -2173,6 +2197,10 @@ learnerTopicSelect.addEventListener("change", () => {
   handleLearnerTopicChange();
 });
 learnerGuideSelect.addEventListener("change", handleLearnerGuideChange);
+userRoleFilter.addEventListener("change", () => {
+  closeUserEditor();
+  loadAdminUsers();
+});
 startLearningButton.addEventListener("click", handleStartLearning);
 restartLearningButton.addEventListener("click", handleRestartLearning);
 exitLearningButton.addEventListener("click", handleExitLearning);
