@@ -334,7 +334,7 @@
       invalidPassword: "שם המשתמש או הסיסמה שגויים. נסה שוב.",
       serverUnavailable: "לא ניתן להתחבר לשרת. ודא שהשירות פעיל ונסה שוב.",
       serverError: "אירעה שגיאה בשרת. נסה שוב.",
-      logoutButton: "יציאה",
+      logoutButton: "יציאה מהמערכת",
       adminButton: "ניהול",
       backButton: "חזרה",
       adminTitle: "ניהול מערכת",
