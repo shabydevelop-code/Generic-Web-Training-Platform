@@ -211,3 +211,5 @@ Later accessibility phases must add their own concrete regression checks to this
 3. Continue accessibility runtime verification separately with reflow and screen-reader regression testing.
 
 - Stage 3 validation E2E verified locally: the dedicated validation guide clears the required site-name field, verifies Next remains blocked with the authored validation error, then supplies a value and verifies advancement to site-type. Playwright suite is now 7/7 PASS.
+
+- Stage 3 cross-page/frame E2E added: restart the full Demo CRM guide, advance through Site steps while satisfying authored validations, activate `#btn-open-case-from-site`, verify top-level navigation to `case.html`, then verify PAGE_READY/pending-navigation automatically resumes guidance on `#case-category` inside the new TargetContent frame. Pending local execution; Playwright suite now contains 8 tests.
