@@ -1688,7 +1688,7 @@ test("stage 6 GUI forms batch - guide required errors stay with guide details an
   await panel.close();
 });
 
-test("stage 6 GUI forms batch - step required feedback is local, semantic and does not leak after close", async () => {
+test("stage 6 GUI forms batch - step required state is preventive, local, semantic and clears on close", async () => {
   const panel = await openPanel();
   await login(panel, "sanity.editor");
 
@@ -1700,9 +1700,9 @@ test("stage 6 GUI forms batch - step required feedback is local, semantic and do
   await expect(panel.locator("#instructionInput")).toHaveAttribute("aria-describedby", "status");
   await expect(panel.locator('label[for="instructionInput"] .required-marker')).toBeVisible();
 
-  await panel.locator("#saveStepButton").click();
-  await expect(panel.locator("#status")).not.toHaveText("");
-  await expect(panel.locator("#status")).toHaveAttribute("data-type", "error");
+  // Step creation intentionally prevents invalid submission instead of producing
+  // a post-click error: element selection + instruction are prerequisites.
+  await expect(panel.locator("#saveStepButton")).toBeDisabled();
   await expect(panel.locator("#stepEditor")).toBeVisible();
 
   const placement = await panel.evaluate(() => {
@@ -1712,10 +1712,17 @@ test("stage 6 GUI forms batch - step required feedback is local, semantic and do
   });
   expect(placement).toBeTruthy();
 
+  // Verify stale feedback cannot leak into a newly opened Step editor.
+  await panel.evaluate(() => {
+    const status = document.querySelector("#status");
+    status.textContent = "Temporary validation feedback";
+    status.dataset.type = "error";
+  });
   await panel.locator("#cancelStepButton").click();
   await expect(panel.locator("#stepEditor")).toBeHidden();
   await panel.locator("#addStepButton").click();
   await expect(panel.locator("#status")).toHaveText("");
+  await expect(panel.locator("#status")).not.toHaveAttribute("data-type", "error");
 
   await panel.close();
 });
