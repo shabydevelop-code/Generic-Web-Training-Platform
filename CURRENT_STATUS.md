@@ -112,6 +112,8 @@ Reset was verified to delete both guide and step progress as intended.
 ## Guide library UX
 - Existing guide cards now present their metadata as separate, aligned rows for topic, step count, and learner availability instead of combining topic/steps on one line.
 - Learner availability is shown explicitly as localized Yes/No (כן/לא), using the existing `isAvailable` value already returned by the guides API.
+- The guide library now includes compact filters for topic and learner availability. Filtering is client-side over the existing guides API response and preserves the established guide cards.
+- The guide editor step list now includes a Screen filter populated from the explicit `ScreenName` values used by the guide. The filter affects only list visibility; it does not change step order or persisted guide data.
 
 ## Login validation UX
 - Username and password are marked as required on the login screen using the shared red `required-marker` styling used by the rest of the extension.
