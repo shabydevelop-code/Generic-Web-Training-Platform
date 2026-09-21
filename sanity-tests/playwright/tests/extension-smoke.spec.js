@@ -308,6 +308,17 @@ test("learner continues automatically across the Site to Case page transition", 
     await next.click();
   }
 
+  // Verify the engine itself reached the native-link step before testing the
+  // cross-document handoff. A rendered step can otherwise be stale if an earlier
+  // business postback interrupted progress synchronization.
+  await expect.poll(async () => panel.evaluate(async () => {
+    const response = await chrome.runtime.sendMessage({ type: "GWTP_TRAINING_GET_CURRENT" });
+    return response?.current?.stepIndex ?? null;
+  }), {
+    message: "GWTP progress did not reach the Site→Case link step before navigation",
+    timeout: 10000
+  }).toBe(5);
+
   const openCase = content.locator("#btn-open-case-from-site");
   await expect(openCase).toHaveCSS("outline-width", "3px");
 
