@@ -966,3 +966,79 @@ test("stage 4 grid - server-side sort rerenders rows and stable grid selector st
   await panel.close();
   await crm.close();
 });
+
+
+test("stage 4 grid learner - active guidance survives server-side grid rerender", async () => {
+  const panel = await openPanel();
+  await login(panel, "sanity.learner");
+
+  const crm = await context.newPage();
+  await crm.goto(`${SITE_URL}/customer360.html`);
+  await crm.bringToFront();
+
+  const topic = panel.locator("#learnerTopicSelect option").filter({ hasText: "Demo CRM" });
+  await panel.locator("#learnerTopicSelect").selectOption(await topic.getAttribute("value"));
+  const guideOption = panel.locator("#learnerGuideSelect option").filter({ hasText: "תרגול מלא - Demo CRM" });
+  const guideId = Number(await guideOption.getAttribute("value"));
+  expect(guideId).toBeGreaterThan(0);
+
+  // Put the sanity learner directly on the guide's existing Grid step. This is a
+  // QA setup operation only; the runtime still renders and owns the real learner step.
+  const auth = await panel.evaluate(async () => (await chrome.storage.local.get("gwtp.auth.user"))["gwtp.auth.user"]);
+  expect(auth?.accessToken).toBeTruthy();
+
+  const guideResponse = await panel.evaluate(async ({ apiUrl, id, token }) => {
+    const response = await fetch(`${apiUrl}/api/learner/guides/${id}`, {
+      headers: { Authorization: `Bearer ${token}`, Accept: "application/json" }
+    });
+    return { ok: response.ok, body: await response.json() };
+  }, { apiUrl: API_URL, id: guideId, token: auth.accessToken });
+  expect(guideResponse.ok).toBeTruthy();
+
+  const gridStep = guideResponse.body.steps.find((step) => String(step.selector || "").startsWith("gwtp-grid:"));
+  expect(gridStep, "Full Demo CRM guide must contain a Grid step").toBeTruthy();
+
+  await panel.evaluate(async ({ guideId: id, targetIndex }) => {
+    await chrome.runtime.sendMessage({ type: "GWTP_TRAINING_RESTART", guideId: id });
+    for (let index = 0; index < targetIndex; index += 1) {
+      const response = await chrome.runtime.sendMessage({ type: "GWTP_TRAINING_MOVE", guideId: id, direction: 1 });
+      if (!response?.success) throw new Error(response?.error || "Unable to prepare Grid learner progress.");
+    }
+  }, { guideId, targetIndex: Number(gridStep.stepOrder) - 1 });
+
+  await panel.locator("#learnerGuideSelect").selectOption(String(guideId));
+  const start = panel.locator("#startLearningButton");
+  await expect(start).toBeVisible();
+  await start.click();
+
+  const content = crm.frameLocator('iframe[name="TargetContent"]');
+  const targetText = "בטיפול מומחה";
+  const targetCell = content.locator("#c360-summary-table tbody td").filter({ hasText: targetText }).first();
+  await expect(targetCell).toHaveCSS("outline-width", "3px", { timeout: 10000 });
+  await expect(content.locator(".gwtp-training-overlay")).toBeVisible();
+
+  const beforeRow = await targetCell.evaluate((cell) => cell.parentElement?.rowIndex ?? -1);
+  const sortButton = content.locator('.ps-grid-sort[data-sort="status"]');
+  await sortButton.click();
+  await expect(sortButton).toHaveAttribute("aria-sort", "ascending");
+
+  const rerenderedTarget = content.locator("#c360-summary-table tbody td").filter({ hasText: targetText }).first();
+  await expect(rerenderedTarget).toBeVisible();
+  const afterRow = await rerenderedTarget.evaluate((cell) => cell.parentElement?.rowIndex ?? -1);
+  expect(afterRow).not.toBe(beforeRow);
+
+  // A grid rerender replaces tbody cells. Ask the existing runner to restore the
+  // current step, exactly as it does after readiness/recovery, and verify the stable
+  // Grid selector resolves the new cell instance.
+  await panel.evaluate(async () => {
+    const response = await chrome.runtime.sendMessage({ type: "GWTP_TRAINING_GET_CURRENT" });
+    if (!response?.current) throw new Error("Current learner progress is unavailable.");
+    await window.guideRunner.showCurrentStep(response.current);
+  });
+
+  await expect(rerenderedTarget).toHaveCSS("outline-width", "3px", { timeout: 10000 });
+  await expect(content.locator(".gwtp-training-overlay")).toBeVisible();
+
+  await panel.close();
+  await crm.close();
+});
