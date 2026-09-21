@@ -71,24 +71,59 @@ async function showTrainingStep(step, navigation = {}) {
     navigation.mode !== "preview" &&
     Number.isInteger(navigation.stepIndex)
   ) {
-    target.addEventListener("pointerdown", () => {
-      chrome.runtime.sendMessage({
-        type: "GWTP_TRAINING_PENDING_SET",
-        pending: {
-          direction: 1,
-          stepIndex: navigation.stepIndex
-        }
-      }).catch(() => {});
-    }, { once: true });
+    let nativeLinkPendingPromise = null;
+
+    const persistNativeLinkIntent = () => {
+      if (!nativeLinkPendingPromise) {
+        nativeLinkPendingPromise = chrome.runtime.sendMessage({
+          type: "GWTP_TRAINING_PENDING_SET",
+          pending: {
+            direction: 1,
+            stepIndex: navigation.stepIndex
+          }
+        }).catch(() => null);
+      }
+      return nativeLinkPendingPromise;
+    };
+
+    target.addEventListener("pointerdown", persistNativeLinkIntent, { once: true });
     target.addEventListener("keydown", (event) => {
-      if (event.key !== "Enter") return;
-      chrome.runtime.sendMessage({
-        type: "GWTP_TRAINING_PENDING_SET",
-        pending: {
-          direction: 1,
-          stepIndex: navigation.stepIndex
-        }
-      }).catch(() => {});
+      if (event.key === "Enter") persistNativeLinkIntent();
+    }, { once: true });
+
+    // A fast native navigation can destroy the frame before an asynchronous
+    // runtime message sent from pointerdown reaches chrome.storage.session.
+    // For ordinary unmodified link activation, delay only the browser navigation
+    // until the learning intent is durably stored. The business action itself is
+    // still performed exactly once and is never replayed by GWTP.
+    target.addEventListener("click", async (event) => {
+      if (
+        event.defaultPrevented ||
+        event.button !== 0 ||
+        event.metaKey ||
+        event.ctrlKey ||
+        event.shiftKey ||
+        event.altKey
+      ) {
+        return;
+      }
+
+      event.preventDefault();
+      const pendingResponse = await persistNativeLinkIntent();
+      if (!pendingResponse?.success) return;
+
+      const href = target.href;
+      const linkTarget = (target.getAttribute("target") || "_self").toLowerCase();
+
+      if (linkTarget === "_top") {
+        window.top.location.assign(href);
+      } else if (linkTarget === "_parent") {
+        window.parent.location.assign(href);
+      } else if (linkTarget === "_blank") {
+        window.open(href, "_blank");
+      } else {
+        window.location.assign(href);
+      }
     }, { once: true });
   }
 
