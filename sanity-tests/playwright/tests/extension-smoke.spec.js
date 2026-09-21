@@ -367,6 +367,12 @@ test("stage 5 editor management - metadata-only step edit does not require the t
     await unrelated.goto("about:blank");
     await unrelated.bringToFront();
 
+    const pageErrors = [];
+    panel.on("pageerror", (error) => pageErrors.push(error.message));
+    await panel.locator("#stepsList .step-item").first().click();
+    await expect(panel.locator("#stepEditor")).toBeVisible();
+    expect(pageErrors.filter((message) => message.includes("Receiving end does not exist"))).toEqual([]);
+
     await panel.locator("#screenNameInput").fill(temporaryScreenName);
     await panel.locator("#saveStepButton").click();
     await expect(panel.locator("#stepEditor")).toBeHidden();
