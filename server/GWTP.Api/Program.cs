@@ -177,7 +177,8 @@ adminUsers.AddEndpointFilter(async (context, next) =>
 
     if (Convert.ToInt32(command.ExecuteScalar()) == 0)
     {
-        return Results.Forbid();
+        context.HttpContext.Response.StatusCode = StatusCodes.Status403Forbidden;
+        return Results.Empty;
     }
 
     return await next(context);
@@ -874,7 +875,8 @@ editorTopics.AddEndpointFilter(async (context, next) =>
 
     if (Convert.ToInt32(command.ExecuteScalar()) == 0)
     {
-        return Results.Forbid();
+        context.HttpContext.Response.StatusCode = StatusCodes.Status403Forbidden;
+        return Results.Empty;
     }
 
     return await next(context);
@@ -1006,7 +1008,8 @@ editorGuides.AddEndpointFilter(async (context, next) =>
 
     if (Convert.ToInt32(command.ExecuteScalar()) == 0)
     {
-        return Results.Forbid();
+        context.HttpContext.Response.StatusCode = StatusCodes.Status403Forbidden;
+        return Results.Empty;
     }
 
     return await next(context);
