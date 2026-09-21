@@ -549,12 +549,23 @@ test("completed guide is stored as Completed and starts over on the next run", a
     return response?.current?.stepIndex ?? null;
   }), { timeout: 10000 }).toBe(2);
 
-  await content.locator("#site-type").selectOption("branch");
+  // Step 2 requires a value different from branch. Changing this field triggers
+  // the Demo CRM postback/reload, so wait for the new document/value before Next.
+  await content.locator("#site-type").selectOption("hq");
+  await expect(content.locator("#site-type")).toHaveValue("hq", { timeout: 10000 });
   await content.locator(".gwtp-training-overlay button").filter({ hasText: /הבא|Next/i }).click();
+  await expect.poll(async () => panel.evaluate(async () => {
+    const response = await chrome.runtime.sendMessage({ type: "GWTP_TRAINING_GET_CURRENT" });
+    return response?.current?.stepIndex ?? null;
+  }), { timeout: 10000 }).toBe(3);
   await expect(content.locator("#site-name")).toHaveCSS("outline-width", "3px");
 
   await content.locator("#site-name").fill("TEST Completion Site");
   await content.locator(".gwtp-training-overlay button").filter({ hasText: /הבא|Next/i }).click();
+  await expect.poll(async () => panel.evaluate(async () => {
+    const response = await chrome.runtime.sendMessage({ type: "GWTP_TRAINING_GET_CURRENT" });
+    return response?.current?.stepIndex ?? null;
+  }), { timeout: 10000 }).toBe(4);
   await expect(content.locator("#site-phone")).toHaveCSS("outline-width", "3px");
 
   let phone = content.locator("#site-phone");
