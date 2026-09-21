@@ -163,6 +163,9 @@ const previewActiveControls = document.getElementById("previewActiveControls");
 const previewProgress = document.getElementById("previewProgress");
 const exitPreviewButton = document.getElementById("exitPreviewButton");
 let previewSession = null;
+let previewStarting = false;
+let previewRestorePromise = null;
+let previewRestoreQueued = false;
 const deleteEditedGuideButton = document.getElementById("deleteEditedGuideButton");
 let editingGuideSnapshot = null;
 const editStepDeleteSection = document.getElementById("editStepDeleteSection");
@@ -235,6 +238,7 @@ async function startGuidePreview() {
   }
 
   previewGuideButton.disabled = true;
+  previewStarting = true;
   try {
     previewSession = { ...guide, stepIndex: 0 };
     updatePreviewUi();
@@ -246,6 +250,7 @@ async function startGuidePreview() {
     saveGuideStatus.dataset.type = "error";
     console.error(error);
   } finally {
+    previewStarting = false;
     previewGuideButton.disabled = false;
   }
 }
@@ -2477,15 +2482,42 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 
   if (role === "editor" && previewSession) {
     if (message?.type === "GWTP_PAGE_READY") {
-      const current = {
-        step: previewSession.steps[previewSession.stepIndex],
-        stepIndex: previewSession.stepIndex,
-        totalSteps: previewSession.steps.length,
-        mode: "preview"
+      // Starting Preview already navigates and renders the first step itself.
+      // PAGE_READY is emitted by the top page and its frames during that navigation;
+      // rendering from those events as well can race and create duplicate overlays.
+      if (previewStarting) return;
+
+      const restorePreviewStep = async () => {
+        const current = {
+          step: previewSession?.steps?.[previewSession.stepIndex],
+          stepIndex: previewSession?.stepIndex,
+          totalSteps: previewSession?.steps?.length,
+          mode: "preview"
+        };
+        if (!current.step) return;
+        await window.guideRunner.showCurrentStep(current);
       };
-      window.guideRunner.showCurrentStep(current).catch((error) => {
-        console.info("GWTP preview restore skipped:", error);
-      });
+
+      if (previewRestorePromise) {
+        previewRestoreQueued = true;
+        return;
+      }
+
+      previewRestorePromise = (async () => {
+        do {
+          previewRestoreQueued = false;
+          await restorePreviewStep();
+        } while (previewRestoreQueued && previewSession);
+      })();
+
+      previewRestorePromise
+        .catch((error) => {
+          console.info("GWTP preview restore skipped:", error);
+        })
+        .finally(() => {
+          previewRestorePromise = null;
+          previewRestoreQueued = false;
+        });
       return;
     }
 
