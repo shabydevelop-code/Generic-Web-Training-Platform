@@ -20,7 +20,11 @@ async function requireHealthyStack(request) {
 async function openPanel() {
   const page = await context.newPage();
   await page.goto(`chrome-extension://${extensionId}/sidepanel/sidepanel.html`);
-  await page.evaluate(() => localStorage.clear());
+  await page.evaluate(async () => {
+    localStorage.clear();
+    await chrome.storage.local.clear();
+    await chrome.storage.session.clear();
+  });
   await page.reload();
   await expect(page.locator("#loginView")).toBeVisible();
   return page;
