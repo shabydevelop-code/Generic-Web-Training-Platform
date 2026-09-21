@@ -168,13 +168,14 @@ For every accessibility change, verify the affected behavior with keyboard-only 
 Later accessibility phases must add their own concrete regression checks to this section.
 
 ## Automated sanity testing
-- A repeatable non-destructive Stage 1 sanity runner now exists at `sanity-tests/gwtp-sanity.ps1`.
+- A repeatable non-destructive Stage 1/2 sanity runner now exists at `sanity-tests/gwtp-sanity.ps1`.
 - It verifies API health, database health/schema availability, Demo CRM site availability, anonymous authorization boundaries for learner/admin APIs, and rejection of invalid credentials.
+- Stage 2 adds read-only authenticated checks: development-admin login/token/role, protected users access, editor-only role separation, and authenticated learner catalog access.
 - The runner does not create/update/delete guides, users, topics, or learner progress and is safe to run against the normal local development stack.
 - It returns process exit code 0 on full success and 1 on any failure, allowing later CI/deployment integration.
-- `sanity-tests/README.md` documents execution and the staged plan. Next sanity stage is authenticated API coverage using disposable test fixtures, followed by browser/extension end-to-end coverage.
+- `sanity-tests/README.md` documents execution and the staged plan. The next sanity stage is visual browser/extension end-to-end coverage; destructive API fixture tests can be added later only where they provide additional value.
 
 ## Immediate next tasks
 1. Verify `deploy-gwtp-service.bat` on the next backend code change; the initial Windows Service installation and extension connectivity are already verified.
-2. Run and verify the new Stage 1 sanity suite locally, then add authenticated API sanity coverage with disposable test data.
+2. Run and verify the Stage 1/2 sanity suite locally, then begin Stage 3 visual browser/extension end-to-end sanity coverage.
 3. Continue accessibility runtime verification separately with reflow and screen-reader regression testing.
