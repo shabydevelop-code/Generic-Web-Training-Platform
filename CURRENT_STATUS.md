@@ -109,6 +109,10 @@ Reset was verified to delete both guide and step progress as intended.
 - The local Windows Service deployment was installed and verified successfully: `/api/health` returned `GWTP.Api / ok`, and the browser extension successfully connected and operated through the service-backed API/database without `dotnet run`.
 - `deploy-gwtp-service.bat` provides the normal backend update path after Git changes: publish to a staging directory, stop the installed service, replace the published API files, restart the service, and require a successful `/api/health` response. Persistent service data under `%ProgramData%\\GWTP\\Data` is not replaced by deployment.
 
+## Guide library UX
+- Existing guide cards now present their metadata as separate, aligned rows for topic, step count, and learner availability instead of combining topic/steps on one line.
+- Learner availability is shown explicitly as localized Yes/No (כן/לא), using the existing `isAvailable` value already returned by the guides API.
+
 ## Learner selection UX
 - Changing the learner topic now clears any recovery/error state that belonged to the previously selected guide, so a stale "step not found" panel is not shown under a newly selected topic.
 
