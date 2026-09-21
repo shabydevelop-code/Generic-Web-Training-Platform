@@ -207,15 +207,15 @@ test("learner Next and Previous move between real Demo CRM steps", async () => {
   await expect(next).toBeEnabled();
   await next.click();
 
-  await expect(content.locator("#site-name")).toHaveCSS("outline-width", "3px");
-  await expect(content.locator("#site-code")).not.toHaveCSS("outline-width", "3px");
+  await expect(content.locator("#site-name")).toHaveAttribute("data-gwtp-highlighted", "true");
+  await expect(content.locator("#site-code")).not.toHaveAttribute("data-gwtp-highlighted", "true");
 
   const previous = content.locator(".gwtp-training-overlay button").filter({ hasText: /הקודם|Previous/i });
   await expect(previous).toBeEnabled();
   await previous.click();
 
-  await expect(content.locator("#site-code")).toHaveCSS("outline-width", "3px");
-  await expect(content.locator("#site-name")).not.toHaveCSS("outline-width", "3px");
+  await expect(content.locator("#site-code")).toHaveAttribute("data-gwtp-highlighted", "true");
+  await expect(content.locator("#site-name")).not.toHaveAttribute("data-gwtp-highlighted", "true");
 
   await panel.close();
   await crm.close();
