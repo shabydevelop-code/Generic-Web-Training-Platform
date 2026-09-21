@@ -998,13 +998,15 @@ test("stage 4 grid learner - active guidance survives server-side grid rerender"
   const gridStep = guideResponse.body.steps.find((step) => String(step.selector || "").startsWith("gwtp-grid:"));
   expect(gridStep, "Full Demo CRM guide must contain a Grid step").toBeTruthy();
 
-  await panel.evaluate(async ({ guideId: id, targetIndex }) => {
-    await chrome.runtime.sendMessage({ type: "GWTP_TRAINING_RESTART", guideId: id });
+  await panel.evaluate(async ({ guide, targetIndex }) => {
+    const restart = await chrome.runtime.sendMessage({ type: "GWTP_TRAINING_RESTART", guide });
+    if (!restart?.success) throw new Error(restart?.message || "Unable to restart learner progress.");
+
     for (let index = 0; index < targetIndex; index += 1) {
-      const response = await chrome.runtime.sendMessage({ type: "GWTP_TRAINING_MOVE", guideId: id, direction: 1 });
-      if (!response?.success) throw new Error(response?.error || "Unable to prepare Grid learner progress.");
+      const response = await chrome.runtime.sendMessage({ type: "GWTP_TRAINING_NEXT" });
+      if (!response?.success) throw new Error(response?.message || "Unable to prepare Grid learner progress.");
     }
-  }, { guideId, targetIndex: Number(gridStep.stepOrder) - 1 });
+  }, { guide: guideResponse.body, targetIndex: Number(gridStep.stepOrder) - 1 });
 
   await panel.locator("#learnerGuideSelect").selectOption(String(guideId));
   const start = panel.locator("#startLearningButton");
