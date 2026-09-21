@@ -205,6 +205,10 @@ test("stage 4 filters - step screen filter changes visibility without changing s
   const allStepIds = await stepItems.evaluateAll((items) => items.map((item) => item.dataset.stepId));
   expect(allStepIds.length).toBeGreaterThan(6);
 
+  const visibleScreenMetadata = panel.locator("#stepsList .step-item__screen:not([hidden])");
+  await expect(visibleScreenMetadata.first()).toContainText(/שם מסך:|Screen name:/);
+  await expect(visibleScreenMetadata.first()).toContainText("אתר");
+
   await screenFilter.selectOption(await siteOption.getAttribute("value"));
   await expect(stepItems).toHaveCount(6);
   const filteredStepIds = await stepItems.evaluateAll((items) => items.map((item) => item.dataset.stepId));
