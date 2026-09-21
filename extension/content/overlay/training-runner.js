@@ -266,15 +266,12 @@ async function showTrainingStep(step, navigation = {}) {
   instructionHost.setAttribute("aria-atomic", "true");
   instructionHost.style.display = "block";
   instructionHost.style.minHeight = "1px";
-
-  const instructionRoot = instructionHost.attachShadow({ mode: "closed" });
-  const instruction = document.createElement("div");
-  instruction.style.color = "#172033";
-  instruction.style.fontFamily = "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
-  instruction.style.fontWeight = "500";
-  instruction.style.fontSize = "14px";
-  instruction.style.lineHeight = "1.55";
-  instruction.style.direction = navigation.direction || "ltr";
+  instructionHost.style.color = "#172033";
+  instructionHost.style.fontFamily = "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
+  instructionHost.style.fontWeight = "500";
+  instructionHost.style.fontSize = "14px";
+  instructionHost.style.lineHeight = "1.55";
+  instructionHost.style.direction = navigation.direction || "ltr";
 
   const sanitizeInstructionHtml = (html) => {
     const template = document.createElement("template");
@@ -299,12 +296,10 @@ async function showTrainingStep(step, navigation = {}) {
 
   const instructionHtml = String(step.instruction || "").trim();
   if (instructionHtml) {
-    instruction.innerHTML = sanitizeInstructionHtml(instructionHtml);
+    instructionHost.innerHTML = sanitizeInstructionHtml(instructionHtml);
   } else {
-    instruction.textContent = `Step ${step.order || ""}`;
+    instructionHost.textContent = `Step ${step.order || ""}`;
   }
-
-  instructionRoot.appendChild(instruction);
 
   const validationError = document.createElement("div");
   validationError.id = `gwtp-training-error-${Date.now()}`;
