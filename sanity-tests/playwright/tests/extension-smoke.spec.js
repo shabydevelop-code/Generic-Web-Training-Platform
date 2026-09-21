@@ -376,8 +376,12 @@ test("stage 5 editor management - metadata-only step edit does not require the t
     // Element Picker feedback must follow the configured UI language even when the
     // active page cannot host a picker/content-script receiver.
     await panel.locator("#selectButton").click();
-    await expect(panel.locator("#status")).toContainText(/לא ניתן (להפעיל מצב בחירת אלמנט במסך הנוכחי|לשלוט במסך הנוכחי)/);
-    await expect(panel.locator("#status")).not.toContainText("Could not start selection mode");
+    const pickerStatus = panel.locator("#elementPickerStatus");
+    await expect(pickerStatus).toContainText("לא ניתן להתחיל בחירת אלמנט בעמוד זה");
+    await expect(pickerStatus).toContainText("רענן את העמוד ונסה שוב");
+    await expect(pickerStatus).not.toContainText("Could not start selection mode");
+    await expect(panel.locator("#selectButton")).toBeVisible();
+    await expect(panel.locator("#status")).not.toContainText("לא ניתן להתחיל בחירת אלמנט בעמוד זה");
 
     await panel.locator("#screenNameInput").fill(temporaryScreenName);
     await panel.locator("#saveStepButton").click();
