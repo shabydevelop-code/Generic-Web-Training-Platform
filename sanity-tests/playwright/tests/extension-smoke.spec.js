@@ -372,20 +372,24 @@ test("stage 4 validation - changed and changed-regex block then allow Next", asy
   await phone.fill(changed);
   await next().click();
 
-  // Step 6 changed_regex: the last step intentionally renders Finish disabled
-  // until the changed+regex condition becomes true. Verify invalid changed input
-  // keeps completion disabled, then a new matching value enables and completes it.
+  // Step 6 changed_regex: Finish stays clickable, but its click handler must
+  // reject both an unchanged value and a changed value with an invalid format.
+  // Only a new regex-valid phone value may complete the guide.
   await expect(phone).toHaveCSS("outline-width", "3px");
   const step6Baseline = await phone.inputValue();
   const finish = () => content.locator(".gwtp-training-overlay button").filter({ hasText: /סיום|Finish/i });
-  await expect(finish()).toBeDisabled();
+
+  await finish().click();
+  await expect(content.locator(".gwtp-training-overlay")).toContainText("יש להזין מספר טלפון חדש ותקין");
+  await expect(content.locator(".gwtp-completion-dialog")).toHaveCount(0);
 
   await phone.fill("invalid-phone");
-  await expect(finish()).toBeDisabled();
+  await finish().click();
+  await expect(content.locator(".gwtp-training-overlay")).toContainText("יש להזין מספר טלפון חדש ותקין");
+  await expect(content.locator(".gwtp-completion-dialog")).toHaveCount(0);
 
   const validNewPhone = step6Baseline === "03-7654323" ? "03-7654324" : "03-7654323";
   await phone.fill(validNewPhone);
-  await expect(finish()).toBeEnabled({ timeout: 10000 });
   await finish().click();
   await expect(content.locator(".gwtp-completion-dialog")).toBeVisible({ timeout: 10000 });
 
