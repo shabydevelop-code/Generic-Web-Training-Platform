@@ -139,7 +139,10 @@ Reset was verified to delete both guide and step progress as intended.
 - Learner guidance overlays now expose explicit assistive semantics: the guidance container is a live region, the current instruction is a polite status announcement, and validation failures remain assertive alerts.
 - The learning-completion card is now an accessible modal dialog with title/description associations. Focus moves to its Close button when it opens, Tab remains within the dialog, and Escape closes it.
 - The normal step overlay intentionally does not steal keyboard focus from the highlighted business control; this preserves form-entry and postback behavior while allowing screen readers to announce new guidance through the live region.
-- Remaining accessibility work includes keyboard alternatives for pointer-only overlay movement/Element Picker behavior, contrast verification, zoom/reflow testing, and screen-reader regression testing.
+- Keyboard parity is now implemented for the remaining core pointer-oriented interactions: the learner guidance drag handle is keyboard-focusable and can move the bubble with the arrow keys; the Element Picker can select the currently focused page element with Enter while retaining mouse selection and Escape cancellation.
+- Learner Previous/Next pending-navigation persistence now also runs for keyboard activation (Enter/Space), preserving the same postback-safe navigation intent used by pointer activation.
+- Highlighted native links now persist forward learning intent on keyboard Enter as well as pointerdown, so cross-screen learner navigation is not mouse-dependent.
+- Remaining accessibility work includes contrast verification, zoom/reflow testing, and screen-reader regression testing.
 
 ## Accessibility regression checks
 For every accessibility change, verify the affected behavior with keyboard-only interaction before continuing:
@@ -153,8 +156,12 @@ For every accessibility change, verify the affected behavior with keyboard-only 
 - Learner validation: trigger a step validation failure and confirm the visible validation message appears while focus returns to/remains usable on the relevant business field.
 - Completion dialog: finish a guide using the keyboard. Confirm focus moves to Close, Tab does not escape the completion dialog, Escape closes it, and the dialog has no effect on the live application's page state.
 - Screen-reader check (when available): verify that moving to a new step announces the new instruction and that validation failures are announced as alerts.
+- Guidance movement: Tab to the bubble's drag handle and move it with all four arrow keys. Confirm the bubble stays within the viewport and mouse dragging still works.
+- Element Picker: start selection, use the live application's normal Tab navigation to focus a control, press Enter, and confirm that focused control is selected. Verify Escape still cancels selection and mouse selection still works.
+- Keyboard learner navigation: run a guide using Tab plus Enter/Space on Previous/Next. Include a cross-screen/postback transition and confirm progress advances exactly once and resumes on the correct destination step.
+- Highlighted link navigation: focus a highlighted native link with Tab and activate it with Enter. Confirm the destination page resumes the expected next learning step.
 Later accessibility phases must add their own concrete regression checks to this section.
 
 ## Immediate next tasks
 1. Verify `deploy-gwtp-service.bat` on the next backend code change; the initial Windows Service installation and extension connectivity are already verified.
-2. Continue the accessibility hardening plan with pointer-independent learner/authoring interactions (overlay movement and Element Picker), then contrast, zoom/reflow, and screen-reader WCAG verification.
+2. Continue accessibility verification with contrast measurement, 200%/400% zoom and reflow testing, then screen-reader regression testing.
