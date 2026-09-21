@@ -801,12 +801,27 @@ test("accessibility resilience - login supports keyboard submission", async () =
 test("accessibility resilience - learner primary controls are keyboard focusable", async () => {
   const panel = await openPanel();
   await login(panel, "sanity.learner");
-  const selectors = ["#learnerTopicSelect", "#learnerGuideSelect", "#startLearningButton"];
-  for (const selector of selectors) {
-    const control = panel.locator(selector);
-    await control.focus();
-    await expect(control).toBeFocused();
-  }
+  const topicSelect = panel.locator("#learnerTopicSelect");
+  await topicSelect.focus();
+  await expect(topicSelect).toBeFocused();
+
+  // Guide selection is intentionally disabled until a topic is selected.
+  // Exercise the real learner flow before asserting keyboard focusability.
+  const topic = topicSelect.locator("option").filter({ hasText: "Demo CRM" });
+  await topicSelect.selectOption(await topic.getAttribute("value"));
+
+  const guideSelect = panel.locator("#learnerGuideSelect");
+  await expect(guideSelect).toBeEnabled();
+  await guideSelect.focus();
+  await expect(guideSelect).toBeFocused();
+
+  const guide = guideSelect.locator("option").filter({ hasText: "תרגול מלא - Demo CRM" });
+  await guideSelect.selectOption(await guide.getAttribute("value"));
+
+  const startButton = panel.locator("#startLearningButton");
+  await expect(startButton).toBeEnabled();
+  await startButton.focus();
+  await expect(startButton).toBeFocused();
   await panel.close();
 });
 
