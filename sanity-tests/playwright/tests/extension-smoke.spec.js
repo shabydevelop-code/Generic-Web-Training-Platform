@@ -115,3 +115,55 @@ test("admin sees administration UI only", async () => {
 
   await page.close();
 });
+
+
+test("learner can start a real Demo CRM guide and receives visible guidance", async () => {
+  const crm = await context.newPage();
+  await crm.goto(`${SITE_URL}/site.html`);
+  await crm.bringToFront();
+
+  const panel = await openPanel();
+  await login(panel, "sanity.learner");
+
+  const topicOptions = panel.locator("#learnerTopicSelect option");
+  const demoTopic = topicOptions.filter({ hasText: "Demo CRM" });
+  await expect(demoTopic).toHaveCount(1);
+  await panel.locator("#learnerTopicSelect").selectOption(await demoTopic.getAttribute("value"));
+
+  const guideOptions = panel.locator("#learnerGuideSelect option");
+  const fullGuide = guideOptions.filter({ hasText: "תרגול מלא - Demo CRM" });
+  await expect(fullGuide).toHaveCount(1);
+  await panel.locator("#learnerGuideSelect").selectOption(await fullGuide.getAttribute("value"));
+
+  const start = panel.locator("#startLearningButton");
+  await expect(start).toBeEnabled();
+  await start.click();
+
+  await expect.poll(async () => {
+    for (const frame of crm.frames()) {
+      if (await frame.locator(".gwtp-training-overlay").count()) return true;
+    }
+    return false;
+  }, { timeout: 10000 }).toBeTruthy();
+
+  let overlayFrame = null;
+  for (const frame of crm.frames()) {
+    if (await frame.locator(".gwtp-training-overlay").count()) {
+      overlayFrame = frame;
+      break;
+    }
+  }
+
+  const overlay = overlayFrame.locator(".gwtp-training-overlay");
+  await expect(overlay).toBeVisible();
+  await expect(overlay.locator("button")).not.toHaveCount(0);
+
+  const highlighted = await overlayFrame.locator("*").evaluateAll((elements) =>
+    elements.some((element) => getComputedStyle(element).outlineStyle !== "none" &&
+      getComputedStyle(element).outlineWidth === "3px")
+  );
+  expect(highlighted).toBeTruthy();
+
+  await panel.close();
+  await crm.close();
+});
