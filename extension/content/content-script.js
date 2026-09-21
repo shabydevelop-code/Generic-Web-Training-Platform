@@ -27,22 +27,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   }
 
   if (message?.type === "GWTP_START_ELEMENT_PICKER") {
-    sendResponse(startElementPicker(message.options || {}));
-    return;
-  }
-
-  if (message?.type === "GWTP_ELEMENT_PICKER_KEYBOARD_MOVE") {
-    sendResponse(moveElementPickerKeyboard(message.direction < 0 ? -1 : 1));
-    return;
-  }
-
-  if (message?.type === "GWTP_ELEMENT_PICKER_KEYBOARD_SELECT") {
-    sendResponse(selectElementPickerKeyboard());
-    return;
-  }
-
-  if (message?.type === "GWTP_ELEMENT_PICKER_KEYBOARD_CANCEL") {
-    sendResponse(cancelElementPickerKeyboard());
+    sendResponse(startElementPicker());
     return;
   }
 
