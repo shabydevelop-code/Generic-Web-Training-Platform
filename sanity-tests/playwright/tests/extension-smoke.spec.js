@@ -124,13 +124,17 @@ test("stage 4 filters - admin user role filter shows the requested role", async 
   const regularUsers = panel.locator("#usersList [data-user-id]");
   await panel.locator("#userRoleFilter").selectOption("editor");
   await expect(regularUsers).not.toHaveCount(0);
-  await expect(regularUsers).toHaveCount(await regularUsers.filter({ hasText: /GWTP Sanity Editor/i }).count());
+  await expect(regularUsers.filter({ hasText: /GWTP Sanity Editor/i })).toHaveCount(1);
   await expect(regularUsers.filter({ hasText: /GWTP Sanity Learner/i })).toHaveCount(0);
+  const editorCards = await regularUsers.allTextContents();
+  expect(editorCards.every((text) => /עורך|Editor/i.test(text))).toBeTruthy();
 
   await panel.locator("#userRoleFilter").selectOption("learner");
   await expect(regularUsers).not.toHaveCount(0);
   await expect(regularUsers.filter({ hasText: /GWTP Sanity Editor/i })).toHaveCount(0);
   await expect(regularUsers.filter({ hasText: /GWTP Sanity Learner/i })).toHaveCount(1);
+  const learnerCards = await regularUsers.allTextContents();
+  expect(learnerCards.every((text) => /לומד|Learner/i.test(text))).toBeTruthy();
 
   await panel.locator("#userRoleFilter").selectOption("all");
   await expect(regularUsers.filter({ hasText: /GWTP Sanity Editor/i })).toHaveCount(1);
@@ -197,17 +201,18 @@ test("stage 4 filters - step screen filter changes visibility without changing s
   const siteOption = screenFilter.locator("option").filter({ hasText: /^אתר$/ });
   await expect(siteOption).toHaveCount(1);
 
-  const allStepNumbers = await panel.locator("#stepsList .step-item strong").allTextContents();
-  expect(allStepNumbers.length).toBeGreaterThan(6);
+  const stepItems = panel.locator("#stepsList .step-item");
+  const allStepIds = await stepItems.evaluateAll((items) => items.map((item) => item.dataset.stepId));
+  expect(allStepIds.length).toBeGreaterThan(6);
 
   await screenFilter.selectOption(await siteOption.getAttribute("value"));
-  const filteredStepNumbers = await panel.locator("#stepsList .step-item strong").allTextContents();
-  expect(filteredStepNumbers).toHaveLength(6);
-  expect(filteredStepNumbers.map((text) => text.match(/\d+/)?.[0])).toEqual(["1", "2", "3", "4", "5", "6"]);
+  await expect(stepItems).toHaveCount(6);
+  const filteredStepIds = await stepItems.evaluateAll((items) => items.map((item) => item.dataset.stepId));
+  expect(filteredStepIds).toEqual(allStepIds.slice(0, 6));
 
   await screenFilter.selectOption("all");
-  const restoredStepNumbers = await panel.locator("#stepsList .step-item strong").allTextContents();
-  expect(restoredStepNumbers).toEqual(allStepNumbers);
+  const restoredStepIds = await stepItems.evaluateAll((items) => items.map((item) => item.dataset.stepId));
+  expect(restoredStepIds).toEqual(allStepIds);
 
   await panel.close();
 });
