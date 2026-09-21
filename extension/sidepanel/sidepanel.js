@@ -2057,10 +2057,8 @@ async function handleLogin() {
     return;
   }
 
-  // Do not enforce the new-user password length here: the built-in development
-  // admin is a legacy account whose password predates that creation rule.
-  if (/\\s/.test(password)) {
-    loginStatus.textContent = window.i18nService.translate("loginPasswordWhitespaceInvalid", language);
+  if (password.length < 6 || password.length > 20 || /\\s/.test(password)) {
+    loginStatus.textContent = window.i18nService.translate("passwordRequirementsInvalid", language);
     loginStatus.dataset.type = "error";
     passwordInput.focus();
     return;
