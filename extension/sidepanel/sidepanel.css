@@ -361,6 +361,10 @@ select:focus {
   font-size: 13px;
   line-height: 1.45;
   color: #667085;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .status[data-type="success"] {
