@@ -440,3 +440,74 @@ test("learner survives a real Site server save and reload", async () => {
   await panel.close();
   await crm.close();
 });
+
+
+test("learner can reopen the extension and resume saved progress", async () => {
+  let panel = await openPanel();
+  await login(panel, "sanity.learner");
+
+  const crm = await context.newPage();
+  await crm.goto(`${SITE_URL}/site.html`);
+  await crm.bringToFront();
+
+  const topic = panel.locator("#learnerTopicSelect option").filter({ hasText: "Demo CRM" });
+  await panel.locator("#learnerTopicSelect").selectOption(await topic.getAttribute("value"));
+  const guide = panel.locator("#learnerGuideSelect option").filter({ hasText: "תרגול מלא - Demo CRM" });
+  const guideId = await guide.getAttribute("value");
+  await panel.locator("#learnerGuideSelect").selectOption(guideId);
+
+  const restart = panel.locator("#restartLearningButton");
+  if (await restart.isVisible()) await restart.click();
+  else await panel.locator("#startLearningButton").click();
+
+  const content = crm.frameLocator('iframe[name="TargetContent"]');
+  await expect(content.locator(".gwtp-training-overlay")).toBeVisible({ timeout: 10000 });
+
+  // Save a deterministic resume point at step 2 (zero-based index 1).
+  const next = content.locator(".gwtp-training-overlay button").filter({ hasText: /הבא|Next/i });
+  await next.click();
+  await expect.poll(async () => panel.evaluate(async () => {
+    const response = await chrome.runtime.sendMessage({ type: "GWTP_TRAINING_GET_CURRENT" });
+    return response?.current?.stepIndex ?? null;
+  }), { timeout: 10000 }).toBe(1);
+  await expect(content.locator("#site-name")).toHaveCSS("outline-width", "3px");
+
+  // Closing the Side Panel must not erase server progress. Clear the injected
+  // guidance to model a closed/reopened UI, then create a fresh extension page.
+  await panel.evaluate(async () => {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (tab?.id) {
+      try {
+        await chrome.tabs.sendMessage(tab.id, { type: "GWTP_CLEAR_TRAINING_STEP" });
+      } catch {}
+    }
+  });
+  await panel.close();
+
+  panel = await context.newPage();
+  await panel.goto(`chrome-extension://${extensionId}/sidepanel/sidepanel.html`);
+  await expect(panel.locator("#appView")).toBeVisible({ timeout: 10000 });
+  await expect(panel.locator("#learnModeView")).toBeVisible();
+
+  const reopenedTopic = panel.locator("#learnerTopicSelect option").filter({ hasText: "Demo CRM" });
+  await panel.locator("#learnerTopicSelect").selectOption(await reopenedTopic.getAttribute("value"));
+  const reopenedGuide = panel.locator("#learnerGuideSelect option").filter({ hasText: "תרגול מלא - Demo CRM" });
+  await panel.locator("#learnerGuideSelect").selectOption(await reopenedGuide.getAttribute("value"));
+
+  const continueButton = panel.locator("#startLearningButton");
+  await expect(continueButton).toContainText(/המשך למידה|Continue/i);
+  await expect(panel.locator("#restartLearningButton")).toBeVisible();
+
+  await crm.bringToFront();
+  await continueButton.click();
+
+  await expect.poll(async () => panel.evaluate(async () => {
+    const response = await chrome.runtime.sendMessage({ type: "GWTP_TRAINING_GET_CURRENT" });
+    return response?.current?.stepIndex ?? null;
+  }), { timeout: 10000 }).toBe(1);
+  await expect(content.locator(".gwtp-training-overlay")).toBeVisible({ timeout: 10000 });
+  await expect(content.locator("#site-name")).toHaveCSS("outline-width", "3px");
+
+  await panel.close();
+  await crm.close();
+});
