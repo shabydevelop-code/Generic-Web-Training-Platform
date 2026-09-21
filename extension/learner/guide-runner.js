@@ -2,6 +2,7 @@
   const VALIDATION_SESSION_PREFIX = "gwtp:validation-session:";
   let learnerRenderVersion = 0;
   let pendingNavigationResumePromise = null;
+  let pendingNavigationResumeQueued = false;
 
   async function getActiveTabId() {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
@@ -341,16 +342,32 @@
 
 
   async function resumePendingNavigation() {
-    // PAGE_READY is emitted by every loaded frame. A top page and its content frame
-    // can therefore report readiness almost simultaneously. Serialize the resume so
-    // only one event can consume a pending move and advance learner progress.
-    if (pendingNavigationResumePromise) return pendingNavigationResumePromise;
+    // PAGE_READY is emitted by every loaded frame. The top page can become ready
+    // before the target content frame, while that frame may report PAGE_READY during
+    // the first availability check. Do not collapse that second readiness event:
+    // serialize progress mutation, but queue one follow-up check when another frame
+    // becomes ready while a resume attempt is still in flight.
+    if (pendingNavigationResumePromise) {
+      pendingNavigationResumeQueued = true;
+      return pendingNavigationResumePromise;
+    }
 
-    pendingNavigationResumePromise = resumePendingNavigationCore();
+    pendingNavigationResumePromise = (async () => {
+      let resumed = false;
+
+      do {
+        pendingNavigationResumeQueued = false;
+        resumed = await resumePendingNavigationCore();
+      } while (!resumed && pendingNavigationResumeQueued);
+
+      return resumed;
+    })();
+
     try {
       return await pendingNavigationResumePromise;
     } finally {
       pendingNavigationResumePromise = null;
+      pendingNavigationResumeQueued = false;
     }
   }
 
