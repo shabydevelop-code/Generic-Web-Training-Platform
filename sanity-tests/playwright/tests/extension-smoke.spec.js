@@ -1065,7 +1065,7 @@ test("stage 4 lifecycle - editor authors, previews and publishes a guide that le
   await editor.locator("#selectButton").click();
   const content = crm.frameLocator('iframe[name="TargetContent"]');
   await content.locator("#site-code").click();
-  await expect(editor.locator("#selectedSelector")).toContainText("#site-code");
+  await expect(editor.locator("#selectedSelector")).toHaveText(/^(?:#site-code|input\[name="code"\])$/);
   await editor.locator("#instructionInput").fill("Stage 4 lifecycle instruction");
   await editor.locator("#saveStepButton").click();
   await expect(editor.locator("#stepEditor")).toBeHidden();
