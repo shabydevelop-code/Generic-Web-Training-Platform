@@ -167,6 +167,14 @@ For every accessibility change, verify the affected behavior with keyboard-only 
 - Reflow: do not use ordinary webpage zoom as a Side Panel conformance test because Chrome hosts it as a separate extension page in browser side-panel UI. Test the Side Panel at narrow available widths (target 320 CSS px where the user agent permits) and with relevant OS/display scaling; confirm content remains readable/reachable, controls do not overlap or clip, and extension UI does not introduce unnecessary two-dimensional scrolling. Separately test learner guidance and other extension UI injected into normal web pages under browser text/page enlargement, including 200% text enlargement and the 320 CSS px Reflow target where testable.
 Later accessibility phases must add their own concrete regression checks to this section.
 
+## Automated sanity testing
+- A repeatable non-destructive Stage 1 sanity runner now exists at `sanity-tests/gwtp-sanity.ps1`.
+- It verifies API health, database health/schema availability, Demo CRM site availability, anonymous authorization boundaries for learner/admin APIs, and rejection of invalid credentials.
+- The runner does not create/update/delete guides, users, topics, or learner progress and is safe to run against the normal local development stack.
+- It returns process exit code 0 on full success and 1 on any failure, allowing later CI/deployment integration.
+- `sanity-tests/README.md` documents execution and the staged plan. Next sanity stage is authenticated API coverage using disposable test fixtures, followed by browser/extension end-to-end coverage.
+
 ## Immediate next tasks
 1. Verify `deploy-gwtp-service.bat` on the next backend code change; the initial Windows Service installation and extension connectivity are already verified.
-2. Continue accessibility verification with contrast measurement, 200%/400% zoom and reflow testing, then screen-reader regression testing.
+2. Run and verify the new Stage 1 sanity suite locally, then add authenticated API sanity coverage with disposable test data.
+3. Continue accessibility runtime verification separately with reflow and screen-reader regression testing.
