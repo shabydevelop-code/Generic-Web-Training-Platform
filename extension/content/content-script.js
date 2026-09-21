@@ -27,7 +27,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   }
 
   if (message?.type === "GWTP_START_ELEMENT_PICKER") {
-    sendResponse(startElementPicker());
+    sendResponse(startElementPicker(message.options || {}));
     return;
   }
 
