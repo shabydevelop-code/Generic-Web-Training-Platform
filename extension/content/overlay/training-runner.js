@@ -19,8 +19,15 @@ function clearTrainingStep() {
   }
 
   if (gwtpTrainingTarget) {
-    gwtpTrainingTarget.style.removeProperty("outline");
-    gwtpTrainingTarget.style.removeProperty("outline-offset");
+    // A training target can also still carry the editor picker's highlight marker.
+    // Restore/remove that highlight state as well so Exit Preview cannot leave a
+    // stale outline behind after the training overlay itself has been cleared.
+    if (gwtpTrainingTarget.hasAttribute("data-gwtp-highlighted")) {
+      clearHighlight();
+    } else {
+      gwtpTrainingTarget.style.removeProperty("outline");
+      gwtpTrainingTarget.style.removeProperty("outline-offset");
+    }
     gwtpTrainingTarget = null;
   }
 }
