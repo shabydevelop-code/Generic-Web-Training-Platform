@@ -4,6 +4,8 @@ let pickerActive = false;
 let hoveredElement = null;
 let keyboardPickerElement = null;
 let keyboardPickerOriginalTabIndex = null;
+let keyboardPickerCandidates = [];
+let keyboardPickerIndex = -1;
 
 function getFrameContext() {
   const isTop = window.top === window;
@@ -63,6 +65,8 @@ function stopElementPicker() {
     keyboardPickerElement = null;
     keyboardPickerOriginalTabIndex = null;
   }
+  keyboardPickerCandidates = [];
+  keyboardPickerIndex = -1;
   document.removeEventListener("mouseover", onPickerMouseOver, true);
   document.removeEventListener("click", onPickerClick, true);
   document.removeEventListener("keydown", onPickerKeyDown, true);
@@ -101,6 +105,66 @@ function selectPickerElement(element) {
   return true;
 }
 
+function getKeyboardPickerCandidates() {
+  return [...document.querySelectorAll(
+    'a[href], button, input:not([type="hidden"]), select, textarea, [contenteditable="true"], [tabindex]'
+  )].filter((element) => {
+    if (!(element instanceof HTMLElement)) return false;
+    if (element.hidden || element.getAttribute("aria-hidden") === "true") return false;
+    if (element.matches("[disabled], [inert]")) return false;
+    const style = getComputedStyle(element);
+    if (style.display === "none" || style.visibility === "hidden") return false;
+    return element.getClientRects().length > 0;
+  });
+}
+
+function highlightKeyboardPickerElement(element) {
+  if (!(element instanceof HTMLElement)) return false;
+  clearPickerHover();
+  hoveredElement = element;
+  hoveredElement.dataset.gwtpPickerPreviousOutline = hoveredElement.style.outline;
+  hoveredElement.dataset.gwtpPickerPreviousOutlineOffset = hoveredElement.style.outlineOffset;
+  hoveredElement.setAttribute(PICKER_ATTRIBUTE, "true");
+  hoveredElement.style.outline = "3px solid #f59e0b";
+  hoveredElement.style.outlineOffset = "2px";
+  hoveredElement.scrollIntoView({ block: "nearest", inline: "nearest" });
+  return true;
+}
+
+function moveElementPickerKeyboard(direction) {
+  if (!pickerActive) return { success: false };
+
+  if (!keyboardPickerCandidates.length) {
+    keyboardPickerCandidates = getKeyboardPickerCandidates();
+  }
+  if (!keyboardPickerCandidates.length) return { success: false, message: "No keyboard-selectable elements were found." };
+
+  keyboardPickerIndex = keyboardPickerIndex < 0
+    ? (direction < 0 ? keyboardPickerCandidates.length - 1 : 0)
+    : (keyboardPickerIndex + direction + keyboardPickerCandidates.length) % keyboardPickerCandidates.length;
+
+  const element = keyboardPickerCandidates[keyboardPickerIndex];
+  highlightKeyboardPickerElement(element);
+  return {
+    success: true,
+    index: keyboardPickerIndex,
+    count: keyboardPickerCandidates.length,
+    text: (element.innerText || element.getAttribute("aria-label") || element.getAttribute("name") || element.tagName).trim().slice(0, 120)
+  };
+}
+
+function selectElementPickerKeyboard() {
+  if (!pickerActive || keyboardPickerIndex < 0) return { success: false };
+  return { success: selectPickerElement(keyboardPickerCandidates[keyboardPickerIndex]) };
+}
+
+function cancelElementPickerKeyboard() {
+  if (!pickerActive) return { success: false };
+  stopElementPicker();
+  chrome.runtime.sendMessage({ type: "GWTP_ELEMENT_SELECTION_CANCELLED" }).catch(() => {});
+  return { success: true };
+}
+
 function onPickerKeyDown(event) {
   if (!pickerActive) return;
 
@@ -130,33 +194,15 @@ function startElementPicker(options = {}) {
   document.addEventListener("keydown", onPickerKeyDown, true);
 
   if (options.keyboardStart === true) {
-    const candidates = [...document.querySelectorAll(
-      'a[href], button, input:not([type="hidden"]), select, textarea, [contenteditable="true"], [tabindex]'
-    )].filter((element) => {
-      if (!(element instanceof HTMLElement)) return false;
-      if (element.hidden || element.getAttribute("aria-hidden") === "true") return false;
-      if (element.matches("[disabled], [inert]")) return false;
-      const style = getComputedStyle(element);
-      if (style.display === "none" || style.visibility === "hidden") return false;
-      return element.getClientRects().length > 0;
-    });
-
-    const first = candidates[0] || document.body;
-    if (first instanceof HTMLElement) {
-      keyboardPickerElement = first;
-      keyboardPickerOriginalTabIndex = first.getAttribute("tabindex");
-      if (!first.matches('a[href], button, input, select, textarea, [contenteditable="true"], [tabindex]')) {
-        first.tabIndex = 0;
-      }
-      first.focus({ preventScroll: false });
-      first.scrollIntoView({ block: "nearest", inline: "nearest" });
-    }
+    keyboardPickerCandidates = getKeyboardPickerCandidates();
+    keyboardPickerIndex = -1;
+    moveElementPickerKeyboard(1);
   }
 
   return {
     success: true,
     message: options.keyboardStart === true
-      ? "Keyboard selection mode active. Focus moved to the page. Use Tab or Shift+Tab, press Enter to select, or Escape to cancel."
+      ? "Keyboard selection mode active. Use Tab or Shift+Tab in the Side Panel to move the page highlight, Enter to select, or Escape to cancel."
       : "Selection mode active. Click an element, or focus it with the keyboard and press Enter. Press Escape to cancel."
   };
 }
