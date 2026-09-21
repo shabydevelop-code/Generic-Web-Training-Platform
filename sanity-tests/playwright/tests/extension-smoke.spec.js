@@ -1645,8 +1645,9 @@ test("stage 6 full authoring lifecycle - new topic guide reopen edit steps previ
     await expect(panel.locator("#stepsList .step-item")).toHaveCount(3);
 
     const thirdStep = panel.locator("#stepsList .step-item").filter({ hasText: thirdInstruction }).first();
-    await thirdStep.focus();
-    await thirdStep.dispatchEvent("keydown", { key: "ArrowUp", bubbles: true });
+    const thirdStepDragHandle = thirdStep.locator(".step-item__drag-handle");
+    await thirdStepDragHandle.focus();
+    await thirdStepDragHandle.dispatchEvent("keydown", { key: "ArrowUp", bubbles: true });
     await expect(panel.locator("#stepsList .step-item").nth(1)).toContainText(thirdInstruction);
 
     const secondStep = panel.locator("#stepsList .step-item").filter({ hasText: secondInstruction }).first();
