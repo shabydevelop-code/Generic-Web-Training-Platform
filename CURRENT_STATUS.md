@@ -245,3 +245,5 @@ Later accessibility phases must add their own concrete regression checks to this
 - Stage 3 test 11 first local run reached 10/11 PASS. The completion test failure was isolated to test setup: its `not_equals branch` step incorrectly selected `branch`, so the runtime correctly kept progress at stepIndex 2. The E2E now selects `hq`, waits for the Demo CRM field/postback state, and explicitly synchronizes progress at stepIndex 3 and 4 before continuing. Pending re-verification.
 
 - Stage 3 Playwright suite verified locally at **11/11 PASS**. Test 11 confirms the completion lifecycle end-to-end: all authored validations can be satisfied, Finish persists completion, the completion dialog appears, a fresh learner catalog does not offer Continue/Restart for the completed guide, and starting it again restarts at zero-based stepIndex 0.
+
+- Stage 3 test 12 added (pending local verification): learner Side Panel narrow-width reflow at 320x720. It verifies there is no horizontal document overflow and that the topic selector, guide selector, and primary learning action remain visible and fully inside the viewport.
