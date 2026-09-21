@@ -134,7 +134,9 @@ Reset was verified to delete both guide and step progress as intended.
 - The rich-text instruction editor now has a visible focus-within state, is marked required for assistive technology, and is associated with its status/error region.
 - Login fields are associated with the login status region for assistive technology.
 - The delete/reset confirmation dialog now has an accessible description, moves focus into the dialog, traps Tab/Shift+Tab inside it, closes with Escape, and returns focus to the control that opened it when possible.
-- Remaining accessibility work includes field-level aria-invalid/error association, learner overlay/dialog semantics and focus behavior, keyboard alternatives for pointer-only overlay movement/Element Picker behavior, contrast verification, zoom/reflow testing, and screen-reader regression testing.
+- Field-level validation semantics are now implemented for the main Side Panel forms. Invalid login, user-management, guide-details, instruction, and validation-builder fields receive `aria-invalid="true"` and are associated with their existing status/error region through `aria-describedby`. The invalid state is cleared when the user edits/corrects the affected control.
+- Invalid fields also receive a visible error border/ring so the state is not communicated only through status text.
+- Remaining accessibility work includes learner overlay/dialog semantics and focus behavior, keyboard alternatives for pointer-only overlay movement/Element Picker behavior, contrast verification, zoom/reflow testing, and screen-reader regression testing.
 
 ## Accessibility regression checks
 For every accessibility change, verify the affected behavior with keyboard-only interaction before continuing:
@@ -142,6 +144,8 @@ For every accessibility change, verify the affected behavior with keyboard-only 
 - Confirmation dialog: open any delete/reset confirmation; confirm focus enters the dialog, Tab/Shift+Tab cannot leave it, Escape closes it, and focus returns to the opening control.
 - Rich-text editor: Tab to the instruction editor and its formatting controls; confirm both the toolbar controls and editor have visible focus.
 - Login: navigate username -> password -> Continue using the keyboard and verify validation/status feedback remains exposed without requiring the mouse.
+- Field errors: submit intentionally invalid values in Login, Create/Edit User, Guide Details, and Step/Validation editing. Confirm the invalid field receives the red error state and focus where applicable; then edit the field and confirm the invalid visual state clears.
+- Browser accessibility inspection: for an invalid field, inspect its accessibility attributes and confirm `aria-invalid="true"` and `aria-describedby` points to the visible status/error element.
 Later accessibility phases must add their own concrete regression checks to this section.
 
 ## Immediate next tasks
