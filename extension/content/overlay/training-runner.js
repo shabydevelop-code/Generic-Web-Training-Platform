@@ -471,6 +471,7 @@ async function showTrainingStep(step, navigation = {}) {
 
     if (!disabled) {
       let pendingNavigationPromise = null;
+      let navigationInProgress = false;
       let focusBeforeNavigation = null;
 
       button.addEventListener("pointerdown", (event) => {
@@ -492,13 +493,27 @@ async function showTrainingStep(step, navigation = {}) {
       });
 
       button.addEventListener("click", async () => {
+        // A physical double-click can dispatch the second click while the first
+        // asynchronous validation/pending-navigation path is still awaiting Chrome
+        // messaging. Disable the whole navigation transaction synchronously so one
+        // rendered control can mutate learner progress at most once.
+        if (navigationInProgress) return;
+        navigationInProgress = true;
+        button.disabled = true;
+
         if (pendingNavigationPromise) {
           const pendingResponse = await pendingNavigationPromise.catch(() => null);
           pendingNavigationPromise = null;
-          if (!pendingResponse?.success) return;
+          if (!pendingResponse?.success) {
+            navigationInProgress = false;
+            button.disabled = false;
+            return;
+          }
         }
 
         if ((action === "GWTP_TRAINING_NEXT" || action === "GWTP_PREVIEW_NEXT") && !(await validateCurrentStep())) {
+          navigationInProgress = false;
+          button.disabled = false;
           return;
         }
 
@@ -512,7 +527,11 @@ async function showTrainingStep(step, navigation = {}) {
           });
           const pendingResponse = await pendingNavigationPromise.catch(() => null);
           pendingNavigationPromise = null;
-          if (!pendingResponse?.success) return;
+          if (!pendingResponse?.success) {
+            navigationInProgress = false;
+            button.disabled = false;
+            return;
+          }
         }
 
         // Only after validation and pending-state persistence do we allow blur/change.
@@ -528,10 +547,9 @@ async function showTrainingStep(step, navigation = {}) {
           focusBeforeNavigation = null;
         }
 
-        button.disabled = true;
-
         const moveStep = () => chrome.runtime.sendMessage({ type: action }).then((response) => {
           if (!response?.success || !response.current?.step) {
+            navigationInProgress = false;
             button.disabled = false;
             return;
           }
@@ -559,6 +577,7 @@ async function showTrainingStep(step, navigation = {}) {
             .catch(() => null)
             .then(notifyStepChanged);
         }).catch(() => {
+          navigationInProgress = false;
           button.disabled = false;
         });
 
@@ -576,6 +595,7 @@ async function showTrainingStep(step, navigation = {}) {
 
         chrome.runtime.sendMessage({ type: peekType }).then(async (peekResponse) => {
           if (!peekResponse?.success || !peekResponse.current?.step) {
+            navigationInProgress = false;
             button.disabled = false;
             return;
           }
@@ -591,6 +611,7 @@ async function showTrainingStep(step, navigation = {}) {
             // GWTP_PAGE_READY will resume the move in the requested direction.
             validationError.style.display = "block";
             validationError.textContent = availability?.message || "";
+            navigationInProgress = false;
             button.disabled = false;
             return;
           }
