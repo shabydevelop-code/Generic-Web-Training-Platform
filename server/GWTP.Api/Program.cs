@@ -28,10 +28,22 @@ var app = builder.Build();
 
 app.UseCors("Extension");
 
-var projectRoot = FindProjectRoot(app.Environment.ContentRootPath);
-var databaseDirectory = Path.Combine(projectRoot, "database");
+var configuredDataPath = builder.Configuration["GWTP_DATA_PATH"];
+var databaseDirectory = string.IsNullOrWhiteSpace(configuredDataPath)
+    ? Path.Combine(FindProjectRoot(app.Environment.ContentRootPath), "database")
+    : Path.GetFullPath(Environment.ExpandEnvironmentVariables(configuredDataPath));
+
+Directory.CreateDirectory(databaseDirectory);
+
 var databasePath = Path.Combine(databaseDirectory, "GWTP.db");
 var schemaPath = Path.Combine(databaseDirectory, "schema.sql");
+
+if (!File.Exists(schemaPath))
+{
+    throw new FileNotFoundException(
+        $"GWTP database schema was not found at '{schemaPath}'. The configured GWTP_DATA_PATH must contain schema.sql.",
+        schemaPath);
+}
 
 InitializeDatabase(databasePath, schemaPath);
 ApplyDatabaseMigrations(databasePath);
