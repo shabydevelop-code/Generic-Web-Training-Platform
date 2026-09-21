@@ -202,7 +202,7 @@ Later accessibility phases must add their own concrete regression checks to this
 - Added the first real learner E2E smoke: Playwright opens Demo CRM, logs in as the sanity learner, selects `Demo CRM` / `תרגול מלא - Demo CRM`, starts learning, and verifies that a visible guidance overlay and highlighted target are rendered in the live CRM frame.
 - Initial Stage 3 Playwright foundation was executed locally on 2026-09-21 and verified successfully: 4/4 PASS (Demo CRM/content-script readiness, learner role UI, editor role UI, admin role UI).
 - First real learner Playwright E2E was then executed successfully: total suite 5/5 PASS. The learner test logs in, selects `Demo CRM` / `תרגול מלא - Demo CRM`, starts the guide against the active Demo CRM tab, and verifies visible guidance plus target highlighting.
-- Added the next learner behavior E2E: force/restart the dedicated sanity learner at step 1, verify `Next` moves guidance from `#site-code` to `#site-name`, then verify `Previous` moves it back. The test now follows the actual training-runner implementation: training guidance applies its own inline outline and does not use the generic highlighter's `data-gwtp-highlighted` marker. Pending local execution.
+- Learner navigation E2E verified locally: total suite 6/6 PASS. The dedicated sanity learner is restarted at step 1; `Next` moves guidance from `#site-code` to `#site-name`, and `Previous` moves it back. The assertion follows the actual training-runner implementation, which applies its own inline outline rather than the generic highlighter's `data-gwtp-highlighted` marker.
 - Playwright/browser sanity assets are development/QA-only and must not be included in the future customer installation/package.
 
 ## Immediate next tasks
