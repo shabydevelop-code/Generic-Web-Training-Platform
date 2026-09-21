@@ -249,3 +249,5 @@ Later accessibility phases must add their own concrete regression checks to this
 - Stage 3 test 12 added (pending local verification): learner Side Panel narrow-width reflow at 320x720. It verifies there is no horizontal document overflow and that the topic selector, guide selector, and primary learning action remain visible and fully inside the viewport.
 
 - Stage 3 Playwright suite verified locally at **12/12 PASS**. Test 12 confirms the learner Side Panel fits a 320x720 viewport without horizontal document overflow and keeps the topic selector, guide selector, and primary learning action fully visible inside the viewport.
+
+- Stage 3 test 13 added (pending local verification): editor Side Panel narrow-width layout at 320x720. It verifies no horizontal document overflow and checks every visible editor button/input/select/textarea remains within the viewport.
