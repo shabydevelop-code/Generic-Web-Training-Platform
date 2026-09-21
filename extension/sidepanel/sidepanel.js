@@ -2122,7 +2122,15 @@ async function handleLogout() {
   usernameInput.focus();
 }
 
-learnerTopicSelect.addEventListener("change", handleLearnerTopicChange);
+learnerTopicSelect.addEventListener("change", () => {
+  // Recovery belongs to the previously selected learning context.
+  // Changing topic starts a fresh selection context, so stale recovery UI
+  // must not remain visible for the newly selected topic/guide.
+  hideLearnerRecovery();
+  learnerStatus.textContent = "";
+  learnerStatus.removeAttribute("data-type");
+  handleLearnerTopicChange();
+});
 learnerGuideSelect.addEventListener("change", handleLearnerGuideChange);
 startLearningButton.addEventListener("click", handleStartLearning);
 restartLearningButton.addEventListener("click", handleRestartLearning);
