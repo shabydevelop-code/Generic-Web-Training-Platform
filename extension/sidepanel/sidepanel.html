@@ -157,6 +157,22 @@
 
           <section class="card">
             <h2 class="guide-library__title" data-i18n="existingGuidesTitle">Existing Guides</h2>
+            <div class="list-filters guide-library__filters">
+              <div class="list-filter">
+                <label for="guideTopicFilter" data-i18n="guideTopicFilterLabel">Topic</label>
+                <select id="guideTopicFilter">
+                  <option value="all" data-i18n="filterAllTopics">All topics</option>
+                </select>
+              </div>
+              <div class="list-filter">
+                <label for="guideAvailabilityFilter" data-i18n="guideAvailabilityFilterLabel">Availability</label>
+                <select id="guideAvailabilityFilter">
+                  <option value="all" data-i18n="filterAllAvailability">All</option>
+                  <option value="available" data-i18n="filterAvailable">Available to learners</option>
+                  <option value="unavailable" data-i18n="filterUnavailable">Not available to learners</option>
+                </select>
+              </div>
+            </div>
             <div id="guidesList" class="guides-list"></div>
             <p id="guidesStatus" class="status" aria-live="polite"></p>
           </section>
@@ -371,7 +387,14 @@
           >
             + Add Step
           </button>
+          <div id="stepScreenFilterWrap" class="list-filter step-screen-filter" hidden>
+            <label for="stepScreenFilter" data-i18n="stepScreenFilterLabel">Screen</label>
+            <select id="stepScreenFilter">
+              <option value="all" data-i18n="filterAllScreens">All screens</option>
+            </select>
+          </div>
           <div id="stepsList" class="steps-list"></div>
+          <p id="stepsFilterStatus" class="status" aria-live="polite"></p>
         </section>
         </div>
       </div>
