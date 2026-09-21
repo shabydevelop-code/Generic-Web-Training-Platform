@@ -209,3 +209,5 @@ Later accessibility phases must add their own concrete regression checks to this
 1. Verify `deploy-gwtp-service.bat` on the next backend code change; the initial Windows Service installation and extension connectivity are already verified.
 2. Expand the now-verified 5/5 Stage 3 Playwright suite through learner navigation behavior: Next/Previous, validation blocking, cross-screen/frame transitions, recovery, and completion. Keep all Playwright/test tooling development-only and outside the future customer package.
 3. Continue accessibility runtime verification separately with reflow and screen-reader regression testing.
+
+- Stage 3 validation E2E added: the dedicated validation guide clears the required site-name field, verifies Next remains blocked with the authored validation error, then supplies a value and verifies advancement to site-type. Pending local execution; Playwright suite now contains 7 tests.
