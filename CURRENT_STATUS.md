@@ -105,9 +105,10 @@ Reset was verified to delete both guide and step progress as intended.
 - This is the first step toward running the API as an independently managed, always-on central service rather than a console process manually started by the extension user.
 - The API now supports a service-safe `GWTP_DATA_PATH`; when omitted, normal repository-based development behavior is preserved.
 - `install-gwtp-service.bat` publishes the API to `%ProgramData%\\GWTP\\Api`, copies the initial SQLite/schema data to `%ProgramData%\\GWTP\\Data` without overwriting existing service data, registers an automatic Windows Service, and binds it to `127.0.0.1:5000`.
-- `uninstall-gwtp-service.bat` removes the service while preserving its database data. This deployment workflow is implemented but still requires local installation/verification.
+- `uninstall-gwtp-service.bat` removes the service while preserving its database data.
+- The local Windows Service deployment was installed and verified successfully: `/api/health` returned `GWTP.Api / ok`, and the browser extension successfully connected and operated through the service-backed API/database without `dotnet run`.
 - `deploy-gwtp-service.bat` provides the normal backend update path after Git changes: publish to a staging directory, stop the installed service, replace the published API files, restart the service, and require a successful `/api/health` response. Persistent service data under `%ProgramData%\\GWTP\\Data` is not replaced by deployment.
 
 ## Immediate next tasks
-1. Install and verify the local `GWTP.Api` Windows Service simulation and test the new one-command deployment workflow.
+1. Verify `deploy-gwtp-service.bat` on the next backend code change; the initial Windows Service installation and extension connectivity are already verified.
 2. Review remaining editor/learner UX gaps before adding new capabilities.
