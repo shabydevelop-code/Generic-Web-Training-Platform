@@ -118,12 +118,16 @@ test("admin sees administration UI only", async () => {
 
 
 test("learner can start a real Demo CRM guide and receives visible guidance", async () => {
+  const panel = await openPanel();
+  await login(panel, "sanity.learner");
+
+  // A real Chrome Side Panel does not become the active browser tab. Opening the
+  // extension document as a normal Playwright tab does, so restore a normal web
+  // tab as active before starting the guide. guideRunner intentionally targets
+  // chrome.tabs.query({ active: true, currentWindow: true }).
   const crm = await context.newPage();
   await crm.goto(`${SITE_URL}/site.html`);
   await crm.bringToFront();
-
-  const panel = await openPanel();
-  await login(panel, "sanity.learner");
 
   const topicOptions = panel.locator("#learnerTopicSelect option");
   const demoTopic = topicOptions.filter({ hasText: "Demo CRM" });
