@@ -1963,7 +1963,18 @@ saveStepButton.addEventListener("click", async () => {
     return;
   }
 
-  if (!(await validateSelectedStepElement())) {
+  // A persisted step may be edited from any application screen. Revalidate the
+  // live-page target only when creating a step or when the author actually changed
+  // the selected target. Metadata-only edits (ScreenName, instruction, validation)
+  // must not require the original business screen to be open.
+  const originalSelector = editingStepSnapshot?.selector || "";
+  const originalFrame = editingStepSnapshot?.element?.frame || editingStepSnapshot?.frame || null;
+  const selectedFrameValue = currentSelectedElement?.frame || null;
+  const targetChanged = !editingStepId
+    || selector !== originalSelector
+    || JSON.stringify(selectedFrameValue) !== JSON.stringify(originalFrame);
+
+  if (targetChanged && !(await validateSelectedStepElement())) {
     setStatus(window.i18nService.translate("stepElementInvalid", language), "error");
     return;
   }
