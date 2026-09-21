@@ -1739,7 +1739,7 @@ function renderSteps() {
     item.dataset.stepId = step.id;
     item.tabIndex = 0;
     item.setAttribute("role", "button");
-    item.setAttribute("aria-label", `Run Step ${step.order}`);
+    item.setAttribute("aria-label", window.i18nService.translate("runStepLabel", language).replace("{number}", step.order));
     item.setAttribute("aria-pressed", String(step.id === activeStepId));
 
     if (step.id === activeStepId) item.classList.add("step-item--active");
