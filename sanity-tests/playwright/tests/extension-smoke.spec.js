@@ -359,3 +359,87 @@ test("learner continues automatically across the Site to Case page transition", 
   await panel.close();
   await crm.close();
 });
+
+
+test("learner survives a real Site server save and reload", async () => {
+  const panel = await openPanel();
+  await login(panel, "sanity.learner");
+
+  const crm = await context.newPage();
+  await crm.goto(`${SITE_URL}/site.html`);
+  await crm.bringToFront();
+
+  const topic = panel.locator("#learnerTopicSelect option").filter({ hasText: "Demo CRM" });
+  await panel.locator("#learnerTopicSelect").selectOption(await topic.getAttribute("value"));
+  const guide = panel.locator("#learnerGuideSelect option").filter({ hasText: "תרגול מלא - Demo CRM" });
+  await panel.locator("#learnerGuideSelect").selectOption(await guide.getAttribute("value"));
+
+  const restart = panel.locator("#restartLearningButton");
+  if (await restart.isVisible()) await restart.click();
+  else await panel.locator("#startLearningButton").click();
+
+  const content = crm.frameLocator('iframe[name="TargetContent"]');
+  await expect(content.locator(".gwtp-training-overlay")).toBeVisible({ timeout: 10000 });
+
+  // Advance deterministically to the Save Site step (zero-based index 4).
+  for (let step = 1; step <= 4; step++) {
+    if (step === 3) {
+      await content.locator("#site-phone").fill("03-7654321");
+    }
+    if (step === 4) {
+      await content.locator("#site-type").selectOption("branch");
+      await expect(content.locator("#site-type")).toHaveValue("branch", { timeout: 10000 });
+    }
+
+    const next = content.locator(".gwtp-training-overlay button").filter({ hasText: /הבא|Next/i });
+    await expect(next).toBeEnabled();
+    await next.click();
+
+    await expect.poll(async () => panel.evaluate(async () => {
+      const response = await chrome.runtime.sendMessage({ type: "GWTP_TRAINING_GET_CURRENT" });
+      return response?.current?.stepIndex ?? null;
+    }), {
+      message: `GWTP progress did not advance after Site step ${step}`,
+      timeout: 10000
+    }).toBe(step);
+  }
+
+  const save = content.locator("#btn-save-site");
+  await expect(save).toHaveCSS("outline-width", "3px");
+
+  const frameBeforeSave = crm.frames().find((frame) => frame.name() === "TargetContent");
+  expect(frameBeforeSave).toBeTruthy();
+  const oldUrl = frameBeforeSave.url();
+
+  // This is the real Demo CRM business action: PUT /api/sites/77402 followed by
+  // location.reload() inside TargetContent. GWTP must keep step 5 active.
+  const saveResponsePromise = crm.waitForResponse((response) =>
+    response.url().includes("/api/sites/77402") &&
+    response.request().method() === "PUT"
+  );
+  await save.click();
+  const saveResponse = await saveResponsePromise;
+  expect(saveResponse.ok(), "Demo CRM Site save must succeed").toBeTruthy();
+
+  await expect.poll(() => {
+    const frame = crm.frames().find((item) => item.name() === "TargetContent");
+    return frame?.url() || "";
+  }, {
+    message: "TargetContent did not return after the Site save reload",
+    timeout: 10000
+  }).toBe(oldUrl);
+
+  await expect.poll(async () => panel.evaluate(async () => {
+    const response = await chrome.runtime.sendMessage({ type: "GWTP_TRAINING_GET_CURRENT" });
+    return response?.current?.stepIndex ?? null;
+  }), {
+    message: "GWTP progress changed during the Site save reload",
+    timeout: 10000
+  }).toBe(4);
+
+  await expect(content.locator("#btn-save-site")).toHaveCSS("outline-width", "3px", { timeout: 10000 });
+  await expect(content.locator(".gwtp-training-overlay")).toBeVisible({ timeout: 10000 });
+
+  await panel.close();
+  await crm.close();
+});
