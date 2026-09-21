@@ -2,6 +2,11 @@
   const translations = Object.freeze({
     en: Object.freeze({
       elementSelectionTitle: "Element Selection",
+      richTextToolbarLabel: "Text formatting",
+      richTextBoldLabel: "Bold",
+      richTextItalicLabel: "Italic",
+      richTextUnderlineLabel: "Underline",
+      runStepLabel: "Run step {number}",
       learnerTitle: "Learning",
       learnerDescription: "Choose a topic and guide to begin.",
       learnerTopicLabel: "Topic",
@@ -231,6 +236,11 @@
     }),
     he: Object.freeze({
       elementSelectionTitle: "בחירת אלמנט",
+      richTextToolbarLabel: "עיצוב טקסט",
+      richTextBoldLabel: "מודגש",
+      richTextItalicLabel: "נטוי",
+      richTextUnderlineLabel: "קו תחתון",
+      runStepLabel: "הפעל שלב {number}",
       learnerTitle: "למידה",
       learnerDescription: "בחר נושא ומדריך כדי להתחיל.",
       learnerTopicLabel: "נושא",
@@ -485,6 +495,10 @@
 
     document.querySelectorAll("[data-i18n-data-placeholder]").forEach((element) => {
       element.dataset.placeholder = translate(element.dataset.i18nDataPlaceholder, language);
+    });
+
+    document.querySelectorAll("[data-i18n-aria-label]").forEach((element) => {
+      element.setAttribute("aria-label", translate(element.dataset.i18nAriaLabel, language));
     });
   }
 
