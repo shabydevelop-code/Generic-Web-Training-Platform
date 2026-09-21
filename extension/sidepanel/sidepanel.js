@@ -1822,6 +1822,14 @@ function renderSteps() {
 
     header.append(title, dragHandle);
 
+    const screenName = (step.screenName || "").trim();
+    const screen = document.createElement("div");
+    screen.className = "step-item__screen";
+    screen.textContent = screenName
+      ? `${window.i18nService.translate("screenNameLabel", language)}: ${screenName}`
+      : "";
+    screen.hidden = !screenName;
+
     const instruction = document.createElement("div");
     instruction.className = "step-item__instruction";
     instruction.innerHTML = sanitizeInstructionHtml(step.instruction || "");
@@ -1829,7 +1837,7 @@ function renderSteps() {
     const selector = document.createElement("code");
     selector.textContent = step.selector;
 
-    item.append(header, instruction, selector);
+    item.append(header, screen, instruction, selector);
 
     item.addEventListener("dragover", (event) => {
       if (!draggedStepId || draggedStepId === step.id) return;
