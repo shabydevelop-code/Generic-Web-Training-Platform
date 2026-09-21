@@ -2,6 +2,13 @@
 
 GWTP uses a small central SQLite data model focused on users, training content, optional step validation, and learner progress.
 
+## Database location
+
+- Local/interactive development uses `database/GWTP.db` when `GWTP_DATA_PATH` is not configured.
+- The installed Windows Service uses `C:\\ProgramData\\GWTP\\Data\\GWTP.db` through the `GWTP_DATA_PATH` environment setting.
+- These are separate database files. A migration executed by the Windows Service changes the ProgramData database, not the repository copy.
+- Service troubleshooting and migration verification must therefore query `C:\\ProgramData\\GWTP\\Data\\GWTP.db`.
+
 ## Core hierarchy
 
 Topic -> Guide -> GuideSteps -> StepValidations (optional)
