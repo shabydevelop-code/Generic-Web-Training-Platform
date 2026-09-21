@@ -17,7 +17,10 @@ Main capabilities include element selection/highlighting, guide steps, Write/Cli
 
 Backend: .NET API + SQLite.
 Local API: `http://localhost:5000`.
-Database: `database/GWTP.db`.
+Database:
+- Interactive/local development fallback: `database/GWTP.db` in the repository when `GWTP_DATA_PATH` is not configured.
+- Installed Windows Service: `C:\\ProgramData\\GWTP\\Data\\GWTP.db`, supplied through `GWTP_DATA_PATH`.
+- When diagnosing the Windows Service, always inspect the ProgramData database rather than the repository database.
 
 ## UI rules
 - Hebrew and English must be supported cleanly, including RTL/LTR separation.
