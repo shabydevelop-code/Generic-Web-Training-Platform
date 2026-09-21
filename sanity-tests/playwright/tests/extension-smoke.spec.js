@@ -1021,7 +1021,10 @@ test("stage 4 grid learner - active guidance survives server-side grid rerender"
 
   const beforeRow = await targetCell.evaluate((cell) => cell.parentElement?.rowIndex ?? -1);
   const sortButton = content.locator('.ps-grid-sort[data-sort="status"]');
-  await sortButton.click();
+  // The training bubble may legitimately overlap the grid header. Trigger the
+  // business control programmatically so this test exercises the server-side
+  // rerender rather than Playwright's pointer hit-testing.
+  await sortButton.evaluate((button) => button.click());
   await expect(sortButton).toHaveAttribute("aria-sort", "ascending");
 
   const rerenderedTarget = content.locator("#c360-summary-table tbody td").filter({ hasText: targetText }).first();
