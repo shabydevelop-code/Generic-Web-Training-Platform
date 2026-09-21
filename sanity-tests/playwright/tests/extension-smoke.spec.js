@@ -342,6 +342,161 @@ test("stage 5 management CRUD - editor creates, edits and deletes a guide and it
   }
 });
 
+
+test("stage 5 editor preview - navigation, validation and exit cleanup work through the real UI", async () => {
+  const guideName = "Stage 5 Preview " + Date.now();
+  const panel = await openPanel();
+  let crm = null;
+  try {
+    await login(panel, "sanity.editor");
+    crm = await context.newPage();
+    await crm.goto(SITE_URL + "/site.html");
+    await crm.bringToFront();
+    const content = crm.frameLocator('iframe[name="TargetContent"]');
+
+    await panel.locator("#openNewGuideButton").click();
+    const demoTopic = panel.locator("#topicSelect option").filter({ hasText: "Demo CRM" });
+    await panel.locator("#topicSelect").selectOption(await demoTopic.getAttribute("value"));
+    await panel.locator("#guideNameInput").fill(guideName);
+    await panel.locator("#guideStartUrlInput").fill(SITE_URL + "/site.html");
+
+    // Step 1: required validation on a real input.
+    await panel.locator("#addStepButton").click();
+    await panel.locator("#selectButton").click();
+    await content.locator("#site-code").click();
+    await panel.locator("#instructionInput").fill("Preview required step");
+    await panel.locator("#validationTypeSelect").selectOption("required");
+    await panel.locator("#validationErrorInput").fill("Preview required error");
+    await panel.locator("#saveStepButton").click();
+
+    // Step 2: a second real target so Preview Previous/Next can be exercised.
+    await panel.locator("#addStepButton").click();
+    await panel.locator("#selectButton").click();
+    await content.locator("#site-name").click();
+    await panel.locator("#instructionInput").fill("Preview second step");
+    await panel.locator("#saveStepButton").click();
+
+    await crm.bringToFront();
+    await panel.locator("#previewGuideButton").click();
+    let overlay = content.locator(".gwtp-training-overlay");
+    await expect(overlay).toHaveCount(1);
+    await expect(overlay).toContainText("Preview required step");
+    await expect(panel.locator("#previewProgress")).toContainText(/1.*2/);
+
+    // Required must block Preview just as it blocks learner execution.
+    const originalCode = await content.locator("#site-code").inputValue();
+    await content.locator("#site-code").fill("");
+    await overlay.locator("button").filter({ hasText: /הבא|Next/i }).click();
+    await expect(overlay).toContainText("Preview required error");
+    await expect(panel.locator("#previewProgress")).toContainText(/1.*2/);
+
+    await content.locator("#site-code").fill(originalCode || "10082");
+    await overlay.locator("button").filter({ hasText: /הבא|Next/i }).click();
+    overlay = content.locator(".gwtp-training-overlay");
+    await expect(overlay).toContainText("Preview second step");
+    await expect(panel.locator("#previewProgress")).toContainText(/2.*2/);
+
+    await overlay.locator("button").filter({ hasText: /הקודם|Previous/i }).click();
+    await expect(content.locator(".gwtp-training-overlay")).toContainText("Preview required step");
+    await expect(panel.locator("#previewProgress")).toContainText(/1.*2/);
+
+    await panel.bringToFront();
+    await panel.locator("#exitPreviewButton").click();
+    await expect(panel.locator("#previewGuideButton")).toBeVisible();
+    await expect(panel.locator("#previewActiveControls")).toBeHidden();
+    await expect(content.locator(".gwtp-training-overlay")).toHaveCount(0);
+    await expect(content.locator("#site-code")).not.toHaveCSS("outline-width", "3px");
+  } finally {
+    await panel.close().catch(() => {});
+    await crm?.close().catch(() => {});
+  }
+});
+
+test("stage 5 editor management - persisted step reorder survives reopening the guide", async () => {
+  const guideName = "Stage 5 Reorder " + Date.now();
+  const panel = await openPanel();
+  let crm = null;
+  try {
+    await login(panel, "sanity.editor");
+    crm = await context.newPage();
+    await crm.goto(SITE_URL + "/site.html");
+    await crm.bringToFront();
+    const content = crm.frameLocator('iframe[name="TargetContent"]');
+
+    await panel.locator("#openNewGuideButton").click();
+    const demoTopic = panel.locator("#topicSelect option").filter({ hasText: "Demo CRM" });
+    await panel.locator("#topicSelect").selectOption(await demoTopic.getAttribute("value"));
+    await panel.locator("#guideNameInput").fill(guideName);
+    await panel.locator("#guideStartUrlInput").fill(SITE_URL + "/site.html");
+
+    for (const [selector, instruction] of [["#site-code", "Reorder first"], ["#site-name", "Reorder second"]]) {
+      await panel.locator("#addStepButton").click();
+      await panel.locator("#selectButton").click();
+      await content.locator(selector).click();
+      await panel.locator("#instructionInput").fill(instruction);
+      await panel.locator("#saveStepButton").click();
+    }
+
+    await panel.locator("#saveGuideButton").click();
+    let card = panel.locator("[data-guide-id]").filter({ hasText: guideName }).first();
+    await card.click();
+    const before = await panel.locator("#stepsList .step-item .step-item__instruction").allTextContents();
+    expect(before.map((x) => x.trim())).toEqual(["Reorder first", "Reorder second"]);
+
+    const secondHandle = panel.locator("#stepsList .step-item").nth(1).locator(".step-item__drag-handle");
+    await secondHandle.focus();
+    await secondHandle.press("ArrowUp");
+    await expect.poll(async () => (await panel.locator("#stepsList .step-item .step-item__instruction").allTextContents()).map((x) => x.trim())).toEqual(["Reorder second", "Reorder first"]);
+
+    await panel.locator("#backToGuidesButton").click();
+    card = panel.locator("[data-guide-id]").filter({ hasText: guideName }).first();
+    await card.click();
+    await expect.poll(async () => (await panel.locator("#stepsList .step-item .step-item__instruction").allTextContents()).map((x) => x.trim())).toEqual(["Reorder second", "Reorder first"]);
+
+    await panel.locator("#deleteEditedGuideButton").click();
+    await panel.locator("#confirmDeleteButton").click();
+  } finally {
+    try {
+      if (await panel.locator("#guideEditorView").isVisible()) await panel.locator("#backToGuidesButton").click();
+      const leftover = panel.locator("[data-guide-id]").filter({ hasText: guideName }).first();
+      if (await leftover.count()) { await leftover.click(); await panel.locator("#deleteEditedGuideButton").click(); if (await panel.locator("#deleteConfirmOverlay").isVisible()) await panel.locator("#confirmDeleteButton").click(); }
+    } catch {}
+    await panel.close().catch(() => {});
+    await crm?.close().catch(() => {});
+  }
+});
+
+test("stage 5 editor management - delete confirmation can be cancelled without deleting the topic", async () => {
+  const topicName = "Stage 5 Cancel Delete " + Date.now();
+  const panel = await openPanel();
+  await login(panel, "sanity.editor");
+  try {
+    await panel.locator("#openTopicsButton").click();
+    await panel.locator("#openCreateTopicButton").click();
+    await panel.locator("#newTopicInput").fill(topicName);
+    await panel.locator("#createTopicButton").click();
+    let card = panel.locator("#topicsList [data-topic-id]").filter({ hasText: topicName }).first();
+    await card.click();
+    await panel.locator("#deleteEditedTopicButton").click();
+    await expect(panel.locator("#deleteConfirmOverlay")).toBeVisible();
+    await panel.locator("#cancelDeleteButton").click();
+    await expect(panel.locator("#deleteConfirmOverlay")).toBeHidden();
+    await expect(panel.locator("#editTopicEditor")).toBeVisible();
+    await panel.locator("#cancelEditTopicButton").click();
+    card = panel.locator("#topicsList [data-topic-id]").filter({ hasText: topicName }).first();
+    await expect(card).toBeVisible();
+
+    await card.click();
+    await panel.locator("#deleteEditedTopicButton").click();
+    await panel.locator("#confirmDeleteButton").click();
+    await expect(panel.locator("#topicsList [data-topic-id]").filter({ hasText: topicName })).toHaveCount(0);
+  } finally {
+    const leftover = panel.locator("#topicsList [data-topic-id]").filter({ hasText: topicName }).first();
+    if (await leftover.count()) { try { await leftover.click(); await panel.locator("#deleteEditedTopicButton").click(); if (await panel.locator("#deleteConfirmOverlay").isVisible()) await panel.locator("#confirmDeleteButton").click(); } catch {} }
+    await panel.close();
+  }
+});
+
 test("learner can start a real Demo CRM guide and receives visible guidance", async () => {
   const panel = await openPanel();
   await login(panel, "sanity.learner");
