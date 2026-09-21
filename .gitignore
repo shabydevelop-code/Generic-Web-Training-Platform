@@ -5,3 +5,9 @@
 # SQLite temporary files
 *.db-shm
 *.db-wal
+
+# Playwright QA artifacts
+sanity-tests/playwright/node_modules/
+sanity-tests/playwright/playwright-report/
+sanity-tests/playwright/test-results/
+sanity-tests/playwright/blob-report/
