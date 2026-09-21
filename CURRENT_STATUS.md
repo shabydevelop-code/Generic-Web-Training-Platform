@@ -1,6 +1,6 @@
 # GWTP Current Status
 
-Last updated: 2026-09-20
+Last updated: 2026-09-21
 
 ## Repository rule
 Every functional or architectural code change must update this file in the same change set. Completed work must not remain documented as pending.
@@ -100,5 +100,11 @@ Reset was verified to delete both guide and step progress as intended.
 - Guide steps now support an optional explicit `ScreenName`. The editor auto-fills a new step from the previous step's screen name for convenience, but saves the value explicitly on every step; reopening a step shows its stored value. The API/SQLite schema persist `ScreenName`, existing guides remain compatible when it is empty, and the Demo CRM full guide receives screen names through the versioned migration `20260921_demo_guide_screen_names`.
 - Learner recovery and cross-screen Previous/Next guidance use the destination step's `ScreenName` when available (for example, "פניה"), with the existing generic message as fallback.
 
+## Server deployment architecture
+- `GWTP.Api` is now Windows-Service aware through `UseWindowsService`, while preserving normal interactive `dotnet run` development behavior.
+- This is the first step toward running the API as an independently managed, always-on central service rather than a console process manually started by the extension user.
+- The API and SQLite deployment location are not separated from the repository yet; service installation/publishing is intentionally the next step.
+
 ## Immediate next tasks
-1. Review remaining editor/learner UX gaps before adding new capabilities.
+1. Add a publish/install workflow for the local Windows Service simulation, including a service-safe configurable database/data path.
+2. Review remaining editor/learner UX gaps before adding new capabilities.
