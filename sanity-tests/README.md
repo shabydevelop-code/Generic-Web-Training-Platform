@@ -31,6 +31,15 @@ powershell -ExecutionPolicy Bypass -File .\sanity-tests\gwtp-sanity.ps1 -ApiBase
 
 The command exits with code 0 when all checks pass and code 1 when any check fails, so it can later be reused by CI or deployment scripts.
 
-## Next stages
+## Stage 2
 
-Add authenticated API scenarios using dedicated disposable test users/data, then browser-level extension scenarios. Destructive tests must clean up their own fixtures and must not depend on manually editing `GWTP.db`.
+The runner also performs read-only authenticated checks using the development admin account:
+
+- Admin login returns an access token and admin role.
+- Admin can read the protected users API.
+- Admin is rejected by the editor-only topics API, verifying role separation.
+- An authenticated active user can read the learner catalog.
+
+The defaults are `admin/admin` for the local development fixture. Different credentials can be supplied with `-AdminUsername` and `-AdminPassword`.
+
+Stage 2 deliberately remains read-only. The next stage is visual browser/extension end-to-end sanity testing. Any later destructive API tests must use disposable fixtures and clean up after themselves.
