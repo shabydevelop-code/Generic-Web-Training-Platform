@@ -95,6 +95,10 @@ async function showTrainingStep(step, navigation = {}) {
 
   const overlay = document.createElement("div");
   overlay.className = "gwtp-training-overlay";
+  overlay.setAttribute("role", "region");
+  overlay.setAttribute("aria-live", "polite");
+  overlay.setAttribute("aria-atomic", "true");
+  overlay.setAttribute("aria-label", navigation.labels?.guidanceRegion || "Training guidance");
   overlay.style.position = "fixed";
   overlay.style.zIndex = "2147483647";
   overlay.style.maxWidth = "340px";
@@ -181,6 +185,10 @@ async function showTrainingStep(step, navigation = {}) {
   dragHandle.addEventListener("pointercancel", stopDragging);
 
   const instructionHost = document.createElement("div");
+  instructionHost.id = `gwtp-training-instruction-${Date.now()}`;
+  instructionHost.setAttribute("role", "status");
+  instructionHost.setAttribute("aria-live", "polite");
+  instructionHost.setAttribute("aria-atomic", "true");
   instructionHost.style.display = "block";
   instructionHost.style.minHeight = "1px";
 
@@ -224,7 +232,10 @@ async function showTrainingStep(step, navigation = {}) {
   instructionRoot.appendChild(instruction);
 
   const validationError = document.createElement("div");
+  validationError.id = `gwtp-training-error-${Date.now()}`;
   validationError.setAttribute("role", "alert");
+  validationError.setAttribute("aria-live", "assertive");
+  validationError.setAttribute("aria-atomic", "true");
   validationError.style.display = "none";
   validationError.style.marginTop = "10px";
   validationError.style.padding = "8px 10px";
@@ -535,6 +546,10 @@ async function showTrainingStep(step, navigation = {}) {
           clearHighlight();
 
           const completion = document.createElement("div");
+          completion.setAttribute("role", "dialog");
+          completion.setAttribute("aria-modal", "true");
+          completion.setAttribute("aria-live", "polite");
+          completion.tabIndex = -1;
           completion.style.position = "fixed";
           completion.style.zIndex = "2147483647";
           completion.style.left = "50%";
@@ -568,14 +583,18 @@ async function showTrainingStep(step, navigation = {}) {
           successMark.style.fontWeight = "700";
 
           const title = document.createElement("strong");
+          title.id = `gwtp-completion-title-${Date.now()}`;
           title.textContent = navigation.labels?.completedTitle || "";
+          completion.setAttribute("aria-labelledby", title.id);
           title.style.display = "block";
           title.style.fontSize = "18px";
           title.style.lineHeight = "1.4";
           title.style.fontWeight = "700";
 
           const message = document.createElement("p");
+          message.id = `gwtp-completion-message-${Date.now()}`;
           message.textContent = navigation.labels?.completedMessage || "";
+          completion.setAttribute("aria-describedby", message.id);
           message.style.margin = "8px 0 22px";
           message.style.color = "#667085";
           message.style.fontSize = "14px";
@@ -598,10 +617,24 @@ async function showTrainingStep(step, navigation = {}) {
           closeButton.addEventListener("mouseleave", () => {
             closeButton.style.background = "#2563eb";
           });
-          closeButton.addEventListener("click", () => completion.remove());
+          const closeCompletion = () => completion.remove();
+          closeButton.addEventListener("click", closeCompletion);
+          completion.addEventListener("keydown", (event) => {
+            if (event.key === "Escape") {
+              event.preventDefault();
+              closeCompletion();
+              return;
+            }
+
+            if (event.key === "Tab") {
+              event.preventDefault();
+              closeButton.focus();
+            }
+          });
 
           completion.append(successMark, title, message, closeButton);
           document.documentElement.appendChild(completion);
+          closeButton.focus();
           return;
         }
 
@@ -617,6 +650,7 @@ async function showTrainingStep(step, navigation = {}) {
     ));
   }
   overlay.appendChild(controls);
+  overlay.setAttribute("aria-describedby", instructionHost.id);
 
   document.documentElement.appendChild(overlay);
   gwtpTrainingOverlay = overlay;
