@@ -925,17 +925,19 @@ test("stage 4 grid - server-side sort rerenders rows and stable grid selector st
 
   const stableSelector = 'gwtp-grid:#c360-summary-table|1|"LD-3094"';
   const resolveGridSelector = async () => {
-    const matches = table.locator("tbody tr").filter({
-      has: table.locator("td").nth(0).filter({ hasText: /^LD-3094$/ })
-    });
-    const count = await matches.count();
-    if (count !== 1) {
-      return { found: false, text: "", matchCount: count };
+    const cells = table.locator("tbody tr td:first-child");
+    const count = await cells.count();
+    const matchingTexts = [];
+
+    for (let index = 0; index < count; index += 1) {
+      const text = (await cells.nth(index).innerText()).trim().replace(/\\s+/g, " ");
+      if (text === "LD-3094") matchingTexts.push(text);
     }
+
     return {
-      found: true,
-      text: (await matches.locator("td").nth(0).innerText()).trim(),
-      matchCount: count
+      found: matchingTexts.length === 1,
+      text: matchingTexts[0] || "",
+      matchCount: matchingTexts.length
     };
   };
 
