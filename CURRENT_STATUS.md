@@ -2,6 +2,11 @@
 
 Last updated: 2026-09-21
 
+### Windows Service deployment reliability
+- Fixed `deploy-gwtp-service.bat` service-state parsing: `sc.exe query` exposes the textual state in token 4, not token 3.
+- Deployment now treats an already-stopped service as valid and waits on the observed service state rather than relying on the transient return code from `sc.exe stop`.
+- This fixes the failure where a cleanly stopped service was incorrectly reported as a deployment failure before published files were copied.
+
 ## Repository rule
 Every functional or architectural code change must update this file in the same change set. Completed work must not remain documented as pending.
 
