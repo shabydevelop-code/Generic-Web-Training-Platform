@@ -31,6 +31,21 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     return;
   }
 
+  if (message?.type === "GWTP_ELEMENT_PICKER_KEYBOARD_MOVE") {
+    sendResponse(moveElementPickerKeyboard(message.direction < 0 ? -1 : 1));
+    return;
+  }
+
+  if (message?.type === "GWTP_ELEMENT_PICKER_KEYBOARD_SELECT") {
+    sendResponse(selectElementPickerKeyboard());
+    return;
+  }
+
+  if (message?.type === "GWTP_ELEMENT_PICKER_KEYBOARD_CANCEL") {
+    sendResponse(cancelElementPickerKeyboard());
+    return;
+  }
+
   if (message?.type === "GWTP_CAN_SHOW_TRAINING_STEP") {
     const result = message.step?.selector ? findElement(message.step.selector) : { element: null };
     sendResponse({ success: Boolean(result?.element) && !result?.error });
