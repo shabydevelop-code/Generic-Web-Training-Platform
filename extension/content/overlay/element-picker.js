@@ -63,7 +63,12 @@ function onPickerClick(event) {
   event.stopPropagation();
   event.stopImmediatePropagation();
 
-  const element = event.target;
+  selectPickerElement(event.target);
+}
+
+function selectPickerElement(element) {
+  if (!(element instanceof Element)) return false;
+
   const selector = createSelector(element);
   const details = {
     tagName: element.tagName.toLowerCase(),
@@ -80,13 +85,28 @@ function onPickerClick(event) {
     type: "GWTP_ELEMENT_SELECTED",
     element: details
   }).catch(() => {});
+
+  return true;
 }
 
 function onPickerKeyDown(event) {
-  if (event.key !== "Escape") return;
+  if (!pickerActive) return;
 
-  stopElementPicker();
-  chrome.runtime.sendMessage({ type: "GWTP_ELEMENT_SELECTION_CANCELLED" }).catch(() => {});
+  if (event.key === "Escape") {
+    stopElementPicker();
+    chrome.runtime.sendMessage({ type: "GWTP_ELEMENT_SELECTION_CANCELLED" }).catch(() => {});
+    return;
+  }
+
+  if (event.key !== "Enter") return;
+
+  const focusedElement = document.activeElement;
+  if (!focusedElement || focusedElement === document.body || focusedElement === document.documentElement) return;
+
+  event.preventDefault();
+  event.stopPropagation();
+  event.stopImmediatePropagation();
+  selectPickerElement(focusedElement);
 }
 
 function startElementPicker() {
@@ -99,6 +119,6 @@ function startElementPicker() {
 
   return {
     success: true,
-    message: "Selection mode active. Click an element on the page or press Escape to cancel."
+    message: "Selection mode active. Click an element, or focus it with the keyboard and press Enter. Press Escape to cancel."
   };
 }
