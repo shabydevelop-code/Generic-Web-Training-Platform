@@ -1076,6 +1076,7 @@ test("stage 4 lifecycle - editor authors, previews and publishes a guide that le
   await crm.bringToFront();
   await editor.locator("#previewGuideButton").click();
   await expect(content.locator("#site-code")).toHaveCSS("outline-width", "3px", { timeout: 10000 });
+  await expect(content.locator(".gwtp-training-overlay")).toHaveCount(1);
   await expect(content.locator(".gwtp-training-overlay")).toBeVisible();
   await editor.bringToFront();
   await editor.locator("#exitPreviewButton").click();
