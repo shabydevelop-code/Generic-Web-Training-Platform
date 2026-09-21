@@ -142,7 +142,8 @@ Reset was verified to delete both guide and step progress as intended.
 - Keyboard parity is implemented for learner guidance movement and learner navigation. Element Picker remains primarily pointer-based: browser Side Panel focus cannot be transferred reliably into the live page, so full keyboard element picking is intentionally deferred rather than adding a complex virtual-navigation layer. Manual CSS selector entry remains the keyboard-accessible authoring fallback.
 - Learner Previous/Next pending-navigation persistence now also runs for keyboard activation (Enter/Space), preserving the same postback-safe navigation intent used by pointer activation.
 - Highlighted native links now persist forward learning intent on keyboard Enter as well as pointerdown, so cross-screen learner navigation is not mouse-dependent.
-- Remaining accessibility work includes contrast verification, zoom/reflow testing, and screen-reader regression testing.
+- Static contrast review of the Side Panel palette has started. Primary text, secondary text (#667085), links/actions, success/error text, and white-on-primary button text meet the normal-text 4.5:1 target on their established light backgrounds. The rich-text empty-state placeholder used #98a2b3 on white (about 2.58:1), so it was strengthened to #667085 (about 4.97:1).
+- Remaining accessibility work includes live contrast verification for rendered states, zoom/reflow testing, and screen-reader regression testing.
 
 ## Accessibility regression checks
 For every accessibility change, verify the affected behavior with keyboard-only interaction before continuing:
@@ -160,6 +161,8 @@ For every accessibility change, verify the affected behavior with keyboard-only 
 - Element Picker: verify pointer-based selection and Escape cancellation still work. Do not treat Side Panel-to-page Tab focus transfer as supported. Verify that an editor can alternatively enter/test a CSS selector without using the picker.
 - Keyboard learner navigation: run a guide using Tab plus Enter/Space on Previous/Next. Include a cross-screen/postback transition and confirm progress advances exactly once and resumes on the correct destination step.
 - Highlighted link navigation: focus a highlighted native link with Tab and activate it with Enter. Confirm the destination page resumes the expected next learning step.
+- Contrast: inspect normal text, secondary text, buttons, statuses, placeholders, focus indicators, disabled states, and learner guidance against their actual rendered backgrounds. Do not rely on color alone for state/error meaning.
+- Zoom/reflow: test the Side Panel and learner guidance at browser zoom 200% and 400%. Confirm content remains readable and reachable, no required horizontal scrolling is introduced by the extension UI, controls do not overlap or clip, and all actions remain operable.
 Later accessibility phases must add their own concrete regression checks to this section.
 
 ## Immediate next tasks
