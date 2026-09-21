@@ -151,30 +151,13 @@ test("learner can start a real Demo CRM guide and receives visible guidance", as
     await start.click();
   }
 
-  await expect.poll(async () => {
-    for (const frame of crm.frames()) {
-      if (await frame.locator(".gwtp-training-overlay").count()) return true;
-    }
-    return false;
-  }, { timeout: 10000 }).toBeTruthy();
-
-  let overlayFrame = null;
-  for (const frame of crm.frames()) {
-    if (await frame.locator(".gwtp-training-overlay").count()) {
-      overlayFrame = frame;
-      break;
-    }
-  }
-
-  const overlay = overlayFrame.locator(".gwtp-training-overlay");
-  await expect(overlay).toBeVisible();
+  // Restart/start replaces TargetContent, so use FrameLocator rather than
+  // enumerating transient Frame objects that can detach during navigation.
+  const content = crm.frameLocator('iframe[name="TargetContent"]');
+  const overlay = content.locator(".gwtp-training-overlay");
+  await expect(overlay).toBeVisible({ timeout: 10000 });
   await expect(overlay.locator("button")).not.toHaveCount(0);
-
-  const highlighted = await overlayFrame.locator("*").evaluateAll((elements) =>
-    elements.some((element) => getComputedStyle(element).outlineStyle !== "none" &&
-      getComputedStyle(element).outlineWidth === "3px")
-  );
-  expect(highlighted).toBeTruthy();
+  await expect(content.locator("#site-code")).toHaveCSS("outline-width", "3px");
 
   await panel.close();
   await crm.close();
@@ -303,7 +286,10 @@ test("learner continues automatically across the Site to Case page transition", 
   // step 4 requires site type branch; satisfy those authored validations.
   for (let step = 1; step < 6; step++) {
     if (step === 3) {
-      await content.locator("#site-phone").fill("03-7654321");
+      const phone = content.locator("#site-phone");
+      const currentPhone = await phone.inputValue();
+      const changedPhone = currentPhone === "03-7654321" ? "03-7654322" : "03-7654321";
+      await phone.fill(changedPhone);
     }
     if (step === 4) {
       await content.locator("#site-type").selectOption("branch");
@@ -392,7 +378,10 @@ test("learner survives a real Site server save and reload", async () => {
   // Advance deterministically to the Save Site step (zero-based index 4).
   for (let step = 1; step <= 4; step++) {
     if (step === 3) {
-      await content.locator("#site-phone").fill("03-7654321");
+      const phone = content.locator("#site-phone");
+      const currentPhone = await phone.inputValue();
+      const changedPhone = currentPhone === "03-7654321" ? "03-7654322" : "03-7654321";
+      await phone.fill(changedPhone);
     }
     if (step === 4) {
       await content.locator("#site-type").selectOption("branch");
