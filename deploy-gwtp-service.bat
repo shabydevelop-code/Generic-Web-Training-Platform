@@ -31,9 +31,16 @@ dotnet publish "%~dp0server\GWTP.Api\GWTP.Api.csproj" -c Release -r win-x64 --se
 if errorlevel 1 goto :error
 
 echo Stopping GWTP API service...
-sc.exe stop "%SERVICE_NAME%" >nul 2>&1
-call :wait_for_state STOPPED 30
-if errorlevel 1 goto :error
+sc.exe query "%SERVICE_NAME%" | findstr /C:"STATE" | findstr /C:"STOPPED" >nul 2>&1
+if errorlevel 1 (
+    sc.exe stop "%SERVICE_NAME%" >nul 2>&1
+    rem SC may return a transient non-zero code while the service is already stopping.
+    rem The observed service state below is authoritative for deployment.
+    call :wait_for_state STOPPED 30
+    if errorlevel 1 goto :error
+) else (
+    echo GWTP API service is already stopped.
+)
 
 echo Updating published API files...
 robocopy "%STAGING_DIR%" "%PUBLISH_DIR%" /MIR /R:2 /W:1 >nul
@@ -61,7 +68,8 @@ exit /b 0
 set "TARGET_STATE=%~1"
 set /a "WAIT_SECONDS=%~2"
 :wait_loop
-for /f "tokens=3" %%S in ('sc.exe query "%SERVICE_NAME%" ^| findstr /R /C:"STATE"') do set "CURRENT_STATE=%%S"
+set "CURRENT_STATE="
+for /f "tokens=4" %%S in ('sc.exe query "%SERVICE_NAME%" ^| findstr /R /C:"STATE"') do set "CURRENT_STATE=%%S"
 if /I "%CURRENT_STATE%"=="%TARGET_STATE%" exit /b 0
 if %WAIT_SECONDS% LEQ 0 exit /b 1
 set /a WAIT_SECONDS-=1
