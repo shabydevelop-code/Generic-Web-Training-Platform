@@ -1079,7 +1079,7 @@ body {
 
 .rich-text-input:empty::before {
   content: attr(data-placeholder);
-  color: #98a2b3;
+  color: #667085;
   pointer-events: none;
 }
 
