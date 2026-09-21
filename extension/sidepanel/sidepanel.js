@@ -1844,10 +1844,7 @@ selectButton.addEventListener("click", async () => {
     await window.messagingService.sendToAllFrames({ type: "GWTP_CLEAR_HIGHLIGHT" }).catch(() => {});
     activeStepId = null;
     markActiveStep(null);
-    const responses = await window.messagingService.sendToAllFrames({
-      type: "GWTP_START_ELEMENT_PICKER",
-      options: { keyboardStart: true }
-    });
+    const responses = await window.messagingService.sendToAllFrames({ type: "GWTP_START_ELEMENT_PICKER" });
     const started = responses.some((item) => item.response?.success);
     setStatus(started ? "Selection mode active." : "Could not start selection mode.", started ? "info" : "error");
   } catch (error) {
