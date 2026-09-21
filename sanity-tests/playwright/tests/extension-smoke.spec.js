@@ -1401,6 +1401,168 @@ test("completed guide is stored as Completed and starts over on the next run", a
 });
 
 
+test("stage 6 resilience batch - learner survives target-page reload without advancing progress", async () => {
+  const panel = await openPanel();
+  await login(panel, "sanity.learner");
+  const crm = await context.newPage();
+  await crm.goto(`${SITE_URL}/site.html`);
+  await crm.bringToFront();
+
+  const topic = panel.locator("#learnerTopicSelect option").filter({ hasText: "Demo CRM" });
+  await panel.locator("#learnerTopicSelect").selectOption(await topic.getAttribute("value"));
+  const guide = panel.locator("#learnerGuideSelect option").filter({ hasText: "תרגול מלא - Demo CRM" });
+  await panel.locator("#learnerGuideSelect").selectOption(await guide.getAttribute("value"));
+  const restart = panel.locator("#restartLearningButton");
+  if (await restart.isVisible()) await restart.click();
+  else await panel.locator("#startLearningButton").click();
+
+  const content = crm.frameLocator('iframe[name="TargetContent"]');
+  await expect(content.locator(".gwtp-training-overlay")).toBeVisible({ timeout: 10000 });
+  await expect.poll(async () => panel.evaluate(async () => (await chrome.runtime.sendMessage({ type: "GWTP_TRAINING_GET_CURRENT" }))?.current?.stepIndex ?? null)).toBe(0);
+
+  await crm.reload();
+  await expect.poll(async () => panel.evaluate(async () => (await chrome.runtime.sendMessage({ type: "GWTP_TRAINING_GET_CURRENT" }))?.current?.stepIndex ?? null), { timeout: 10000 }).toBe(0);
+  await expect(crm.frameLocator('iframe[name="TargetContent"]').locator(".gwtp-training-overlay")).toBeVisible({ timeout: 10000 });
+  await expect(crm.frameLocator('iframe[name="TargetContent"]').locator("#site-code")).toHaveCSS("outline-width", "3px");
+
+  await panel.close();
+  await crm.close();
+});
+
+test("stage 6 resilience batch - repeated PAGE_READY signals do not duplicate or advance guidance", async () => {
+  const panel = await openPanel();
+  await login(panel, "sanity.learner");
+  const crm = await context.newPage();
+  await crm.goto(`${SITE_URL}/site.html`);
+  await crm.bringToFront();
+
+  const topic = panel.locator("#learnerTopicSelect option").filter({ hasText: "Demo CRM" });
+  await panel.locator("#learnerTopicSelect").selectOption(await topic.getAttribute("value"));
+  const guide = panel.locator("#learnerGuideSelect option").filter({ hasText: "תרגול מלא - Demo CRM" });
+  await panel.locator("#learnerGuideSelect").selectOption(await guide.getAttribute("value"));
+  const restart = panel.locator("#restartLearningButton");
+  if (await restart.isVisible()) await restart.click();
+  else await panel.locator("#startLearningButton").click();
+
+  const content = crm.frameLocator('iframe[name="TargetContent"]');
+  await expect(content.locator(".gwtp-training-overlay")).toBeVisible({ timeout: 10000 });
+
+  await panel.evaluate(async () => {
+    await Promise.all([
+      chrome.runtime.sendMessage({ type: "GWTP_PAGE_READY" }),
+      chrome.runtime.sendMessage({ type: "GWTP_PAGE_READY" }),
+      chrome.runtime.sendMessage({ type: "GWTP_PAGE_READY" })
+    ]);
+  });
+
+  await expect.poll(async () => panel.evaluate(async () => (await chrome.runtime.sendMessage({ type: "GWTP_TRAINING_GET_CURRENT" }))?.current?.stepIndex ?? null), { timeout: 10000 }).toBe(0);
+  await expect(content.locator(".gwtp-training-overlay")).toHaveCount(1);
+
+  await panel.close();
+  await crm.close();
+});
+
+test("stage 6 resilience batch - rapid duplicate Next does not skip a learner step", async () => {
+  const panel = await openPanel();
+  await login(panel, "sanity.learner");
+  const crm = await context.newPage();
+  await crm.goto(`${SITE_URL}/site.html`);
+  await crm.bringToFront();
+
+  const topic = panel.locator("#learnerTopicSelect option").filter({ hasText: "Demo CRM" });
+  await panel.locator("#learnerTopicSelect").selectOption(await topic.getAttribute("value"));
+  const guide = panel.locator("#learnerGuideSelect option").filter({ hasText: "תרגול מלא - Demo CRM" });
+  await panel.locator("#learnerGuideSelect").selectOption(await guide.getAttribute("value"));
+  const restart = panel.locator("#restartLearningButton");
+  if (await restart.isVisible()) await restart.click();
+  else await panel.locator("#startLearningButton").click();
+
+  const content = crm.frameLocator('iframe[name="TargetContent"]');
+  const next = content.locator(".gwtp-training-overlay button").filter({ hasText: /הבא|Next/i });
+  await expect(next).toBeVisible({ timeout: 10000 });
+
+  await next.evaluate((button) => {
+    button.click();
+    button.click();
+  });
+
+  await expect.poll(async () => panel.evaluate(async () => (await chrome.runtime.sendMessage({ type: "GWTP_TRAINING_GET_CURRENT" }))?.current?.stepIndex ?? null), { timeout: 10000 }).toBe(1);
+  await expect(content.locator("#site-name")).toHaveCSS("outline-width", "3px");
+
+  await panel.close();
+  await crm.close();
+});
+
+test("stage 6 resilience batch - leaving the target page preserves progress and returning restores guidance", async () => {
+  const panel = await openPanel();
+  await login(panel, "sanity.learner");
+  const crm = await context.newPage();
+  await crm.goto(`${SITE_URL}/site.html`);
+  await crm.bringToFront();
+
+  const topic = panel.locator("#learnerTopicSelect option").filter({ hasText: "Demo CRM" });
+  await panel.locator("#learnerTopicSelect").selectOption(await topic.getAttribute("value"));
+  const guide = panel.locator("#learnerGuideSelect option").filter({ hasText: "תרגול מלא - Demo CRM" });
+  await panel.locator("#learnerGuideSelect").selectOption(await guide.getAttribute("value"));
+  const restart = panel.locator("#restartLearningButton");
+  if (await restart.isVisible()) await restart.click();
+  else await panel.locator("#startLearningButton").click();
+
+  const content = crm.frameLocator('iframe[name="TargetContent"]');
+  await expect(content.locator(".gwtp-training-overlay")).toBeVisible({ timeout: 10000 });
+  await content.locator(".gwtp-training-overlay button").filter({ hasText: /הבא|Next/i }).click();
+  await expect.poll(async () => panel.evaluate(async () => (await chrome.runtime.sendMessage({ type: "GWTP_TRAINING_GET_CURRENT" }))?.current?.stepIndex ?? null), { timeout: 10000 }).toBe(1);
+
+  await crm.goto(`${SITE_URL}/leads.html`);
+  await expect.poll(async () => panel.evaluate(async () => (await chrome.runtime.sendMessage({ type: "GWTP_TRAINING_GET_CURRENT" }))?.current?.stepIndex ?? null), { timeout: 10000 }).toBe(1);
+
+  await crm.goto(`${SITE_URL}/site.html`);
+  await expect.poll(async () => panel.evaluate(async () => (await chrome.runtime.sendMessage({ type: "GWTP_TRAINING_GET_CURRENT" }))?.current?.stepIndex ?? null), { timeout: 10000 }).toBe(1);
+  await expect(crm.frameLocator('iframe[name="TargetContent"]').locator("#site-name")).toHaveCSS("outline-width", "3px", { timeout: 10000 });
+  await expect(crm.frameLocator('iframe[name="TargetContent"]').locator(".gwtp-training-overlay")).toHaveCount(1);
+
+  await panel.close();
+  await crm.close();
+});
+
+test("stage 6 resilience batch - logout during learning clears UI session without erasing saved progress", async () => {
+  const panel = await openPanel();
+  await login(panel, "sanity.learner");
+  const crm = await context.newPage();
+  await crm.goto(`${SITE_URL}/site.html`);
+  await crm.bringToFront();
+
+  const topic = panel.locator("#learnerTopicSelect option").filter({ hasText: "Demo CRM" });
+  await panel.locator("#learnerTopicSelect").selectOption(await topic.getAttribute("value"));
+  const guide = panel.locator("#learnerGuideSelect option").filter({ hasText: "תרגול מלא - Demo CRM" });
+  await panel.locator("#learnerGuideSelect").selectOption(await guide.getAttribute("value"));
+  const restart = panel.locator("#restartLearningButton");
+  if (await restart.isVisible()) await restart.click();
+  else await panel.locator("#startLearningButton").click();
+
+  const content = crm.frameLocator('iframe[name="TargetContent"]');
+  await expect(content.locator(".gwtp-training-overlay")).toBeVisible({ timeout: 10000 });
+  await content.locator(".gwtp-training-overlay button").filter({ hasText: /הבא|Next/i }).click();
+  await expect.poll(async () => panel.evaluate(async () => (await chrome.runtime.sendMessage({ type: "GWTP_TRAINING_GET_CURRENT" }))?.current?.stepIndex ?? null), { timeout: 10000 }).toBe(1);
+
+  await panel.bringToFront();
+  await panel.locator("#logoutButton").click();
+  await expect(panel.locator("#loginView")).toBeVisible();
+  await expect(panel.locator("#appView")).toBeHidden();
+
+  await login(panel, "sanity.learner");
+  const resumedTopic = panel.locator("#learnerTopicSelect option").filter({ hasText: "Demo CRM" });
+  await panel.locator("#learnerTopicSelect").selectOption(await resumedTopic.getAttribute("value"));
+  const resumedGuide = panel.locator("#learnerGuideSelect option").filter({ hasText: "תרגול מלא - Demo CRM" });
+  await panel.locator("#learnerGuideSelect").selectOption(await resumedGuide.getAttribute("value"));
+  await expect(panel.locator("#startLearningButton")).toContainText(/המשך למידה|Continue/i);
+  await expect(panel.locator("#restartLearningButton")).toBeVisible();
+
+  await panel.close();
+  await crm.close();
+});
+
+
 test("learner sidepanel fits a narrow viewport", async () => {
   const panel = await openPanel();
   await panel.setViewportSize({ width: 320, height: 720 });
