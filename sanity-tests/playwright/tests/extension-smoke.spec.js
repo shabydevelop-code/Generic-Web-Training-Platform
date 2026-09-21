@@ -1504,6 +1504,124 @@ test("stage 6 accessibility - editor reflows at 200 percent zoom", async () => {
 });
 
 
+function parseRgb(cssColor) {
+  const match = cssColor.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+  if (!match) throw new Error(`Unsupported CSS color: ${cssColor}`);
+  return [Number(match[1]), Number(match[2]), Number(match[3])];
+}
+
+function contrastRatio(foreground, background) {
+  const luminance = (rgb) => {
+    const channels = rgb.map((value) => {
+      const normalized = value / 255;
+      return normalized <= 0.04045 ? normalized / 12.92 : Math.pow((normalized + 0.055) / 1.055, 2.4);
+    });
+    return 0.2126 * channels[0] + 0.7152 * channels[1] + 0.0722 * channels[2];
+  };
+  const first = luminance(foreground);
+  const second = luminance(background);
+  return (Math.max(first, second) + 0.05) / (Math.min(first, second) + 0.05);
+}
+
+test("stage 6 accessibility batch - rendered sidepanel contrast and status semantics", async () => {
+  const panel = await openPanel();
+  await login(panel, "sanity.editor");
+
+  const samples = panel.locator(".description:visible, .current-user-identity__role:visible, .guide-item span:visible, .button:visible");
+  const count = await samples.count();
+  expect(count).toBeGreaterThan(0);
+
+  for (let index = 0; index < count; index++) {
+    const values = await samples.nth(index).evaluate((element) => {
+      const style = getComputedStyle(element);
+      let backgroundElement = element;
+      let background = style.backgroundColor;
+      while (backgroundElement.parentElement && (background === "rgba(0, 0, 0, 0)" || background === "transparent")) {
+        backgroundElement = backgroundElement.parentElement;
+        background = getComputedStyle(backgroundElement).backgroundColor;
+      }
+      return { color: style.color, background };
+    });
+    expect(contrastRatio(parseRgb(values.color), parseRgb(values.background))).toBeGreaterThanOrEqual(4.5);
+  }
+
+  const guideCard = panel.locator("[data-guide-id]").filter({ hasText: "תרגול מלא - Demo CRM" }).first();
+  await guideCard.click();
+  await panel.locator("#stepsList .step-item").first().click();
+
+  for (const statusSelector of ["#elementPickerStatus", "#status", "#stepsSaveStatus"]) {
+    const status = panel.locator(statusSelector);
+    await expect(status).toHaveAttribute("aria-live", "polite");
+  }
+
+  await panel.close();
+});
+
+test("stage 6 accessibility batch - admin reflow keeps management controls reachable", async () => {
+  const panel = await openPanel();
+  await panel.setViewportSize({ width: 320, height: 720 });
+  await login(panel, "sanity.admin");
+  await expect(panel.locator("#adminView")).toBeVisible();
+
+  await panel.locator("#openCreateUserButton").click();
+  await expect(panel.locator("#createUserCard")).toBeVisible();
+
+  const layout = await panel.evaluate(() => ({
+    viewport: document.documentElement.clientWidth,
+    page: document.documentElement.scrollWidth
+  }));
+  expect(layout.page).toBeLessThanOrEqual(layout.viewport + 1);
+
+  for (const selector of ["#newDisplayName", "#newUsername", "#newPassword", "#newRole", "#createUserButton", "#closeCreateUserButton"]) {
+    const control = panel.locator(selector);
+    await expect(control).toBeVisible();
+    const box = await control.boundingBox();
+    expect(box).not.toBeNull();
+    expect(box.x).toBeGreaterThanOrEqual(-1);
+    expect(box.x + box.width).toBeLessThanOrEqual(321);
+  }
+
+  await panel.close();
+});
+
+test("stage 6 accessibility batch - editor primary authoring controls are keyboard focusable", async () => {
+  const panel = await openPanel();
+  await login(panel, "sanity.editor");
+
+  const guideCard = panel.locator("[data-guide-id]").filter({ hasText: "תרגול מלא - Demo CRM" }).first();
+  await guideCard.focus();
+  await expect(guideCard).toBeFocused();
+  await guideCard.press("Enter");
+
+  const firstStep = panel.locator("#stepsList .step-item").first();
+  await firstStep.focus();
+  await expect(firstStep).toBeFocused();
+  await firstStep.press("Enter");
+  await expect(panel.locator("#stepEditor")).toBeVisible();
+
+  for (const selector of ["#screenNameInput", "#instructionInput", "#selectButton", "#saveStepButton", "#cancelStepButton"]) {
+    const control = panel.locator(selector);
+    await control.focus();
+    await expect(control).toBeFocused();
+  }
+
+  await panel.close();
+});
+
+test("stage 6 accessibility batch - required editor fields expose programmatic semantics", async () => {
+  const panel = await openPanel();
+  await login(panel, "sanity.editor");
+
+  await panel.locator("#openNewGuideButton").click();
+  for (const selector of ["#guideNameInput", "#guideTopicSelect", "#guideStartUrlInput"]) {
+    await expect(panel.locator(selector)).toHaveAttribute("required", "");
+    await expect(panel.locator(selector)).toHaveAttribute("aria-required", "true");
+  }
+
+  await panel.close();
+});
+
+
 test("visual layout - admin sidepanel fits a narrow viewport", async () => {
   const panel = await openPanel();
   await panel.setViewportSize({ width: 320, height: 720 });
