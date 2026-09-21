@@ -1563,6 +1563,179 @@ test("stage 6 resilience batch - logout during learning clears UI session withou
 });
 
 
+test("stage 6 full authoring lifecycle - new topic guide reopen edit steps preview and learner consume updated version", async () => {
+  test.setTimeout(60000);
+  const suffix = Date.now();
+  const topicName = `Stage 6 Journey Topic ${suffix}`;
+  const guideName = `Stage 6 Journey Guide ${suffix}`;
+  const updatedGuideName = `Stage 6 Journey Guide Updated ${suffix}`;
+  const originalFirstInstruction = `Stage 6 first original ${suffix}`;
+  const updatedFirstInstruction = `Stage 6 first updated ${suffix}`;
+  const secondInstruction = `Stage 6 second ${suffix}`;
+  const thirdInstruction = `Stage 6 third ${suffix}`;
+  const panel = await openPanel();
+  let crm = null;
+
+  const findGuide = (name) => panel.locator("#guidesList [data-guide-id]").filter({ hasText: name }).first();
+
+  try {
+    await login(panel, "sanity.editor");
+
+    // Create a brand-new Topic through the Editor UI.
+    await panel.locator("#openTopicsButton").click();
+    await panel.locator("#openCreateTopicButton").click();
+    await panel.locator("#newTopicInput").fill(topicName);
+    await panel.locator("#createTopicButton").click();
+    await expect(panel.locator("#topicsList [data-topic-id]").filter({ hasText: topicName }).first()).toBeVisible();
+    await panel.locator("#backFromTopicsButton").click();
+
+    crm = await context.newPage();
+    await crm.goto(SITE_URL + "/site.html");
+    await crm.bringToFront();
+    const content = crm.frameLocator('iframe[name="TargetContent"]');
+
+    // Create a new Guide under that new Topic and author two real CRM Steps.
+    await panel.locator("#openNewGuideButton").click();
+    const topicOption = panel.locator("#topicSelect option").filter({ hasText: topicName });
+    await expect(topicOption).toHaveCount(1);
+    await panel.locator("#topicSelect").selectOption(await topicOption.getAttribute("value"));
+    await panel.locator("#guideNameInput").fill(guideName);
+    await panel.locator("#guideStartUrlInput").fill(SITE_URL + "/site.html");
+
+    await panel.locator("#addStepButton").click();
+    await panel.locator("#selectButton").click();
+    await content.locator("#site-code").click();
+    await panel.locator("#screenNameInput").fill("Journey Site");
+    await panel.locator("#instructionInput").fill(originalFirstInstruction);
+    await panel.locator("#saveStepButton").click();
+
+    await panel.locator("#addStepButton").click();
+    await panel.locator("#selectButton").click();
+    await content.locator("#site-name").click();
+    await panel.locator("#screenNameInput").fill("Journey Site");
+    await panel.locator("#instructionInput").fill(secondInstruction);
+    await panel.locator("#saveStepButton").click();
+
+    await panel.locator("#saveGuideButton").click();
+    let guideCard = findGuide(guideName);
+    await expect(guideCard).toBeVisible();
+
+    // Reopen the persisted Guide and verify the original authoring data survived.
+    await guideCard.click();
+    await expect(panel.locator("#guideNameInput")).toHaveValue(guideName);
+    await expect(panel.locator("#topicSelect option:checked")).toHaveText(topicName);
+    await expect(panel.locator("#guideStartUrlInput")).toHaveValue(SITE_URL + "/site.html");
+    await expect(panel.locator("#stepsList .step-item")).toHaveCount(2);
+    await panel.locator("#stepsList .step-item").first().click();
+    await expect(panel.locator("#instructionInput")).toContainText(originalFirstInstruction);
+    await expect(panel.locator("#screenNameInput")).toHaveValue("Journey Site");
+
+    // Edit persisted Step 1, add Step 3, then reorder and delete so persistence is
+    // verified across multiple authoring mutations rather than only a simple update.
+    await panel.locator("#instructionInput").fill(updatedFirstInstruction);
+    await panel.locator("#screenNameInput").fill("Journey Site Updated");
+    await panel.locator("#saveStepButton").click();
+
+    await panel.locator("#addStepButton").click();
+    await panel.locator("#selectButton").click();
+    await content.locator("#site-phone").click();
+    await panel.locator("#screenNameInput").fill("Journey Site");
+    await panel.locator("#instructionInput").fill(thirdInstruction);
+    await panel.locator("#saveStepButton").click();
+    await expect(panel.locator("#stepsList .step-item")).toHaveCount(3);
+
+    const thirdStep = panel.locator("#stepsList .step-item").filter({ hasText: thirdInstruction }).first();
+    await thirdStep.focus();
+    await thirdStep.dispatchEvent("keydown", { key: "ArrowUp", bubbles: true });
+    await expect(panel.locator("#stepsList .step-item").nth(1)).toContainText(thirdInstruction);
+
+    const secondStep = panel.locator("#stepsList .step-item").filter({ hasText: secondInstruction }).first();
+    await secondStep.click();
+    await panel.locator("#deleteEditedStepButton").click();
+    await panel.locator("#confirmDeleteButton").click();
+    await expect(panel.locator("#stepsList .step-item")).toHaveCount(2);
+
+    // Change Guide metadata and learner visibility, save, close, and reopen again.
+    await panel.locator("#guideNameInput").fill(updatedGuideName);
+    await panel.locator("#guideAvailableInput").check();
+    await panel.locator("#saveGuideButton").click();
+    guideCard = findGuide(updatedGuideName);
+    await expect(guideCard).toBeVisible();
+    await guideCard.click();
+    await expect(panel.locator("#guideNameInput")).toHaveValue(updatedGuideName);
+    await expect(panel.locator("#guideAvailableInput")).toBeChecked();
+    await expect(panel.locator("#stepsList .step-item")).toHaveCount(2);
+    await expect(panel.locator("#stepsList .step-item").nth(0)).toContainText(updatedFirstInstruction);
+    await expect(panel.locator("#stepsList .step-item").nth(1)).toContainText(thirdInstruction);
+    await expect(panel.locator("#stepsList")).not.toContainText(secondInstruction);
+
+    // Preview must consume the reopened, updated persisted Step order/content.
+    await crm.bringToFront();
+    await panel.locator("#previewGuideButton").click();
+    const overlay = crm.locator("[data-gwtp-training-overlay]");
+    await expect(overlay).toContainText(updatedFirstInstruction);
+    await crm.locator("[data-gwtp-training-next]").click();
+    await expect(overlay).toContainText(thirdInstruction);
+    await panel.locator("#exitPreviewButton").dispatchEvent("click");
+    await expect(overlay).toHaveCount(0);
+
+    // Close the Editor session, sign in as Learner, and verify the newly created
+    // Topic/Guide is visible and runs the updated version, not stale authoring data.
+    await panel.locator("#backToGuidesButton").click();
+    await panel.locator("#logoutButton").click();
+    await login(panel, "sanity.learner");
+
+    const learnerTopicOption = panel.locator("#learnerTopicSelect option").filter({ hasText: topicName });
+    await expect(learnerTopicOption).toHaveCount(1);
+    await panel.locator("#learnerTopicSelect").selectOption(await learnerTopicOption.getAttribute("value"));
+    const learnerGuideOption = panel.locator("#learnerGuideSelect option").filter({ hasText: updatedGuideName });
+    await expect(learnerGuideOption).toHaveCount(1);
+    await panel.locator("#learnerGuideSelect").selectOption(await learnerGuideOption.getAttribute("value"));
+    await crm.bringToFront();
+    await panel.locator("#startLearningButton").click();
+    await expect(overlay).toContainText(updatedFirstInstruction);
+    await crm.locator("[data-gwtp-training-next]").click();
+    await expect(overlay).toContainText(thirdInstruction);
+    await crm.locator("[data-gwtp-training-finish]").click();
+  } finally {
+    // Clean up through the same public UI so the journey remains rerunnable.
+    try {
+      if (await panel.locator("#appView").isVisible().catch(() => false)) {
+        if (await panel.locator("#learnModeView").isVisible().catch(() => false)) {
+          await panel.locator("#logoutButton").click().catch(() => {});
+          await login(panel, "sanity.editor").catch(() => {});
+        }
+        if (await panel.locator("#guideEditorView").isVisible().catch(() => false)) {
+          await panel.locator("#backToGuidesButton").click().catch(() => {});
+        }
+        const leftoverGuide = findGuide(updatedGuideName);
+        const originalGuide = findGuide(guideName);
+        for (const candidate of [leftoverGuide, originalGuide]) {
+          if (await candidate.count()) {
+            await candidate.click().catch(() => {});
+            await panel.locator("#deleteEditedGuideButton").click().catch(() => {});
+            if (await panel.locator("#deleteConfirmOverlay").isVisible().catch(() => false)) {
+              await panel.locator("#confirmDeleteButton").click().catch(() => {});
+            }
+          }
+        }
+        await panel.locator("#openTopicsButton").click().catch(() => {});
+        const leftoverTopic = panel.locator("#topicsList [data-topic-id]").filter({ hasText: topicName }).first();
+        if (await leftoverTopic.count()) {
+          await leftoverTopic.click().catch(() => {});
+          await panel.locator("#deleteEditedTopicButton").click().catch(() => {});
+          if (await panel.locator("#deleteConfirmOverlay").isVisible().catch(() => false)) {
+            await panel.locator("#confirmDeleteButton").click().catch(() => {});
+          }
+        }
+      }
+    } catch {}
+    await panel.close().catch(() => {});
+    if (crm) await crm.close().catch(() => {});
+  }
+});
+
+
 test("stage 6 GUI forms batch - required markers and error regions are adjacent and programmatic", async () => {
   const panel = await openPanel();
 
