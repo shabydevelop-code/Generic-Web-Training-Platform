@@ -139,9 +139,17 @@ test("learner can start a real Demo CRM guide and receives visible guidance", as
   await expect(fullGuide).toHaveCount(1);
   await panel.locator("#learnerGuideSelect").selectOption(await fullGuide.getAttribute("value"));
 
-  const start = panel.locator("#startLearningButton");
-  await expect(start).toBeEnabled();
-  await start.click();
+  // This smoke test only verifies that a guide can start and render guidance.
+  // Keep it independent from progress left by later E2E tests by explicitly
+  // restarting when the dedicated sanity learner already has saved progress.
+  const restart = panel.locator("#restartLearningButton");
+  if (await restart.isVisible()) {
+    await restart.click();
+  } else {
+    const start = panel.locator("#startLearningButton");
+    await expect(start).toBeEnabled();
+    await start.click();
+  }
 
   await expect.poll(async () => {
     for (const frame of crm.frames()) {
