@@ -400,8 +400,11 @@ test("stage 5 editor preview - navigation, validation and exit cleanup work thro
     await expect(content.locator(".gwtp-training-overlay")).toContainText("Preview required step");
     await expect(panel.locator("#previewProgress")).toContainText(/1.*2/);
 
-    await panel.bringToFront();
-    await panel.locator("#exitPreviewButton").click();
+    // The real Chrome Side Panel does not become the active tab when its controls are clicked.
+    // In Playwright the sidepanel is hosted as a normal extension tab, so keep the CRM tab active
+    // and dispatch the Side Panel control programmatically to preserve the real browser-shell contract.
+    await crm.bringToFront();
+    await panel.locator("#exitPreviewButton").evaluate((button) => button.click());
     await expect(panel.locator("#previewGuideButton")).toBeVisible();
     await expect(panel.locator("#previewActiveControls")).toBeHidden();
     await expect(content.locator(".gwtp-training-overlay")).toHaveCount(0);
