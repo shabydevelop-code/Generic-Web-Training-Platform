@@ -199,8 +199,10 @@ Later accessibility phases must add their own concrete regression checks to this
 - Initial coverage verifies the Demo CRM receives the GWTP content script and checks role-specific UI boundaries for `sanity.learner`, `sanity.editor`, and `sanity.admin`.
 - Stage 3 currently requires a headed Chromium run because extension loading is part of the test environment.
 - No application data is mutated by the initial suite.
+- Initial Stage 3 Playwright foundation was executed locally on 2026-09-21 and verified successfully: 4/4 PASS (Demo CRM/content-script readiness, learner role UI, editor role UI, admin role UI).
+- Playwright/browser sanity assets are development/QA-only and must not be included in the future customer installation/package.
 
 ## Immediate next tasks
 1. Verify `deploy-gwtp-service.bat` on the next backend code change; the initial Windows Service installation and extension connectivity are already verified.
-2. Run the new Stage 3 Playwright browser/extension smoke suite in `sanity-tests/playwright`. The initial read-only suite loads the unpacked extension and verifies Demo CRM/content-script readiness plus learner/editor/admin role-specific Side Panel UI. Expand Stage 3 after this foundation passes.
+2. Expand Stage 3 Playwright coverage beyond the verified 4/4 foundation into real learner visual/E2E flows against Demo CRM, while keeping all Playwright/test tooling development-only and outside the future customer package.
 3. Continue accessibility runtime verification separately with reflow and screen-reader regression testing.
