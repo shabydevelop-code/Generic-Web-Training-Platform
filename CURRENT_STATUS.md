@@ -261,3 +261,5 @@ Later accessibility phases must add their own concrete regression checks to this
 - Final Stage 3 accessibility/resilience batch added (pending local verification): four grouped tests named `accessibility resilience - ...` covering keyboard login submission, learner primary-control focusability, completion-dialog focus trap/Escape behavior, and recovery/Exit behavior after leaving the guide target context. Run with `npx playwright test -g "accessibility resilience"`; after this batch passes, run the complete Stage 3 regression once.
 
 - Accessibility/resilience batch first run: **3/4 PASS**. The keyboard-focus test failure was a test-flow issue, not a runtime defect: `#learnerGuideSelect` is intentionally disabled until a topic is selected. The test now follows the real learner dependency chain (focus topic → select Demo CRM → verify/focus guide → select guide → verify/focus Start) before asserting focusability. Re-run the grouped accessibility/resilience batch.
+
+- Final Stage 3 accessibility/resilience batch verified locally: **4/4 PASS**. Stage 3 now proceeds to one complete Playwright regression run before closure.
