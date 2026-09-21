@@ -18,6 +18,7 @@
           <label for="usernameInput"><span data-i18n="usernameLabel">Username</span> <span class="required-marker" aria-hidden="true">*</span></label>
           <input
             id="usernameInput"
+            aria-describedby="loginStatus"
             type="text"
             data-i18n-placeholder="usernamePlaceholder"
             placeholder="Enter username"
@@ -27,6 +28,7 @@
           <label for="passwordInput"><span data-i18n="passwordLabel">Password</span> <span class="required-marker" aria-hidden="true">*</span></label>
           <input
             id="passwordInput"
+            aria-describedby="loginStatus"
             type="password"
             data-i18n-placeholder="passwordPlaceholder"
             placeholder="Enter password"
@@ -307,7 +309,7 @@
             <span class="required-marker" aria-hidden="true">*</span>
           </label>
           <div class="rich-text-editor">
-            <div class="rich-text-toolbar" role="toolbar">
+            <div class="rich-text-toolbar" role="toolbar" aria-label="Text formatting">
               <button type="button" class="rich-text-toolbar__button" data-rich-command="bold" aria-label="Bold"><strong>B</strong></button>
               <button type="button" class="rich-text-toolbar__button" data-rich-command="italic" aria-label="Italic"><em>I</em></button>
               <button type="button" class="rich-text-toolbar__button" data-rich-command="underline" aria-label="Underline"><u>U</u></button>
@@ -318,6 +320,8 @@
               contenteditable="true"
               role="textbox"
               aria-multiline="true"
+              aria-required="true"
+              aria-describedby="status"
               data-i18n-placeholder="instructionPlaceholder"
               data-i18n-data-placeholder="instructionPlaceholder"
               data-placeholder=""
@@ -400,7 +404,7 @@
       </div>
 
       <div id="deleteConfirmOverlay" class="confirm-overlay" hidden>
-        <div class="confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="deleteConfirmTitle">
+        <div class="confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="deleteConfirmTitle" aria-describedby="deleteConfirmMessage">
           <h2 id="deleteConfirmTitle" data-i18n="deleteConfirmTitle">Confirm deletion</h2>
           <p id="deleteConfirmMessage" class="description"></p>
           <p class="confirm-dialog__warning" data-i18n="deleteConfirmWarning">This action cannot be undone.</p>
