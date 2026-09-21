@@ -1039,6 +1039,95 @@ test("accessibility resilience - learner recovery actions remain available after
 });
 
 
+test("stage 4 lifecycle - editor authors, previews and publishes a guide that learner can run", async () => {
+  const guideName = `Stage 4 Lifecycle ${Date.now()}`;
+  let createdGuideId = null;
+
+  const editor = await openPanel();
+  await login(editor, "sanity.editor");
+
+  const crm = await context.newPage();
+  await crm.goto(`${SITE_URL}/site.html`);
+  await crm.bringToFront();
+
+  // Create a new unpublished guide in the real editor.
+  await editor.locator("#openNewGuideButton").click();
+  await expect(editor.locator("#guideEditorView")).toBeVisible();
+
+  const demoTopic = editor.locator("#topicSelect option").filter({ hasText: "Demo CRM" });
+  await editor.locator("#topicSelect").selectOption(await demoTopic.getAttribute("value"));
+  await editor.locator("#guideNameInput").fill(guideName);
+  await editor.locator("#guideStartUrlInput").fill(`${SITE_URL}/site.html`);
+  await expect(editor.locator("#guideAvailableInput")).not.toBeChecked();
+
+  // Author one real step with the real element picker.
+  await editor.locator("#addStepButton").click();
+  await editor.locator("#selectButton").click();
+  const content = crm.frameLocator('iframe[name="TargetContent"]');
+  await content.locator("#site-code").click();
+  await expect(editor.locator("#selectedSelector")).toContainText("#site-code");
+  await editor.locator("#instructionInput").fill("Stage 4 lifecycle instruction");
+  await editor.locator("#saveStepButton").click();
+  await expect(editor.locator("#stepEditor")).toBeHidden();
+
+  // Preview must work while the guide is still unpublished.
+  await crm.bringToFront();
+  await editor.locator("#previewGuideButton").click();
+  await expect(content.locator("#site-code")).toHaveCSS("outline-width", "3px", { timeout: 10000 });
+  await expect(content.locator(".gwtp-training-overlay")).toBeVisible();
+  await editor.bringToFront();
+  await editor.locator("#exitPreviewButton").click();
+
+  // Save unpublished, then prove the learner catalog does not expose it.
+  await editor.locator("#saveGuideButton").click();
+  await expect(editor.locator("#guideLibraryView")).toBeVisible();
+  const createdCard = editor.locator("[data-guide-id]").filter({ hasText: guideName }).first();
+  await expect(createdCard).toBeVisible();
+  createdGuideId = Number(await createdCard.getAttribute("data-guide-id"));
+  expect(createdGuideId).toBeGreaterThan(0);
+
+  const learnerBeforePublish = await openPanel();
+  await login(learnerBeforePublish, "sanity.learner");
+  const learnerTopicBefore = learnerBeforePublish.locator("#learnerTopicSelect option").filter({ hasText: "Demo CRM" });
+  await learnerBeforePublish.locator("#learnerTopicSelect").selectOption(await learnerTopicBefore.getAttribute("value"));
+  await expect(learnerBeforePublish.locator("#learnerGuideSelect option").filter({ hasText: guideName })).toHaveCount(0);
+  await learnerBeforePublish.close();
+
+  // Publish through the real editor.
+  await createdCard.click();
+  await editor.locator("#guideAvailableInput").check();
+  await editor.locator("#saveGuideButton").click();
+  await expect(editor.locator("#guideLibraryView")).toBeVisible();
+
+  // A fresh learner session must now discover and run the authored guide.
+  const learner = await openPanel();
+  await login(learner, "sanity.learner");
+  const learnerTopic = learner.locator("#learnerTopicSelect option").filter({ hasText: "Demo CRM" });
+  await learner.locator("#learnerTopicSelect").selectOption(await learnerTopic.getAttribute("value"));
+  const learnerGuide = learner.locator("#learnerGuideSelect option").filter({ hasText: guideName });
+  await expect(learnerGuide).toHaveCount(1);
+  await learner.locator("#learnerGuideSelect").selectOption(await learnerGuide.getAttribute("value"));
+
+  await crm.bringToFront();
+  await learner.locator("#startLearningButton").click();
+  await expect(content.locator("#site-code")).toHaveCSS("outline-width", "3px", { timeout: 10000 });
+  await expect(content.locator(".gwtp-training-overlay")).toBeVisible();
+
+  // Cleanup is part of the QA test so repeated runs do not leave authored fixtures.
+  await learner.close();
+  await editor.bringToFront();
+  const publishedCard = editor.locator("[data-guide-id]").filter({ hasText: guideName }).first();
+  await publishedCard.click();
+  await editor.locator("#deleteEditedGuideButton").click();
+  await expect(editor.locator("#deleteConfirmOverlay")).toBeVisible();
+  await editor.locator("#confirmDeleteButton").click();
+  await expect(editor.locator("[data-guide-id]").filter({ hasText: guideName })).toHaveCount(0);
+
+  await editor.close();
+  await crm.close();
+});
+
+
 test("stage 4 grid - server-side sort rerenders rows and stable grid selector still resolves", async () => {
   const panel = await openPanel();
   await login(panel, "sanity.editor");
