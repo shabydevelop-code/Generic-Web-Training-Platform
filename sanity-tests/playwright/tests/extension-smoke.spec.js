@@ -293,9 +293,10 @@ test("stage 4 validation - equals, not-equals and contains block then allow Next
   await expect(content.locator(".gwtp-training-overlay")).toContainText("יש לבחור סניף מכירות");
   await content.locator("#site-type").selectOption("branch");
   await next().click();
-  // Navigation is asynchronous; wait for the next rule's guidance before interacting
-  // with its target. This keeps the test about validation semantics rather than click timing.
-  await expect(content.locator(".gwtp-training-overlay")).toContainText("יש לבחור סוג אתר שאינו סניף מכירות");
+  // Navigation is asynchronous; wait until the next rule itself is rendered before
+  // interacting with its target. The validation error belongs to a failed attempt on
+  // that rule and must not be expected before the learner has attempted to continue.
+  await expect(content.locator(".gwtp-training-overlay")).toContainText("בדיקת שונה מערך");
 
   // Step 3 not_equals(branch): branch must block, another real option must advance.
   await content.locator("#site-type").selectOption("branch");
