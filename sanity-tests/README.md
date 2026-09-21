@@ -40,6 +40,6 @@ The runner also performs read-only authenticated checks using the development ad
 - Admin is rejected by the editor-only topics API, verifying role separation.
 - An authenticated active user can read the learner catalog.
 
-The defaults are `admin/admin` for the local development fixture. Different credentials can be supplied with `-AdminUsername` and `-AdminPassword`.
+The default authenticated fixture is the dedicated `sanity.admin` account created by the versioned backend migration `20260921_sanity_test_users_v1`. The same migration creates dedicated `sanity.editor` and `sanity.learner` accounts for later stages. These accounts are isolated from normal working accounts. Different admin credentials can still be supplied with `-AdminUsername` and `-AdminPassword`.
 
 Stage 2 deliberately remains read-only. The next stage is visual browser/extension end-to-end sanity testing. Any later destructive API tests must use disposable fixtures and clean up after themselves.
