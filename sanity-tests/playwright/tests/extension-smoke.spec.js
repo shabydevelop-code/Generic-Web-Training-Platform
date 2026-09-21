@@ -20,6 +20,8 @@ async function requireHealthyStack(request) {
 async function openPanel() {
   const page = await context.newPage();
   await page.goto(`chrome-extension://${extensionId}/sidepanel/sidepanel.html`);
+  await page.evaluate(() => localStorage.clear());
+  await page.reload();
   await expect(page.locator("#loginView")).toBeVisible();
   return page;
 }
@@ -57,9 +59,15 @@ test("Demo CRM loads with the GWTP content script", async () => {
   await page.goto(`${SITE_URL}/site.html`);
   await expect(page).toHaveTitle(/.+/);
 
-  const contentScriptReady = await page.evaluate(() =>
-    globalThis.__GWTP_CONTENT_READY__ === true
-  );
+  const contentScriptReady = await page.evaluate(() => {
+    const script = document.createElement("script");
+    script.textContent = "document.documentElement.dataset.gwtpMainWorldProbe = String(globalThis.__GWTP_CONTENT_READY__ === true);";
+    document.documentElement.appendChild(script);
+    script.remove();
+    const isolatedWorldIsWorking = document.documentElement.dataset.gwtpMainWorldProbe === "false";
+    delete document.documentElement.dataset.gwtpMainWorldProbe;
+    return isolatedWorldIsWorking;
+  });
   expect(contentScriptReady).toBeTruthy();
   await page.close();
 });
@@ -98,7 +106,8 @@ test("admin sees administration UI only", async () => {
   await expect(page.locator("#createModeView")).toBeHidden();
   await expect(page.locator("#learnModeView")).toBeHidden();
   await expect(page.locator("#currentUserRole")).toContainText(/מנהל|Admin/i);
-  await expect(page.locator("#adminUsersList, #usersList")).toBeVisible();
+  await expect(page.locator("#adminUsersList")).toBeVisible();
+  await expect(page.locator("#usersList")).toBeVisible();
 
   await page.close();
 });
