@@ -619,3 +619,33 @@ test("completed guide is stored as Completed and starts over on the next run", a
   await panel.close();
   await crm.close();
 });
+
+
+test("learner sidepanel fits a narrow viewport", async () => {
+  const panel = await openPanel();
+  await panel.setViewportSize({ width: 320, height: 720 });
+  await login(panel, "sanity.learner");
+  await expect(panel.locator("#learnModeView")).toBeVisible();
+
+  const topic = panel.locator("#learnerTopicSelect option").filter({ hasText: "Demo CRM" });
+  await panel.locator("#learnerTopicSelect").selectOption(await topic.getAttribute("value"));
+  const guide = panel.locator("#learnerGuideSelect option").filter({ hasText: "תרגול מלא - Demo CRM" });
+  await panel.locator("#learnerGuideSelect").selectOption(await guide.getAttribute("value"));
+
+  const sizes = await panel.evaluate(() => ({
+    viewport: document.documentElement.clientWidth,
+    page: document.documentElement.scrollWidth
+  }));
+  expect(sizes.page).toBeLessThanOrEqual(sizes.viewport + 1);
+
+  for (const selector of ["#learnerTopicSelect", "#learnerGuideSelect", "#startLearningButton"]) {
+    const locator = panel.locator(selector);
+    await expect(locator).toBeVisible();
+    const box = await locator.boundingBox();
+    expect(box).not.toBeNull();
+    expect(box.x).toBeGreaterThanOrEqual(0);
+    expect(box.x + box.width).toBeLessThanOrEqual(321);
+  }
+
+  await panel.close();
+});
