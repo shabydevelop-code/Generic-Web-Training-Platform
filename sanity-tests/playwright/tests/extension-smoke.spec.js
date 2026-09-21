@@ -1049,11 +1049,16 @@ test("stage 4 lifecycle - editor authors, previews and publishes a guide that le
   let createdGuideId = null;
 
   const editor = await openPanel();
-  await login(editor, "sanity.editor");
+  let crm = null;
+  let learnerBeforePublish = null;
+  let learner = null;
 
-  const crm = await context.newPage();
-  await crm.goto(`${SITE_URL}/site.html`);
-  await crm.bringToFront();
+  try {
+    await login(editor, "sanity.editor");
+
+    crm = await context.newPage();
+    await crm.goto(`${SITE_URL}/site.html`);
+    await crm.bringToFront();
 
   // Create a new unpublished guide in the real editor.
   await editor.locator("#openNewGuideButton").click();
@@ -1093,12 +1098,13 @@ test("stage 4 lifecycle - editor authors, previews and publishes a guide that le
   createdGuideId = Number(await createdCard.getAttribute("data-guide-id"));
   expect(createdGuideId).toBeGreaterThan(0);
 
-  const learnerBeforePublish = await openPanel();
+  learnerBeforePublish = await openPanel();
   await login(learnerBeforePublish, "sanity.learner");
   const learnerTopicBefore = learnerBeforePublish.locator("#learnerTopicSelect option").filter({ hasText: "Demo CRM" });
   await learnerBeforePublish.locator("#learnerTopicSelect").selectOption(await learnerTopicBefore.getAttribute("value"));
   await expect(learnerBeforePublish.locator("#learnerGuideSelect option").filter({ hasText: guideName })).toHaveCount(0);
   await learnerBeforePublish.close();
+  learnerBeforePublish = null;
 
   // Publish through the real editor.
   await createdCard.click();
@@ -1107,7 +1113,7 @@ test("stage 4 lifecycle - editor authors, previews and publishes a guide that le
   await expect(editor.locator("#guideLibraryView")).toBeVisible();
 
   // A fresh learner session must now discover and run the authored guide.
-  const learner = await openPanel();
+  learner = await openPanel();
   await login(learner, "sanity.learner");
   const learnerTopic = learner.locator("#learnerTopicSelect option").filter({ hasText: "Demo CRM" });
   await learner.locator("#learnerTopicSelect").selectOption(await learnerTopic.getAttribute("value"));
@@ -1120,18 +1126,46 @@ test("stage 4 lifecycle - editor authors, previews and publishes a guide that le
   await expect(content.locator("#site-code")).toHaveCSS("outline-width", "3px", { timeout: 10000 });
   await expect(content.locator(".gwtp-training-overlay")).toBeVisible();
 
-  // Cleanup is part of the QA test so repeated runs do not leave authored fixtures.
+  // Unpublish through the real editor and prove a fresh learner catalog hides it again.
   await learner.close();
+  learner = null;
   await editor.bringToFront();
-  const publishedCard = editor.locator("[data-guide-id]").filter({ hasText: guideName }).first();
-  await publishedCard.click();
-  await editor.locator("#deleteEditedGuideButton").click();
-  await expect(editor.locator("#deleteConfirmOverlay")).toBeVisible();
-  await editor.locator("#confirmDeleteButton").click();
-  await expect(editor.locator("[data-guide-id]").filter({ hasText: guideName })).toHaveCount(0);
+  let lifecycleCard = editor.locator("[data-guide-id]").filter({ hasText: guideName }).first();
+  await lifecycleCard.click();
+  await editor.locator("#guideAvailableInput").uncheck();
+  await editor.locator("#saveGuideButton").click();
+  await expect(editor.locator("#guideLibraryView")).toBeVisible();
 
-  await editor.close();
-  await crm.close();
+  learner = await openPanel();
+  await login(learner, "sanity.learner");
+  const learnerTopicAfterUnpublish = learner.locator("#learnerTopicSelect option").filter({ hasText: "Demo CRM" });
+  await learner.locator("#learnerTopicSelect").selectOption(await learnerTopicAfterUnpublish.getAttribute("value"));
+  await expect(learner.locator("#learnerGuideSelect option").filter({ hasText: guideName })).toHaveCount(0);
+  } finally {
+    await learnerBeforePublish?.close().catch(() => {});
+    await learner?.close().catch(() => {});
+
+    // Cleanup must run even when an assertion fails after the guide has been saved.
+    if (createdGuideId) {
+      try {
+        await editor.bringToFront();
+        const cleanupCard = editor.locator(`[data-guide-id="${createdGuideId}"]`).first();
+        if (await cleanupCard.count()) {
+          await cleanupCard.click();
+          await editor.locator("#deleteEditedGuideButton").click();
+          await expect(editor.locator("#deleteConfirmOverlay")).toBeVisible();
+          await editor.locator("#confirmDeleteButton").click();
+          await expect(editor.locator(`[data-guide-id="${createdGuideId}"]`)).toHaveCount(0);
+        }
+      } catch {
+        // Preserve the original test failure; a later run can still identify the
+        // timestamped QA fixture by guideName if UI cleanup itself is unavailable.
+      }
+    }
+
+    await editor.close().catch(() => {});
+    await crm?.close().catch(() => {});
+  }
 });
 
 
