@@ -1047,3 +1047,67 @@ test("stage 4 grid learner - active guidance survives server-side grid rerender"
   await panel.close();
   await crm.close();
 });
+
+
+test("stage 4 grid editor - picker authors a stable grid selector that survives sorting", async () => {
+  const panel = await openPanel();
+  await login(panel, "sanity.editor");
+
+  const crm = await context.newPage();
+  await crm.goto(`${SITE_URL}/customer360.html`);
+  await crm.bringToFront();
+
+  // Reuse the existing Demo CRM guide only as editor context. The test does not
+  // save or mutate the guide; it opens a new unsaved step and exercises the real picker.
+  const guideCards = panel.locator("[data-guide-id]");
+  const fullGuideCard = guideCards.filter({ hasText: "תרגול מלא - Demo CRM" }).first();
+  await expect(fullGuideCard).toBeVisible({ timeout: 10000 });
+  await fullGuideCard.click();
+
+  await expect(panel.locator("#stepsSection")).toBeVisible();
+  await panel.locator("#addStepButton").click();
+  await expect(panel.locator("#stepEditor")).toBeVisible();
+
+  await panel.locator("#selectButton").click();
+
+  const content = crm.frameLocator('iframe[name="TargetContent"]');
+  const targetText = "בטיפול מומחה";
+  const targetCell = content.locator("#c360-summary-table tbody td").filter({ hasText: targetText }).first();
+  await expect(targetCell).toBeVisible();
+
+  // The real content-script picker intercepts this click and sends
+  // GWTP_ELEMENT_SELECTED back to the editor.
+  await targetCell.click();
+
+  const selector = panel.locator("#selectedSelector");
+  await expect(selector).toContainText("gwtp-grid:", { timeout: 10000 });
+  const authoredSelector = (await selector.innerText()).trim();
+  expect(authoredSelector).toBe('gwtp-grid:#c360-summary-table|4|"בטיפול מומחה"');
+
+  const beforeRow = await targetCell.evaluate((cell) => cell.parentElement?.rowIndex ?? -1);
+  const sortButton = content.locator('.ps-grid-sort[data-sort="status"]');
+  await sortButton.click();
+  await expect(sortButton).toHaveAttribute("aria-sort", "ascending");
+
+  const rerenderedTarget = content.locator("#c360-summary-table tbody td").filter({ hasText: targetText }).first();
+  await expect(rerenderedTarget).toBeVisible();
+  const afterRow = await rerenderedTarget.evaluate((cell) => cell.parentElement?.rowIndex ?? -1);
+  expect(afterRow).not.toBe(beforeRow);
+
+  // Ask the editor to highlight the selected authored target again. This uses the
+  // same stable Grid selector through the real content-script element finder.
+  await panel.evaluate(async (selectorValue) => {
+    const responses = await window.messagingService.sendToAllFrames({
+      type: "GWTP_HIGHLIGHT_ELEMENT",
+      selector: selectorValue
+    });
+    if (!responses.some((item) => item.response?.success)) {
+      throw new Error("The authored Grid selector no longer resolves after sorting.");
+    }
+  }, authoredSelector);
+
+  await expect(rerenderedTarget).toHaveCSS("outline-width", "3px", { timeout: 10000 });
+
+  await panel.close();
+  await crm.close();
+});
