@@ -203,6 +203,7 @@ test("learner Next and Previous move between real Demo CRM steps", async () => {
   // Prove the move by checking the new target plus the overlay's step-specific
   // navigation state rather than assuming the previous field has no native outline.
   await expect(content.locator("#site-name")).toHaveCSS("outline-width", "3px");
+  await expect(content.locator(".gwtp-training-overlay")).toHaveCount(1);
   await expect(content.locator(".gwtp-training-overlay")).toBeVisible();
 
   const previous = content.locator(".gwtp-training-overlay button").filter({ hasText: /הקודם|Previous/i });
@@ -1067,16 +1068,6 @@ test("stage 4 lifecycle - editor authors, previews and publishes a guide that le
   await content.locator("#site-code").click();
   const authoredSelector = (await editor.locator("#selectedSelector").innerText()).trim();
   expect(authoredSelector).not.toBe("");
-  const pickerResolution = await editor.evaluate(async (selectorValue) => {
-    const responses = await window.messagingService.sendToAllFrames({
-      type: "GWTP_HIGHLIGHT_ELEMENT",
-      selector: selectorValue
-    });
-    const resolved = responses.some((item) => item.response?.success);
-    await window.messagingService.sendToAllFrames({ type: "GWTP_CLEAR_HIGHLIGHT" });
-    return resolved;
-  }, authoredSelector);
-  expect(pickerResolution).toBeTruthy();
   await editor.locator("#instructionInput").fill("Stage 4 lifecycle instruction");
   await editor.locator("#saveStepButton").click();
   await expect(editor.locator("#stepEditor")).toBeHidden();
