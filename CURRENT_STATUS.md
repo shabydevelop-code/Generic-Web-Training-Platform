@@ -113,6 +113,9 @@ Reset was verified to delete both guide and step progress as intended.
 - Existing guide cards now present their metadata as separate, aligned rows for topic, step count, and learner availability instead of combining topic/steps on one line.
 - Learner availability is shown explicitly as localized Yes/No (כן/לא), using the existing `isAvailable` value already returned by the guides API.
 
+## Session UX
+- The Hebrew logout action is labeled `יציאה מהמערכת` to distinguish account logout from `יציאה מהלמידה`.
+
 ## Learner selection UX
 - Changing the learner topic now clears any recovery/error state that belonged to the previously selected guide, so a stale "step not found" panel is not shown under a newly selected topic.
 
