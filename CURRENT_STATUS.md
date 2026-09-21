@@ -17,7 +17,7 @@ Last updated: 2026-09-21
 - Stage 2 sanity testing exposed that role-mismatch endpoint filters were producing HTTP 500 when returning `Results.Forbid()` without an ASP.NET authentication scheme.
 - Admin, editor topics, and editor guides filters now return an explicit HTTP 403 response for authenticated users lacking the required role.
 - Anonymous or invalid session tokens continue to return HTTP 401.
-- Re-run Stage 1/2 sanity after deployment; expected result is 10/10 PASS before Stage 3 visual E2E begins.
+- Stage 1/2 sanity was re-run after deployment and verified successfully: all 10 checks PASS, including the admin/editor role-separation check returning HTTP 403. Stage 2 is complete; Stage 3 visual E2E is next.
 
 ## Repository rule
 Every functional or architectural code change must update this file in the same change set. Completed work must not remain documented as pending.
@@ -195,5 +195,5 @@ Later accessibility phases must add their own concrete regression checks to this
 
 ## Immediate next tasks
 1. Verify `deploy-gwtp-service.bat` on the next backend code change; the initial Windows Service installation and extension connectivity are already verified.
-2. Run and verify the Stage 1/2 sanity suite locally, then begin Stage 3 visual browser/extension end-to-end sanity coverage.
+2. Begin Stage 3 visual browser/extension end-to-end sanity coverage. Stage 1/2 is complete with 10/10 PASS.
 3. Continue accessibility runtime verification separately with reflow and screen-reader regression testing.
