@@ -63,7 +63,22 @@
               <button id="openCreateUserButton" class="button button--primary user-management__create" type="button" data-i18n="newUserButton">+ New user</button>
             </div>
             <p class="description" data-i18n="userManagementDescription">Users registered in the platform.</p>
-            <div id="usersList" class="users-list"></div>
+            <div class="user-management__filter">
+              <label for="userRoleFilter" data-i18n="userFilterLabel">Show users</label>
+              <select id="userRoleFilter">
+                <option value="all" data-i18n="userFilterAll">All users</option>
+                <option value="editor" data-i18n="userFilterEditors">Editors</option>
+                <option value="learner" data-i18n="userFilterLearners">Learners</option>
+              </select>
+            </div>
+            <div id="adminUsersSection" class="user-role-section">
+              <h3 class="user-role-section__title" data-i18n="adminUsersTitle">Administrators</h3>
+              <div id="adminUsersList" class="users-list"></div>
+            </div>
+            <div id="regularUsersSection" class="user-role-section">
+              <h3 class="user-role-section__title" data-i18n="regularUsersTitle">Users</h3>
+              <div id="usersList" class="users-list"></div>
+            </div>
             <p id="usersStatus" class="status" aria-live="polite"></p>
           </section>
 
