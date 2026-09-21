@@ -469,18 +469,11 @@ async function showTrainingStep(step, navigation = {}) {
       button.addEventListener("pointerdown", (event) => {
         if (action !== "GWTP_TRAINING_NEXT" && action !== "GWTP_TRAINING_PREVIOUS") return;
 
-        // Keep focus on the business field until the pending intent is durably stored.
-        // Otherwise its blur/change handler may start a postback and destroy this frame
-        // before chrome.storage.session has received the navigation intent.
+        // Keep focus on the business field until validation has run. Persisting a
+        // pending move on pointerdown is unsafe: a validation failure must not leave
+        // a resumable navigation intent behind for PAGE_READY/restore to consume.
         event.preventDefault();
         focusBeforeNavigation = document.activeElement;
-        pendingNavigationPromise = chrome.runtime.sendMessage({
-          type: "GWTP_TRAINING_PENDING_SET",
-          pending: {
-            direction: action === "GWTP_TRAINING_NEXT" ? 1 : -1,
-            stepIndex: Number.isInteger(navigation.stepIndex) ? navigation.stepIndex : 0
-          }
-        });
       });
       button.addEventListener("keydown", (event) => {
         if (
@@ -489,13 +482,6 @@ async function showTrainingStep(step, navigation = {}) {
         ) return;
 
         focusBeforeNavigation = document.activeElement;
-        pendingNavigationPromise = chrome.runtime.sendMessage({
-          type: "GWTP_TRAINING_PENDING_SET",
-          pending: {
-            direction: action === "GWTP_TRAINING_NEXT" ? 1 : -1,
-            stepIndex: Number.isInteger(navigation.stepIndex) ? navigation.stepIndex : 0
-          }
-        });
       });
 
       button.addEventListener("click", async () => {
@@ -506,10 +492,20 @@ async function showTrainingStep(step, navigation = {}) {
         }
 
         if ((action === "GWTP_TRAINING_NEXT" || action === "GWTP_PREVIEW_NEXT") && !(await validateCurrentStep())) {
-          if (action === "GWTP_TRAINING_NEXT") {
-            chrome.runtime.sendMessage({ type: "GWTP_TRAINING_PENDING_CLEAR" }).catch(() => {});
-          }
           return;
+        }
+
+        if (action === "GWTP_TRAINING_NEXT" || action === "GWTP_TRAINING_PREVIOUS") {
+          pendingNavigationPromise = chrome.runtime.sendMessage({
+            type: "GWTP_TRAINING_PENDING_SET",
+            pending: {
+              direction: action === "GWTP_TRAINING_NEXT" ? 1 : -1,
+              stepIndex: Number.isInteger(navigation.stepIndex) ? navigation.stepIndex : 0
+            }
+          });
+          const pendingResponse = await pendingNavigationPromise.catch(() => null);
+          pendingNavigationPromise = null;
+          if (!pendingResponse?.success) return;
         }
 
         // Only after validation and pending-state persistence do we allow blur/change.
