@@ -136,7 +136,10 @@ Reset was verified to delete both guide and step progress as intended.
 - The delete/reset confirmation dialog now has an accessible description, moves focus into the dialog, traps Tab/Shift+Tab inside it, closes with Escape, and returns focus to the control that opened it when possible.
 - Field-level validation semantics are now implemented for the main Side Panel forms. Invalid login, user-management, guide-details, instruction, and validation-builder fields receive `aria-invalid="true"` and are associated with their existing status/error region through `aria-describedby`. The invalid state is cleared when the user edits/corrects the affected control.
 - Invalid fields also receive a visible error border/ring so the state is not communicated only through status text.
-- Remaining accessibility work includes learner overlay/dialog semantics and focus behavior, keyboard alternatives for pointer-only overlay movement/Element Picker behavior, contrast verification, zoom/reflow testing, and screen-reader regression testing.
+- Learner guidance overlays now expose explicit assistive semantics: the guidance container is a live region, the current instruction is a polite status announcement, and validation failures remain assertive alerts.
+- The learning-completion card is now an accessible modal dialog with title/description associations. Focus moves to its Close button when it opens, Tab remains within the dialog, and Escape closes it.
+- The normal step overlay intentionally does not steal keyboard focus from the highlighted business control; this preserves form-entry and postback behavior while allowing screen readers to announce new guidance through the live region.
+- Remaining accessibility work includes keyboard alternatives for pointer-only overlay movement/Element Picker behavior, contrast verification, zoom/reflow testing, and screen-reader regression testing.
 
 ## Accessibility regression checks
 For every accessibility change, verify the affected behavior with keyboard-only interaction before continuing:
@@ -146,8 +149,12 @@ For every accessibility change, verify the affected behavior with keyboard-only 
 - Login: navigate username -> password -> Continue using the keyboard and verify validation/status feedback remains exposed without requiring the mouse.
 - Field errors: submit intentionally invalid values in Login, Create/Edit User, Guide Details, and Step/Validation editing. Confirm the invalid field receives the red error state and focus where applicable; then edit the field and confirm the invalid visual state clears.
 - Browser accessibility inspection: for an invalid field, inspect its accessibility attributes and confirm `aria-invalid="true"` and `aria-describedby` points to the visible status/error element.
+- Learner guidance: start a guide and move through several steps. Confirm the highlighted business field retains normal keyboard interaction and the guidance bubble does not forcibly take focus.
+- Learner validation: trigger a step validation failure and confirm the visible validation message appears while focus returns to/remains usable on the relevant business field.
+- Completion dialog: finish a guide using the keyboard. Confirm focus moves to Close, Tab does not escape the completion dialog, Escape closes it, and the dialog has no effect on the live application's page state.
+- Screen-reader check (when available): verify that moving to a new step announces the new instruction and that validation failures are announced as alerts.
 Later accessibility phases must add their own concrete regression checks to this section.
 
 ## Immediate next tasks
 1. Verify `deploy-gwtp-service.bat` on the next backend code change; the initial Windows Service installation and extension connectivity are already verified.
-2. Continue the accessibility hardening plan: field-level error semantics, then learner overlay/completion accessibility, then pointer-independent authoring interactions and WCAG verification.
+2. Continue the accessibility hardening plan with pointer-independent learner/authoring interactions (overlay movement and Element Picker), then contrast, zoom/reflow, and screen-reader WCAG verification.
