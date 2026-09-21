@@ -1,6 +1,8 @@
 param(
     [string]$ApiBaseUrl = "http://localhost:5000",
-    [string]$SiteBaseUrl = "http://localhost:5100"
+    [string]$SiteBaseUrl = "http://localhost:5100",
+    [string]$AdminUsername = "admin",
+    [string]$AdminPassword = "admin"
 )
 
 $ErrorActionPreference = "Stop"
@@ -64,6 +66,44 @@ try {
 } catch {
     $status = [int]$_.Exception.Response.StatusCode
     Add-Result "Invalid login rejected" ($status -eq 401) "HTTP $status"
+}
+
+# Stage 2: authenticated API sanity. These checks are read-only.
+try {
+    $loginBody = @{ username = $AdminUsername; password = $AdminPassword } | ConvertTo-Json
+    $adminSession = Invoke-RestMethod -Uri "$ApiBaseUrl/api/auth/login" -Method Post -ContentType "application/json" -Body $loginBody -TimeoutSec 10
+    $adminToken = $adminSession.accessToken
+    $adminRoles = @($adminSession.roles)
+
+    Add-Result "Admin login" (-not [string]::IsNullOrWhiteSpace($adminToken) -and $adminRoles -contains "admin") $(if ($adminRoles) { "Roles: $($adminRoles -join ', ')" } else { "No roles returned" })
+
+    if (-not [string]::IsNullOrWhiteSpace($adminToken)) {
+        $headers = @{ Authorization = "Bearer $adminToken" }
+
+        try {
+            $users = @(Invoke-RestMethod -Uri "$ApiBaseUrl/api/users" -Method Get -Headers $headers -TimeoutSec 10)
+            Add-Result "Admin can read users" $true "$($users.Count) user(s)"
+        } catch {
+            Add-Result "Admin can read users" $false $_.Exception.Message
+        }
+
+        try {
+            Invoke-RestMethod -Uri "$ApiBaseUrl/api/topics" -Method Get -Headers $headers -TimeoutSec 10 | Out-Null
+            Add-Result "Admin blocked from editor topics API" $false "Admin unexpectedly received editor access"
+        } catch {
+            $status = [int]$_.Exception.Response.StatusCode
+            Add-Result "Admin blocked from editor topics API" ($status -eq 403) "HTTP $status"
+        }
+
+        try {
+            $catalog = @(Invoke-RestMethod -Uri "$ApiBaseUrl/api/learner/catalog" -Method Get -Headers $headers -TimeoutSec 10)
+            Add-Result "Authenticated catalog available" $true "$($catalog.Count) topic(s)"
+        } catch {
+            Add-Result "Authenticated catalog available" $false $_.Exception.Message
+        }
+    }
+} catch {
+    Add-Result "Admin login" $false $_.Exception.Message
 }
 
 Write-Host ""
