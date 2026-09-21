@@ -195,26 +195,27 @@ test("learner Next and Previous move between real Demo CRM steps", async () => {
     await panel.locator("#startLearningButton").click();
   }
 
-  const contentFrame = crm.frame({ name: "TargetContent" });
-  expect(contentFrame, "Demo CRM TargetContent frame must exist").toBeTruthy();
-
-  const overlay = contentFrame.locator(".gwtp-training-overlay");
+  // Restart/start navigates the active CRM tab to the guide StartUrl. That
+  // navigation replaces the iframe document, so resolve TargetContent only after
+  // the navigation has settled instead of retaining a stale Frame object.
+  const content = crm.frameLocator('iframe[name="TargetContent"]');
+  const overlay = content.locator(".gwtp-training-overlay");
   await expect(overlay).toBeVisible({ timeout: 10000 });
-  await expect(contentFrame.locator("#site-code")).toHaveCSS("outline-width", "3px");
+  await expect(content.locator("#site-code")).toHaveCSS("outline-width", "3px");
 
   const next = overlay.locator("button").filter({ hasText: /הבא|Next/i });
   await expect(next).toBeEnabled();
   await next.click();
 
-  await expect(contentFrame.locator("#site-name")).toHaveCSS("outline-width", "3px");
-  await expect(contentFrame.locator("#site-code")).not.toHaveCSS("outline-width", "3px");
+  await expect(content.locator("#site-name")).toHaveCSS("outline-width", "3px");
+  await expect(content.locator("#site-code")).not.toHaveCSS("outline-width", "3px");
 
-  const previous = contentFrame.locator(".gwtp-training-overlay button").filter({ hasText: /הקודם|Previous/i });
+  const previous = content.locator(".gwtp-training-overlay button").filter({ hasText: /הקודם|Previous/i });
   await expect(previous).toBeEnabled();
   await previous.click();
 
-  await expect(contentFrame.locator("#site-code")).toHaveCSS("outline-width", "3px");
-  await expect(contentFrame.locator("#site-name")).not.toHaveCSS("outline-width", "3px");
+  await expect(content.locator("#site-code")).toHaveCSS("outline-width", "3px");
+  await expect(content.locator("#site-name")).not.toHaveCSS("outline-width", "3px");
 
   await panel.close();
   await crm.close();
