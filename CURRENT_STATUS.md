@@ -114,7 +114,7 @@ Reset was verified to delete both guide and step progress as intended.
 - Learner availability is shown explicitly as localized Yes/No (כן/לא), using the existing `isAvailable` value already returned by the guides API.
 
 ## Login validation UX
-- Username and password are marked as required on the login screen.
+- Username and password are marked as required on the login screen using the shared red `required-marker` styling used by the rest of the extension.
 - Login rejects missing fields and invalid username syntax locally before any API request. Username validation matches the currently implemented account rule: 5–30 characters using letters, digits, `.` or `_`.
 - Login applies the same password format rule used for account creation before any API request: 6–20 characters with no whitespace.
 - Only locally valid credentials are sent to the authentication API; credential correctness remains server-side.
