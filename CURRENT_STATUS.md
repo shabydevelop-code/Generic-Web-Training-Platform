@@ -193,7 +193,14 @@ Later accessibility phases must add their own concrete regression checks to this
 - It returns process exit code 0 on full success and 1 on any failure, allowing later CI/deployment integration.
 - `sanity-tests/README.md` documents execution and the staged plan. The next sanity stage is visual browser/extension end-to-end coverage; destructive API fixture tests can be added later only where they provide additional value.
 
+## Stage 3 Playwright E2E foundation
+- Added `sanity-tests/playwright` with a dedicated Playwright configuration and read-only Chromium extension smoke suite.
+- The suite preflights GWTP API and Demo CRM availability, loads the unpacked Manifest V3 extension, resolves its runtime extension ID, and opens the real Side Panel document.
+- Initial coverage verifies the Demo CRM receives the GWTP content script and checks role-specific UI boundaries for `sanity.learner`, `sanity.editor`, and `sanity.admin`.
+- Stage 3 currently requires a headed Chromium run because extension loading is part of the test environment.
+- No application data is mutated by the initial suite.
+
 ## Immediate next tasks
 1. Verify `deploy-gwtp-service.bat` on the next backend code change; the initial Windows Service installation and extension connectivity are already verified.
-2. Begin Stage 3 visual browser/extension end-to-end sanity coverage. Stage 1/2 is complete with 10/10 PASS.
+2. Run the new Stage 3 Playwright browser/extension smoke suite in `sanity-tests/playwright`. The initial read-only suite loads the unpacked extension and verifies Demo CRM/content-script readiness plus learner/editor/admin role-specific Side Panel UI. Expand Stage 3 after this foundation passes.
 3. Continue accessibility runtime verification separately with reflow and screen-reader regression testing.
