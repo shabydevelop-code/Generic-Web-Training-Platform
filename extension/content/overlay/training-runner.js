@@ -165,6 +165,10 @@ async function showTrainingStep(step, navigation = {}) {
   dragHandle.addEventListener("pointerdown", (event) => {
     if (event.button !== 0) return;
 
+    // pointerdown is prevented below to keep dragging stable, so explicitly focus
+    // the handle first. This also makes arrow-key movement work immediately after
+    // the learner clicks/touches the drag handle.
+    dragHandle.focus({ preventScroll: true });
     const rect = overlay.getBoundingClientRect();
     isDragging = true;
     dragOffsetX = event.clientX - rect.left;
