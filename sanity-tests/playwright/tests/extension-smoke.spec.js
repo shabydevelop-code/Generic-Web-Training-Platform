@@ -2975,13 +2975,14 @@ test("stage 6 element highlight - editor and picker outlines use important prior
     document.body.style.setProperty("outline-offset", "1px", "important");
   });
 
-  const tabId = await panel.evaluate(async () => {
+  const worker = context.serviceWorkers()[0] || await context.waitForEvent("serviceworker");
+  const tabId = await worker.evaluate(async () => {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     return tab?.id;
   });
   expect(Number.isInteger(tabId)).toBeTruthy();
 
-  const highlighted = await panel.evaluate(async (id) => {
+  const highlighted = await worker.evaluate(async (id) => {
     return chrome.tabs.sendMessage(id, { type: "GWTP_HIGHLIGHT_ELEMENT", selector: "body" });
   }, tabId);
   expect(highlighted?.success).toBe(true);
@@ -2989,7 +2990,7 @@ test("stage 6 element highlight - editor and picker outlines use important prior
   const editorPriority = await page.evaluate(() => document.body.style.getPropertyPriority("outline"));
   expect(editorPriority).toBe("important");
 
-  await panel.evaluate(async (id) => {
+  await worker.evaluate(async (id) => {
     await chrome.tabs.sendMessage(id, { type: "GWTP_CLEAR_HIGHLIGHT" });
   }, tabId);
 
