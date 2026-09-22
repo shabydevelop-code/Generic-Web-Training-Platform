@@ -2296,6 +2296,14 @@ topicSelect.addEventListener("change", () => {
 });
 
 chrome.runtime.onMessage.addListener((message) => {
+  if (message?.type === "GWTP_ELEMENT_PICKER_STARTED_BY_COMMAND") {
+    if (!editingStepId && stepEditor.hidden) return;
+    setElementPickerActive(true);
+    elementPickerStatus.textContent = window.i18nService.translate("selectionModeActive", window.i18nService.getLanguage());
+    elementPickerStatus.dataset.type = "info";
+    return;
+  }
+
   if (message?.type === "GWTP_ELEMENT_SELECTED") {
     setElementPickerActive(false);
     const element = message.element;
