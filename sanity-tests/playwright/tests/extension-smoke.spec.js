@@ -2894,3 +2894,14 @@ test("stage 6 editor highlight - falls back when persisted frame metadata is sta
   await panel.close();
   await page.close();
 });
+
+
+test("stage 6 editor picker - keyboard command is declared for focus-preserving selection", async () => {
+  const manifest = JSON.parse(await fs.promises.readFile(path.join(EXTENSION_PATH, "manifest.json"), "utf8"));
+  expect(manifest.commands?.["start-element-picker"]?.suggested_key?.default).toBe("Ctrl+Shift+E");
+  expect(manifest.commands?.["start-element-picker"]?.suggested_key?.mac).toBe("Command+Shift+E");
+
+  const worker = context.serviceWorkers()[0] || await context.waitForEvent("serviceworker");
+  const commandListenerRegistered = await worker.evaluate(() => typeof chrome.commands?.onCommand?.addListener === "function");
+  expect(commandListenerRegistered).toBe(true);
+});
