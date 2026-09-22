@@ -3048,3 +3048,17 @@ test("stage 6 editor preview - uses learner-equivalent adjacent-step availabilit
   expect(sidepanelSource).toContain('message?.type === "GWTP_PREVIEW_PEEK_NEXT"');
   expect(sidepanelSource).toContain('message?.type === "GWTP_CHECK_NEXT_STEP_AVAILABLE"');
 });
+
+
+test("stage 6 editor preview - shares learner navigation decision helpers", async () => {
+  const [runnerSource, sidepanelSource] = await Promise.all([
+    fs.promises.readFile(path.join(extensionPath, "content", "overlay", "training-runner.js"), "utf8"),
+    fs.promises.readFile(path.join(extensionPath, "sidepanel", "sidepanel.js"), "utf8")
+  ]);
+
+  expect(runnerSource).toContain('const isForward = action === "GWTP_TRAINING_NEXT" || action === "GWTP_PREVIEW_NEXT";');
+  expect(runnerSource).toContain("const guardedStepAction = isForward || isBackward;");
+  expect(runnerSource).toContain("const peekType = isPreview");
+  expect(sidepanelSource).toContain("function checkStepAvailability(current)");
+  expect(sidepanelSource.match(/checkStepAvailability\(message\.current\)\.then\(sendResponse\)/g)?.length).toBe(2);
+});
