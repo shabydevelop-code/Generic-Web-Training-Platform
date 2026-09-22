@@ -454,21 +454,21 @@ test("stage 5 management CRUD - editor creates, edits and deletes a guide and it
   const guideName = "Stage 5 Guide " + suffix;
   const updatedGuideName = "Stage 5 Guide Updated " + suffix;
   const panel = await openPanel();
-  let crm = null;
+  let fixture = null;
   try {
     await login(panel, "sanity.editor");
-    crm = await context.newPage();
-    await crm.goto(SITE_URL + "/site.html");
-    await crm.bringToFront();
+    fixture = await context.newPage();
+    await fixture.goto(SITE_URL + "/gwtp-test-fixture.html");
+    await fixture.bringToFront();
     await panel.locator("#openNewGuideButton").click();
     const demoTopic = panel.locator("#topicSelect option").filter({ hasText: "Demo CRM" });
     await panel.locator("#topicSelect").selectOption(await demoTopic.getAttribute("value"));
     await panel.locator("#guideNameInput").fill(guideName);
-    await panel.locator("#guideStartUrlInput").fill(SITE_URL + "/site.html");
+    await panel.locator("#guideStartUrlInput").fill(SITE_URL + "/gwtp-test-fixture.html");
     await panel.locator("#addStepButton").click();
     await panel.locator("#selectButton").click();
-    const content = crm.frameLocator('iframe[name="TargetContent"]');
-    await content.locator("#site-code").click();
+    const content = fixture;
+    await content.locator("#fixture-code").click();
     await panel.locator("#screenNameInput").fill("Stage5 Screen");
     await panel.locator("#instructionInput").fill("Stage 5 original instruction");
     await panel.locator("#saveStepButton").click();
@@ -502,7 +502,7 @@ test("stage 5 management CRUD - editor creates, edits and deletes a guide and it
       for (const name of [updatedGuideName, guideName]) { const leftover = panel.locator("[data-guide-id]").filter({ hasText: name }).first(); if (await leftover.count()) { await leftover.click(); await panel.locator("#deleteEditedGuideButton").click(); if (await panel.locator("#deleteConfirmOverlay").isVisible()) await panel.locator("#confirmDeleteButton").click(); } }
     } catch {}
     await panel.close();
-    if (crm) await crm.close();
+    if (fixture) await fixture.close();
   }
 });
 
@@ -566,24 +566,24 @@ test("stage 5 editor management - metadata-only step edit does not require the t
 test("stage 5 editor preview - navigation, validation and exit cleanup work through the real UI", async () => {
   const guideName = "Stage 5 Preview " + Date.now();
   const panel = await openPanel();
-  let crm = null;
+  let fixture = null;
   try {
     await login(panel, "sanity.editor");
-    crm = await context.newPage();
-    await crm.goto(SITE_URL + "/site.html");
-    await crm.bringToFront();
-    const content = crm.frameLocator('iframe[name="TargetContent"]');
+    fixture = await context.newPage();
+    await fixture.goto(SITE_URL + "/gwtp-test-fixture.html");
+    await fixture.bringToFront();
+    const content = fixture;
 
     await panel.locator("#openNewGuideButton").click();
     const demoTopic = panel.locator("#topicSelect option").filter({ hasText: "Demo CRM" });
     await panel.locator("#topicSelect").selectOption(await demoTopic.getAttribute("value"));
     await panel.locator("#guideNameInput").fill(guideName);
-    await panel.locator("#guideStartUrlInput").fill(SITE_URL + "/site.html");
+    await panel.locator("#guideStartUrlInput").fill(SITE_URL + "/gwtp-test-fixture.html");
 
     // Step 1: required validation on a real input.
     await panel.locator("#addStepButton").click();
     await panel.locator("#selectButton").click();
-    await content.locator("#site-code").click();
+    await content.locator("#fixture-code").click();
     await panel.locator("#instructionInput").fill("Preview required step");
     await panel.locator("#validationTypeSelect").selectOption("required");
     await panel.locator("#validationErrorInput").fill("Preview required error");
@@ -592,11 +592,11 @@ test("stage 5 editor preview - navigation, validation and exit cleanup work thro
     // Step 2: a second real target so Preview Previous/Next can be exercised.
     await panel.locator("#addStepButton").click();
     await panel.locator("#selectButton").click();
-    await content.locator("#site-name").click();
+    await content.locator("#fixture-name").click();
     await panel.locator("#instructionInput").fill("Preview second step");
     await panel.locator("#saveStepButton").click();
 
-    await crm.bringToFront();
+    await fixture.bringToFront();
     await panel.locator("#previewGuideButton").click();
     let overlay = content.locator(".gwtp-training-overlay");
     await expect(overlay).toHaveCount(1);
@@ -604,13 +604,13 @@ test("stage 5 editor preview - navigation, validation and exit cleanup work thro
     await expect(panel.locator("#previewProgress")).toContainText(/1.*2/);
 
     // Required must block Preview just as it blocks learner execution.
-    const originalCode = await content.locator("#site-code").inputValue();
-    await content.locator("#site-code").fill("");
+    const originalCode = await content.locator("#fixture-code").inputValue();
+    await content.locator("#fixture-code").fill("");
     await overlay.locator("button").filter({ hasText: /הבא|Next/i }).click();
     await expect(overlay).toContainText("Preview required error");
     await expect(panel.locator("#previewProgress")).toContainText(/1.*2/);
 
-    await content.locator("#site-code").fill(originalCode || "10082");
+    await content.locator("#fixture-code").fill(originalCode || "10082");
     await overlay.locator("button").filter({ hasText: /הבא|Next/i }).click();
     overlay = content.locator(".gwtp-training-overlay");
     await expect(overlay).toContainText("Preview second step");
@@ -621,9 +621,9 @@ test("stage 5 editor preview - navigation, validation and exit cleanup work thro
     await expect(panel.locator("#previewProgress")).toContainText(/1.*2/);
 
     // The real Chrome Side Panel does not become the active tab when its controls are clicked.
-    // In Playwright the sidepanel is hosted as a normal extension tab, so keep the CRM tab active
+    // In Playwright the sidepanel is hosted as a normal extension tab, so keep the fixture tab active
     // and dispatch the Side Panel control programmatically to preserve the real browser-shell contract.
-    await crm.bringToFront();
+    await fixture.bringToFront();
     await panel.locator("#exitPreviewButton").evaluate((button) => button.click());
     await expect(panel.locator("#previewGuideButton")).toBeVisible();
     await expect(panel.locator("#previewActiveControls")).toBeHidden();
@@ -631,13 +631,13 @@ test("stage 5 editor preview - navigation, validation and exit cleanup work thro
     // Assert GWTP's inline training highlight is gone. Computed outline-width is not
     // reliable here because the input remains focused and the page/browser may render
     // its native focus ring with the same 3px width.
-    await expect.poll(async () => content.locator("#site-code").evaluate((element) => ({
+    await expect.poll(async () => content.locator("#fixture-code").evaluate((element) => ({
       outline: element.style.getPropertyValue("outline"),
       outlineOffset: element.style.getPropertyValue("outline-offset")
     }))).toEqual({ outline: "", outlineOffset: "" });
   } finally {
     await panel.close().catch(() => {});
-    await crm?.close().catch(() => {});
+    await fixture?.close().catch(() => {});
   }
 });
 
@@ -648,23 +648,23 @@ test("stage 5 editor management - persisted step reorder survives reopening the 
   const guideName = "Stage 5 Reorder " + Date.now();
   const panel = await openPanel();
   panel.setDefaultTimeout(4000);
-  let crm = null;
+  let fixture = null;
   try {
     await test.step("login as editor", async () => {
       await login(panel, "sanity.editor");
     });
-    crm = await context.newPage();
-    await crm.goto(SITE_URL + "/site.html");
-    await crm.bringToFront();
-    const content = crm.frameLocator('iframe[name="TargetContent"]');
+    fixture = await context.newPage();
+    await fixture.goto(SITE_URL + "/gwtp-test-fixture.html");
+    await fixture.bringToFront();
+    const content = fixture;
 
     await panel.locator("#openNewGuideButton").click();
     const demoTopic = panel.locator("#topicSelect option").filter({ hasText: "Demo CRM" });
     await panel.locator("#topicSelect").selectOption(await demoTopic.getAttribute("value"));
     await panel.locator("#guideNameInput").fill(guideName);
-    await panel.locator("#guideStartUrlInput").fill(SITE_URL + "/site.html");
+    await panel.locator("#guideStartUrlInput").fill(SITE_URL + "/gwtp-test-fixture.html");
 
-    for (const [selector, instruction] of [["#site-code", "Reorder first"], ["#site-name", "Reorder second"]]) {
+    for (const [selector, instruction] of [["#fixture-code", "Reorder first"], ["#fixture-name", "Reorder second"]]) {
       await panel.locator("#addStepButton").click();
       await panel.locator("#selectButton").click();
       await content.locator(selector).click();
@@ -713,7 +713,7 @@ test("stage 5 editor management - persisted step reorder survives reopening the 
       if (await leftover.count()) { await leftover.click(); await panel.locator("#deleteEditedGuideButton").click(); if (await panel.locator("#deleteConfirmOverlay").isVisible()) await panel.locator("#confirmDeleteButton").click(); }
     } catch {}
     await panel.close().catch(() => {});
-    await crm?.close().catch(() => {});
+    await fixture?.close().catch(() => {});
   }
 });
 
