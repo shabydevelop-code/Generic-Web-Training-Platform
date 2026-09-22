@@ -193,8 +193,7 @@
           finish: window.i18nService.translate("finishButton", window.i18nService.getLanguage()),
           completedTitle: window.i18nService.translate("guideCompletedTitle", window.i18nService.getLanguage()),
           completedMessage: window.i18nService.translate("guideCompletedMessage", window.i18nService.getLanguage()),
-          closeCompletion: window.i18nService.translate("closeCompletionButton", window.i18nService.getLanguage()),
-          completeCurrentStep: window.i18nService.translate("stepTargetUnavailable", window.i18nService.getLanguage())
+          closeCompletion: window.i18nService.translate("closeCompletionButton", window.i18nService.getLanguage())
         },
         allowDetached: Boolean(guide.allowDetached)
       }
