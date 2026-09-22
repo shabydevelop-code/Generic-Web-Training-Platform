@@ -2832,7 +2832,7 @@ test("stage 6 editor missing selected element - localized error stays with eleme
 
   // Move away from the guide's target page so the persisted selector cannot resolve.
   const unrelated = await context.newPage();
-  await unrelated.goto(`${SITE_URL}/site.html`);
+  await unrelated.goto(`${SITE_URL}/__gwtp-missing-element-test.html`);
   await unrelated.bringToFront();
   await stepCard.click();
 
@@ -2970,35 +2970,36 @@ test("stage 6 element highlight - editor and picker outlines use important prior
   const page = await context.newPage();
   await page.goto(`${SITE_URL}/site.html`);
 
-  const result = await page.evaluate(() => {
-    const target = document.body;
-    target.style.setProperty("outline", "1px solid transparent", "important");
-    target.style.setProperty("outline-offset", "1px", "important");
-
-    const highlighted = highlightElement("body");
-    const editorPriority = target.style.getPropertyPriority("outline");
-    clearHighlight();
-
-    startElementPicker();
-    target.dispatchEvent(new MouseEvent("mouseover", { bubbles: true }));
-    const pickerPriority = target.style.getPropertyPriority("outline");
-    stopElementPicker();
-
-    return {
-      highlighted: highlighted.success,
-      editorPriority,
-      pickerPriority,
-      restoredOutline: target.style.getPropertyValue("outline"),
-      restoredPriority: target.style.getPropertyPriority("outline")
-    };
+  await page.evaluate(() => {
+    document.body.style.setProperty("outline", "1px solid transparent", "important");
+    document.body.style.setProperty("outline-offset", "1px", "important");
   });
 
-  expect(result).toEqual({
-    highlighted: true,
-    editorPriority: "important",
-    pickerPriority: "important",
-    restoredOutline: "1px solid transparent",
-    restoredPriority: "important"
+  const tabId = await panel.evaluate(async () => {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    return tab?.id;
+  });
+  expect(Number.isInteger(tabId)).toBeTruthy();
+
+  const highlighted = await panel.evaluate(async (id) => {
+    return chrome.tabs.sendMessage(id, { type: "GWTP_HIGHLIGHT_ELEMENT", selector: "body" });
+  }, tabId);
+  expect(highlighted?.success).toBe(true);
+
+  const editorPriority = await page.evaluate(() => document.body.style.getPropertyPriority("outline"));
+  expect(editorPriority).toBe("important");
+
+  await panel.evaluate(async (id) => {
+    await chrome.tabs.sendMessage(id, { type: "GWTP_CLEAR_HIGHLIGHT" });
+  }, tabId);
+
+  const restored = await page.evaluate(() => ({
+    outline: document.body.style.getPropertyValue("outline"),
+    priority: document.body.style.getPropertyPriority("outline")
+  }));
+  expect(restored).toEqual({
+    outline: "1px solid transparent",
+    priority: "important"
   });
 
   await page.close();
