@@ -2957,3 +2957,19 @@ test("stage 6 learner guidance - host link clicks are not intercepted or replaye
   expect(runnerSource).not.toContain("window.top.location.assign(href)");
   expect(runnerSource).not.toContain("window.parent.location.assign(href)");
 });
+
+
+test("stage 6 learner guidance - unavailable message is generic and bubble avoids target overlap", async () => {
+  const [panelSource, i18nSource, runnerSource] = await Promise.all([
+    fs.promises.readFile(path.join(extensionPath, "sidepanel", "sidepanel.js"), "utf8"),
+    fs.promises.readFile(path.join(extensionPath, "services", "i18nService.js"), "utf8"),
+    fs.promises.readFile(path.join(extensionPath, "content", "overlay", "training-runner.js"), "utf8")
+  ]);
+
+  expect(panelSource).toContain('translate("stepTargetUnavailable"');
+  expect(i18nSource).toContain('stepTargetUnavailable: "The next step is not available right now.');
+  expect(i18nSource).toContain('stepTargetUnavailable: "השלב הבא אינו זמין כרגע.');
+  expect(runnerSource).toContain("const fitsBelow =");
+  expect(runnerSource).toContain("const fitsAbove =");
+  expect(runnerSource).toContain("const rightLeft = rect.right + gap;");
+});
