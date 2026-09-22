@@ -167,6 +167,7 @@ let previewSession = null;
 let previewStarting = false;
 let previewRestorePromise = null;
 let previewRestoreQueued = false;
+let previewPendingDirection = null;
 let learnerStepRenderPromise = null;
 let learnerStepRenderQueuedCurrent = null;
 
@@ -285,6 +286,7 @@ async function startGuidePreview() {
   previewStarting = true;
   try {
     previewSession = { ...guide, stepIndex: 0 };
+    previewPendingDirection = null;
     updatePreviewUi();
     await window.guideRunner.preview(guide);
   } catch (error) {
@@ -2633,6 +2635,27 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       if (previewStarting) return;
 
       const restorePreviewStep = async () => {
+        if (previewPendingDirection && previewSession) {
+          const nextIndex = Math.max(
+            0,
+            Math.min(previewSession.steps.length - 1, previewSession.stepIndex + previewPendingDirection)
+          );
+          const pendingCurrent = {
+            step: previewSession.steps[nextIndex],
+            stepIndex: nextIndex,
+            totalSteps: previewSession.steps.length,
+            mode: "preview"
+          };
+
+          if (pendingCurrent.step && await window.guideRunner.canShowStep(pendingCurrent)) {
+            previewSession.stepIndex = nextIndex;
+            previewPendingDirection = null;
+            updatePreviewUi();
+            await window.guideRunner.showCurrentStep(pendingCurrent);
+            return;
+          }
+        }
+
         const current = {
           step: previewSession?.steps?.[previewSession.stepIndex],
           stepIndex: previewSession?.stepIndex,
@@ -2668,6 +2691,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 
     if (message?.type === "GWTP_PREVIEW_PEEK_NEXT" || message?.type === "GWTP_PREVIEW_PEEK_PREVIOUS") {
       const direction = message.type === "GWTP_PREVIEW_PEEK_NEXT" ? 1 : -1;
+      previewPendingDirection = direction;
       const stepIndex = Math.max(0, Math.min(previewSession.steps.length - 1, previewSession.stepIndex + direction));
       sendResponse({
         success: true,
@@ -2684,6 +2708,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     if (message?.type === "GWTP_PREVIEW_NEXT" || message?.type === "GWTP_PREVIEW_PREVIOUS") {
       const direction = message.type === "GWTP_PREVIEW_NEXT" ? 1 : -1;
       previewSession.stepIndex = Math.max(0, Math.min(previewSession.steps.length - 1, previewSession.stepIndex + direction));
+      previewPendingDirection = null;
       updatePreviewUi();
       sendResponse({
         success: true,
