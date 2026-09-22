@@ -3062,3 +3062,17 @@ test("stage 6 editor preview - shares learner navigation decision helpers", asyn
   expect(sidepanelSource).toContain("function checkStepAvailability(current)");
   expect(sidepanelSource.match(/checkStepAvailability\(message\.current\)\.then\(sendResponse\)/g)?.length).toBe(2);
 });
+
+
+test("stage 6 editor preview - pending move resumes when PAGE_READY exposes target", async () => {
+  const sidepanelSource = await fs.promises.readFile(
+    path.join(extensionPath, "sidepanel", "sidepanel.js"),
+    "utf8"
+  );
+
+  expect(sidepanelSource).toContain("let previewPendingDirection = null;");
+  expect(sidepanelSource).toContain("previewPendingDirection = direction;");
+  expect(sidepanelSource).toContain("await window.guideRunner.canShowStep(pendingCurrent)");
+  expect(sidepanelSource).toContain("previewSession.stepIndex = nextIndex;");
+  expect(sidepanelSource).toContain("previewPendingDirection = null;");
+});
