@@ -1,6 +1,7 @@
 const selectorInput = document.getElementById("selectorInput");
 const screenNameInput = document.getElementById("screenNameInput");
 const selectButton = document.getElementById("selectButton");
+let elementPickerActive = false;
 const addStepButton = document.getElementById("addStepButton");
 const cancelStepButton = document.getElementById("cancelStepButton");
 const topicSelect = document.getElementById("topicSelect");
@@ -1555,6 +1556,8 @@ async function highlightEditorStep(step) {
 }
 
 function closeStepCreator() {
+  if (elementPickerActive) cancelElementPicker(false);
+  else setElementPickerActive(false);
   clearPageTrainingVisuals();
   editingStepId = null;
   editingStepSnapshot = null;
@@ -1576,6 +1579,7 @@ function closeStepCreator() {
 
 function openStepCreator() {
   if (!updateGuideEditorValidity()) return;
+  setElementPickerActive(false);
 
   editingStepId = null;
   editingStepSnapshot = null;
@@ -1601,6 +1605,8 @@ function openStepCreator() {
 
 function openStepEditor(step) {
   if (!updateGuideEditorValidity()) return;
+  if (elementPickerActive) cancelElementPicker(false);
+  else setElementPickerActive(false);
 
   editingStepId = step.id;
   editingStepSnapshot = step;
@@ -1894,12 +1900,35 @@ function renderSteps() {
   });
 }
 
+function setElementPickerActive(active) {
+  elementPickerActive = active;
+  selectButton.textContent = window.i18nService.translate(
+    active ? "cancelElementSelectionButton" : "selectElementButton",
+    window.i18nService.getLanguage()
+  );
+  selectButton.classList.toggle("button--primary", !active);
+}
+
+async function cancelElementPicker(showStatus = true) {
+  await window.messagingService.sendToAllFrames({ type: "GWTP_CANCEL_ELEMENT_PICKER" }).catch(() => {});
+  setElementPickerActive(false);
+  if (showStatus) {
+    elementPickerStatus.textContent = window.i18nService.translate("elementSelectionCancelled", window.i18nService.getLanguage());
+    elementPickerStatus.dataset.type = "info";
+  }
+}
+
 selectButton.addEventListener("click", async () => {
   const language = window.i18nService.getLanguage();
   const setElementPickerStatus = (messageKey, type) => {
     elementPickerStatus.textContent = window.i18nService.translate(messageKey, language);
     elementPickerStatus.dataset.type = type;
   };
+
+  if (elementPickerActive) {
+    await cancelElementPicker(true);
+    return;
+  }
 
   elementPickerStatus.textContent = "";
   delete elementPickerStatus.dataset.type;
@@ -1910,8 +1939,10 @@ selectButton.addEventListener("click", async () => {
     markActiveStep(null);
     const responses = await window.messagingService.sendToAllFrames({ type: "GWTP_START_ELEMENT_PICKER" });
     const started = responses.some((item) => item.response?.success);
+    setElementPickerActive(started);
     setElementPickerStatus(started ? "selectionModeActive" : "selectionModeStartError", started ? "info" : "error");
   } catch (error) {
+    setElementPickerActive(false);
     setElementPickerStatus("pageControlUnavailable", "error");
     if (!window.messagingService.isUnsupportedPageError(error)) {
       console.error(error);
@@ -2248,6 +2279,7 @@ topicSelect.addEventListener("change", () => {
 
 chrome.runtime.onMessage.addListener((message) => {
   if (message?.type === "GWTP_ELEMENT_SELECTED") {
+    setElementPickerActive(false);
     const element = message.element;
     currentSelectedElement = element;
     selectorInput.value = element.selector;
@@ -2263,7 +2295,9 @@ chrome.runtime.onMessage.addListener((message) => {
   }
 
   if (message?.type === "GWTP_ELEMENT_SELECTION_CANCELLED") {
-    setStatus(window.i18nService.translate("elementSelectionCancelled", window.i18nService.getLanguage()));
+    setElementPickerActive(false);
+    elementPickerStatus.textContent = window.i18nService.translate("elementSelectionCancelled", window.i18nService.getLanguage());
+    elementPickerStatus.dataset.type = "info";
   }
 });
 
