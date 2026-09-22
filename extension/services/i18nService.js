@@ -4,7 +4,7 @@
       elementSelectionTitle: "Element Selection",
       selectionModeActive: "Selection mode active.",
       selectionModeStartError: "Could not start element selection on this page. Reload the page and try again.",
-      pageControlUnavailable: "Could not start element selection on this page. Reload the page and try again. Browser-internal pages are not supported.",
+      pageControlUnavailable: "This action is not available on browser-internal pages. Open a regular web page and try again.",
       richTextToolbarLabel: "Text formatting",
       richTextBoldLabel: "Bold",
       richTextItalicLabel: "Italic",
