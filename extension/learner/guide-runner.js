@@ -137,9 +137,25 @@
       return { success: false, stale: true };
     }
 
-    // A previous step may have been rendered in a different iframe. Clear every
-    // accessible frame before showing the new step so only one learner bubble and
-    // one training highlight can exist in the tab.
+    // Never remove the currently visible step until the replacement target is
+    // known to exist. This preserves the current guidance when Next/Previous points
+    // to a hidden menu item, another tab, or content that has not rendered yet.
+    const available = await canShowStep({
+      step: firstStep,
+      stepIndex: Number.isInteger(guide.stepIndex) ? guide.stepIndex : 0,
+      totalSteps: guide.totalSteps || guide.steps.length,
+      mode: guide.mode || "learner"
+    });
+    if (!available) {
+      return { success: false, unavailable: true, message: "Step element was not found on this page." };
+    }
+
+    if (renderVersion != null && renderVersion !== learnerRenderVersion) {
+      return { success: false, stale: true };
+    }
+
+    // The replacement is available. Only now clear stale guidance from every
+    // accessible frame, then render the new step.
     await clearTrainingAcrossFrames();
 
     if (renderVersion != null && renderVersion !== learnerRenderVersion) {
