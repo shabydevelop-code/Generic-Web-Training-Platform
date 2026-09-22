@@ -59,6 +59,41 @@ test.afterAll(async () => {
   await context?.close();
 });
 
+test("dynamic fixture behaves like a modern web app without timing assumptions", async () => {
+  const page = await context.newPage();
+  await page.goto(`${SITE_URL}/dynamic-app.html`);
+
+  // JavaScript-trigger anchor: behaves like an app launcher and must not navigate.
+  const launcher = page.locator("#js-launcher");
+  await launcher.click();
+  await expect(page).toHaveURL(/\/dynamic-app\.html$/);
+  await expect(page.locator("#launcher-result")).toBeVisible();
+
+  // SPA-style state change: same document/URL path, target appears from an event.
+  await page.locator("#spa-screen-action").click();
+  await expect(page).toHaveURL(/\/dynamic-app\.html#details$/);
+  await expect(page.locator("#spa-target")).toBeVisible();
+
+  // DOM replacement preserves the selector while replacing the actual node.
+  const originalTarget = await page.locator("#dynamic-target").evaluate((element) => element.dataset.version || "original");
+  expect(originalTarget).toBe("original");
+  await page.locator("#replace-region").click();
+  await expect(page.locator("#dynamic-target")).toHaveAttribute("data-version", "replacement");
+
+  // A frame is created only as the direct result of the user action.
+  await page.locator("#replace-frame").click();
+  const dynamicFrame = page.frameLocator('iframe[name="DynamicContent"]');
+  await expect(dynamicFrame.locator("#frame-target")).toBeVisible();
+
+  // Genuine document navigation remains owned by the host page.
+  await page.locator("#real-navigation").click();
+  await expect(page).toHaveURL(/\/dynamic-destination\.html$/);
+  await expect(page.locator("#destination-target")).toBeVisible();
+
+  await page.close();
+});
+
+
 test("Demo CRM loads with the GWTP content script", async () => {
   const page = await context.newPage();
   await page.goto(`${SITE_URL}/site.html`);
