@@ -3076,3 +3076,22 @@ test("stage 6 editor preview - pending move resumes when PAGE_READY exposes targ
   expect(sidepanelSource).toContain("previewSession.stepIndex = nextIndex;");
   expect(sidepanelSource).toContain("previewPendingDirection = null;");
 });
+
+
+test("stage 6 same-step idempotence verifies the overlay survived before skipping restore", async () => {
+  const guideRunnerSource = await fs.promises.readFile(
+    path.join(extensionPath, "learner", "guide-runner.js"),
+    "utf8"
+  );
+  const contentScriptSource = await fs.promises.readFile(
+    path.join(extensionPath, "content", "content-script.js"),
+    "utf8"
+  );
+
+  expect(contentScriptSource).toContain('GWTP_IS_TRAINING_STEP_RENDERED');
+  expect(contentScriptSource).toContain('globalThis.gwtpTrainingOverlay?.isConnected');
+  expect(guideRunnerSource).toContain('type: "GWTP_IS_TRAINING_STEP_RENDERED"');
+  expect(guideRunnerSource).toContain('if (rendered?.success === true)');
+  expect(guideRunnerSource).toContain('return { success: true, unchanged: true };');
+  expect(guideRunnerSource).toContain('const available = await canShowStep');
+});
