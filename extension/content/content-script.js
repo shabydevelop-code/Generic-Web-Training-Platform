@@ -37,6 +37,11 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     return;
   }
 
+  if (message?.type === "GWTP_IS_TRAINING_STEP_RENDERED") {
+    sendResponse({ success: Boolean(globalThis.gwtpTrainingOverlay?.isConnected) });
+    return;
+  }
+
   if (message?.type === "GWTP_CAN_SHOW_TRAINING_STEP") {
     const result = message.step?.selector ? findElement(message.step.selector) : { element: null };
     sendResponse({ success: Boolean(result?.element) && !result?.error });
