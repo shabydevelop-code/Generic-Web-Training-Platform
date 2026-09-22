@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>GWTP Test Fixture</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 32px; }
+    main { max-width: 720px; }
+    .field { display: grid; gap: 6px; margin: 16px 0; }
+    input, select, button { font: inherit; padding: 8px; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>GWTP Test Fixture</h1>
+    <p>Deterministic target page for extension UI, authoring, validation and learner-runtime tests.</p>
+
+    <div class="field">
+      <label for="fixture-code">Code</label>
+      <input id="fixture-code" value="10082">
+    </div>
+
+    <div class="field">
+      <label for="fixture-name">Name</label>
+      <input id="fixture-name" value="Fixture Site">
+    </div>
+
+    <div class="field">
+      <label for="fixture-type">Type</label>
+      <select id="fixture-type">
+        <option value="hq">Headquarters</option>
+        <option value="branch">Branch</option>
+      </select>
+    </div>
+
+    <div class="field">
+      <label for="fixture-phone">Phone</label>
+      <input id="fixture-phone" value="03-7654321">
+    </div>
+
+    <button id="fixture-action" type="button">Fixture action</button>
+    <p id="fixture-result" hidden>Action completed</p>
+  </main>
+
+  <script>
+    document.querySelector("#fixture-action").addEventListener("click", () => {
+      document.querySelector("#fixture-result").hidden = false;
+    });
+  </script>
+</body>
+</html>
