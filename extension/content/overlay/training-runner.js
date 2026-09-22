@@ -731,12 +731,32 @@ async function showTrainingStep(step, navigation = {}) {
     const overlayRect = gwtpTrainingOverlay.getBoundingClientRect();
     const gap = 14;
 
-    let top = rect.bottom + gap;
-    if (top + overlayRect.height > window.innerHeight - gap) {
-      top = Math.max(gap, rect.top - overlayRect.height - gap);
+    const belowTop = rect.bottom + gap;
+    const aboveTop = rect.top - overlayRect.height - gap;
+    const fitsBelow = belowTop + overlayRect.height <= window.innerHeight - gap;
+    const fitsAbove = aboveTop >= gap;
+
+    let top;
+    if (fitsBelow) {
+      top = belowTop;
+    } else if (fitsAbove) {
+      top = aboveTop;
+    } else {
+      // Neither vertical position fits without covering the target. Place the
+      // bubble beside it instead of overlapping the highlighted element.
+      top = Math.max(gap, Math.min(rect.top, window.innerHeight - overlayRect.height - gap));
     }
 
     let left = rect.left;
+    if (!fitsBelow && !fitsAbove) {
+      const rightLeft = rect.right + gap;
+      const leftLeft = rect.left - overlayRect.width - gap;
+      if (rightLeft + overlayRect.width <= window.innerWidth - gap) {
+        left = rightLeft;
+      } else if (leftLeft >= gap) {
+        left = leftLeft;
+      }
+    }
     left = Math.max(gap, Math.min(left, window.innerWidth - overlayRect.width - gap));
 
     gwtpTrainingOverlay.style.top = `${top}px`;
