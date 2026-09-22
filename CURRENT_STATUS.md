@@ -490,3 +490,5 @@ Later accessibility phases must add their own concrete regression checks to this
 - **Training bubble target spacing (2026-09-22; pending local verification):** target-relative bubble placement now preserves a 20px gap from the highlighted element instead of 14px. Candidate order and target-safe below/above/right/left placement are unchanged.
 
 - **Axis-specific training bubble spacing (2026-09-22; pending local verification):** target-relative placement now uses 16px above/below and 28px left/right, while viewport edge padding remains independent. This keeps bottom placement compact while giving side placement clearer visual separation.
+
+- **Bubble fallback ReferenceError fix (2026-09-22):** completed the axis-specific spacing refactor by replacing stale runtime `gap` references in fallback/clamp positioning with `viewportGap`, `verticalGap`, or `horizontalGap` as appropriate. Added a source regression check so an undefined legacy gap identifier cannot remain in the positioning function.
