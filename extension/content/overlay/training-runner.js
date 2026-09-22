@@ -734,10 +734,10 @@ async function showTrainingStep(step, navigation = {}) {
     const centeredLeft = rect.left + (rect.width - overlayRect.width) / 2;
     const centeredTop = rect.top + (rect.height - overlayRect.height) / 2;
     const candidates = [
-      { top: rect.bottom + gap, left: centeredLeft },
-      { top: rect.top - overlayRect.height - gap, left: centeredLeft },
-      { top: centeredTop, left: rect.right + gap },
-      { top: centeredTop, left: rect.left - overlayRect.width - gap }
+      { side: "below", top: rect.bottom + gap, left: centeredLeft },
+      { side: "above", top: rect.top - overlayRect.height - gap, left: centeredLeft },
+      { side: "right", top: centeredTop, left: rect.right + gap },
+      { side: "left", top: centeredTop, left: rect.left - overlayRect.width - gap }
     ];
 
     const fitsViewport = (candidate) =>
@@ -746,7 +746,46 @@ async function showTrainingStep(step, navigation = {}) {
       candidate.top + overlayRect.height <= window.innerHeight - gap &&
       candidate.left + overlayRect.width <= window.innerWidth - gap;
 
-    const chosen = candidates.find(fitsViewport);
+    const intersectionArea = (a, b) => {
+      const width = Math.max(0, Math.min(a.right, b.right) - Math.max(a.left, b.left));
+      const height = Math.max(0, Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top));
+      return width * height;
+    };
+
+    // Score visible candidates against nearby page containers. A popup/menu that
+    // contains the target is useful context and should be obscured as little as
+    // possible. This stays generic: no site-, selector-, or role-specific rules.
+    const contextualRects = [];
+    let contextNode = gwtpTrainingTarget.parentElement;
+    while (contextNode && contextNode !== document.body && contextNode !== document.documentElement) {
+      const contextRect = contextNode.getBoundingClientRect();
+      if (
+        contextRect.width > rect.width &&
+        contextRect.height > rect.height &&
+        contextRect.width <= window.innerWidth &&
+        contextRect.height <= window.innerHeight
+      ) {
+        contextualRects.push(contextRect);
+      }
+      contextNode = contextNode.parentElement;
+    }
+
+    const visibleCandidates = candidates.filter(fitsViewport);
+    const chosen = visibleCandidates
+      .map((candidate, priority) => {
+        const candidateRect = {
+          left: candidate.left,
+          top: candidate.top,
+          right: candidate.left + overlayRect.width,
+          bottom: candidate.top + overlayRect.height
+        };
+        const overlap = contextualRects.reduce(
+          (total, contextRect) => total + intersectionArea(candidateRect, contextRect),
+          0
+        );
+        return { candidate, overlap, priority };
+      })
+      .sort((a, b) => a.overlap - b.overlap || a.priority - b.priority)[0]?.candidate;
 
     let top;
     let left;
