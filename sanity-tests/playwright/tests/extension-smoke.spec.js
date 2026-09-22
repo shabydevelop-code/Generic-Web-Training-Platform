@@ -3007,3 +3007,16 @@ test("stage 6 learner guidance - redundant restore keeps the rendered step intac
 });
 
 
+
+
+test("stage 6 learner guidance - placement is target-centered and viewport-aware", async () => {
+  const runnerSource = await fs.promises.readFile(
+    path.join(extensionPath, "content", "overlay", "training-runner.js"),
+    "utf8"
+  );
+
+  expect(runnerSource).toContain("const centeredLeft =");
+  expect(runnerSource).toContain("const centeredTop =");
+  expect(runnerSource).toContain("const candidates = [");
+  expect(runnerSource).toContain("const chosen = candidates.find(fitsViewport);");
+});
