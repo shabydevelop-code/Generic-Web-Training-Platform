@@ -117,12 +117,30 @@
     );
   }
 
+  async function clearTrainingAcrossFrames() {
+    try {
+      await window.messagingService.sendToAllFrames({ type: "GWTP_CLEAR_TRAINING_STEP" });
+    } catch {
+      // Best-effort cleanup: inaccessible/restricted frames must not block rendering
+      // the next guide step in an accessible frame.
+    }
+  }
+
   async function showFirstStep(guide, renderVersion = null) {
     const firstStep = guide?.steps?.[0];
 
     if (!firstStep) {
       throw new Error("The guide does not contain any steps.");
     }
+
+    if (renderVersion != null && renderVersion !== learnerRenderVersion) {
+      return { success: false, stale: true };
+    }
+
+    // A previous step may have been rendered in a different iframe. Clear every
+    // accessible frame before showing the new step so only one learner bubble and
+    // one training highlight can exist in the tab.
+    await clearTrainingAcrossFrames();
 
     if (renderVersion != null && renderVersion !== learnerRenderVersion) {
       return { success: false, stale: true };
