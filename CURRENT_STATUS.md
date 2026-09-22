@@ -488,3 +488,5 @@ Later accessibility phases must add their own concrete regression checks to this
 - **POSTBACK same-Step recovery (2026-09-22; pending local verification):** same-Step idempotence now verifies that the guidance overlay still exists in the target document/frame before returning `unchanged`. If a CRM/PeopleSoft POSTBACK replaces the document and destroys the bubble, PAGE_READY falls through to the existing availability/render path and restores the active Step. If the bubble is still connected, repeated PAGE_READY remains a no-op, preserving the Google Apps duplicate-overlay protection.
 
 - **Training bubble target spacing (2026-09-22; pending local verification):** target-relative bubble placement now preserves a 20px gap from the highlighted element instead of 14px. Candidate order and target-safe below/above/right/left placement are unchanged.
+
+- **Axis-specific training bubble spacing (2026-09-22; pending local verification):** target-relative placement now uses 16px above/below and 28px left/right, while viewport edge padding remains independent. This keeps bottom placement compact while giving side placement clearer visual separation.
