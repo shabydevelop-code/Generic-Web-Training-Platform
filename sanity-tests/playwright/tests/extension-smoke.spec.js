@@ -2905,3 +2905,42 @@ test("stage 6 editor picker - keyboard command is declared for focus-preserving 
   const commandListenerRegistered = await worker.evaluate(() => typeof chrome.commands?.onCommand?.addListener === "function");
   expect(commandListenerRegistered).toBe(true);
 });
+
+
+test("stage 6 element highlight - editor and picker outlines use important priority", async () => {
+  const page = await context.newPage();
+  await page.goto(`${SITE_URL}/site.html`);
+
+  const result = await page.evaluate(() => {
+    const target = document.body;
+    target.style.setProperty("outline", "1px solid transparent", "important");
+    target.style.setProperty("outline-offset", "1px", "important");
+
+    const highlighted = highlightElement("body");
+    const editorPriority = target.style.getPropertyPriority("outline");
+    clearHighlight();
+
+    startElementPicker();
+    target.dispatchEvent(new MouseEvent("mouseover", { bubbles: true }));
+    const pickerPriority = target.style.getPropertyPriority("outline");
+    stopElementPicker();
+
+    return {
+      highlighted: highlighted.success,
+      editorPriority,
+      pickerPriority,
+      restoredOutline: target.style.getPropertyValue("outline"),
+      restoredPriority: target.style.getPropertyPriority("outline")
+    };
+  });
+
+  expect(result).toEqual({
+    highlighted: true,
+    editorPriority: "important",
+    pickerPriority: "important",
+    restoredOutline: "1px solid transparent",
+    restoredPriority: "important"
+  });
+
+  await page.close();
+});
