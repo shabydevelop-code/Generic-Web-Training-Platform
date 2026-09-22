@@ -3144,6 +3144,24 @@ test("stage 6 editor preview - pending move resumes when PAGE_READY exposes targ
 });
 
 
+test("stage 6 learner activation stores pending intent without intercepting host actions", async () => {
+  const runnerSource = await fs.promises.readFile(
+    path.join(EXTENSION_PATH, "content", "overlay", "training-runner.js"),
+    "utf8"
+  );
+
+  expect(runnerSource).toContain('target.addEventListener("pointerdown", persistActivationIntent');
+  expect(runnerSource).toContain('type: "GWTP_TRAINING_PENDING_SET"');
+  const activationBlock = runnerSource.slice(
+    runnerSource.indexOf("const persistActivationIntent"),
+    runnerSource.indexOf('if (target && step.selector.startsWith("gwtp-grid:"))')
+  );
+  expect(activationBlock).not.toContain("preventDefault");
+  expect(activationBlock).not.toContain("location.assign");
+  expect(activationBlock).not.toContain("window.open");
+});
+
+
 test("stage 6 pending learner navigation drains PAGE_READY events without timer polling", async () => {
   const guideRunnerSource = await fs.promises.readFile(
     path.join(EXTENSION_PATH, "learner", "guide-runner.js"),
