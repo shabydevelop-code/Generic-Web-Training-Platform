@@ -3005,3 +3005,16 @@ test("stage 6 learner guidance - redundant restore keeps the rendered step intac
   expect(guideRunnerSource).toContain("return { success: true, unchanged: true };");
   expect(guideRunnerSource).toContain("renderedStepIdentity = stepIdentity;");
 });
+
+
+test("stage 6 learner guidance - revealing next target does not complete current interaction", async () => {
+  const runnerSource = await fs.promises.readFile(
+    path.join(extensionPath, "content", "overlay", "training-runner.js"),
+    "utf8"
+  );
+
+  expect(runnerSource).toContain("let targetActivated = false;");
+  expect(runnerSource).toContain('target.addEventListener("click", markTargetActivated, true);');
+  expect(runnerSource).toContain("if (!validation?.expression)");
+  expect(runnerSource).toContain("const isValid = targetActivated;");
+});
