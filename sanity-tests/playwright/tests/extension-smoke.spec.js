@@ -3108,3 +3108,13 @@ test("stage 6 training bubble keeps a 20px target-safe gap", async () => {
   expect(runnerSource).toContain("candidate.top >= rect.bottom + verticalGap");
   expect(runnerSource).toContain("candidate.left >= rect.right + horizontalGap");
 });
+
+
+test("stage 6 bubble fallback has no stale gap identifier", async () => {
+  const runnerSource = await fs.promises.readFile(
+    path.join(extensionPath, "content", "overlay", "training-runner.js"),
+    "utf8"
+  );
+  const positioningSource = runnerSource.slice(runnerSource.indexOf("const positionOverlay = () =>"));
+  expect(positioningSource).not.toMatch(/\bgap\b(?=\s*[,;)])/);
+});
