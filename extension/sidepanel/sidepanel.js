@@ -1918,6 +1918,13 @@ async function cancelElementPicker(showStatus = true) {
   }
 }
 
+document.addEventListener("keydown", (event) => {
+  if (event.key !== "Escape" || !elementPickerActive) return;
+  event.preventDefault();
+  event.stopPropagation();
+  cancelElementPicker(true);
+});
+
 selectButton.addEventListener("click", async () => {
   const language = window.i18nService.getLanguage();
   const setElementPickerStatus = (messageKey, type) => {
