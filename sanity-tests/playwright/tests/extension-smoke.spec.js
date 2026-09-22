@@ -2569,6 +2569,64 @@ test("stage 4 grid - stable grid selector resolves the same logical target after
 });
 
 
+test("stage 4 learner - active guidance restores after a full page reload", async () => {
+  const panel = await openPanel();
+  await login(panel, "sanity.learner");
+
+  const crm = await context.newPage();
+  await crm.goto(`${SITE_URL}/site.html`);
+  await crm.bringToFront();
+
+  const topic = panel.locator("#learnerTopicSelect option").filter({ hasText: "Demo CRM" });
+  await panel.locator("#learnerTopicSelect").selectOption(await topic.getAttribute("value"));
+  const guideOption = panel.locator("#learnerGuideSelect option").filter({ hasText: "תרגול מלא - Demo CRM" });
+  const guideId = Number(await guideOption.getAttribute("value"));
+  expect(guideId).toBeGreaterThan(0);
+
+  const auth = await panel.evaluate(async () => (await chrome.storage.local.get("gwtp.auth.user"))["gwtp.auth.user"]);
+  expect(auth?.accessToken).toBeTruthy();
+
+  const guideResponse = await panel.evaluate(async ({ apiUrl, id, token }) => {
+    const response = await fetch(`${apiUrl}/api/learner/guides/${id}`, {
+      headers: { Authorization: `Bearer ${token}`, Accept: "application/json" }
+    });
+    return { ok: response.ok, body: await response.json() };
+  }, { apiUrl: API_URL, id: guideId, token: auth.accessToken });
+  expect(guideResponse.ok).toBeTruthy();
+
+  const topFrameStep = guideResponse.body.steps.find((step) => !step.frame || step.frame.isTop);
+  expect(topFrameStep, "Full Demo CRM guide must contain a top-frame step").toBeTruthy();
+
+  await panel.evaluate(async ({ guide, targetIndex }) => {
+    const restart = await chrome.runtime.sendMessage({ type: "GWTP_TRAINING_RESTART", guide });
+    if (!restart?.success) throw new Error(restart?.message || "Unable to restart learner progress.");
+    for (let index = 0; index < targetIndex; index += 1) {
+      const response = await chrome.runtime.sendMessage({ type: "GWTP_TRAINING_NEXT" });
+      if (!response?.success) throw new Error(response?.message || "Unable to prepare learner progress.");
+    }
+  }, { guide: guideResponse.body, targetIndex: Number(topFrameStep.stepOrder) - 1 });
+
+  await panel.locator("#learnerGuideSelect").selectOption(String(guideId));
+  await panel.locator("#startLearningButton").click();
+
+  await expect(crm.locator(".gwtp-training-overlay")).toBeVisible({ timeout: 10000 });
+  const before = await panel.evaluate(async () =>
+    (await chrome.runtime.sendMessage({ type: "GWTP_TRAINING_GET_CURRENT" }))?.current?.stepIndex ?? null
+  );
+
+  await crm.reload();
+  await expect(crm.locator(".gwtp-training-overlay")).toBeVisible({ timeout: 10000 });
+
+  const after = await panel.evaluate(async () =>
+    (await chrome.runtime.sendMessage({ type: "GWTP_TRAINING_GET_CURRENT" }))?.current?.stepIndex ?? null
+  );
+  expect(after).toBe(before);
+
+  await panel.close();
+  await crm.close();
+});
+
+
 test("stage 4 grid learner - active guidance restores the logical target after grid rerender", async () => {
   const panel = await openPanel();
   await login(panel, "sanity.learner");
