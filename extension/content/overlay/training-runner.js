@@ -731,36 +731,34 @@ async function showTrainingStep(step, navigation = {}) {
     const overlayRect = gwtpTrainingOverlay.getBoundingClientRect();
     const gap = 14;
 
-    const belowTop = rect.bottom + gap;
-    const aboveTop = rect.top - overlayRect.height - gap;
-    const fitsBelow = belowTop + overlayRect.height <= window.innerHeight - gap;
-    const fitsAbove = aboveTop >= gap;
-    const rightLeft = rect.right + gap;
-    const leftLeft = rect.left - overlayRect.width - gap;
-    const fitsRight = rightLeft + overlayRect.width <= window.innerWidth - gap;
-    const fitsLeft = leftLeft >= gap;
+    const centeredLeft = rect.left + (rect.width - overlayRect.width) / 2;
+    const centeredTop = rect.top + (rect.height - overlayRect.height) / 2;
+    const candidates = [
+      { top: rect.bottom + gap, left: centeredLeft },
+      { top: rect.top - overlayRect.height - gap, left: centeredLeft },
+      { top: centeredTop, left: rect.right + gap },
+      { top: centeredTop, left: rect.left - overlayRect.width - gap }
+    ];
+
+    const fitsViewport = (candidate) =>
+      candidate.top >= gap &&
+      candidate.left >= gap &&
+      candidate.top + overlayRect.height <= window.innerHeight - gap &&
+      candidate.left + overlayRect.width <= window.innerWidth - gap;
+
+    const chosen = candidates.find(fitsViewport);
 
     let top;
     let left;
 
-    if (fitsBelow) {
-      top = belowTop;
-      left = rect.left;
-    } else if (fitsAbove) {
-      top = aboveTop;
-      left = rect.left;
-    } else if (fitsRight) {
-      top = Math.max(gap, Math.min(rect.top, window.innerHeight - overlayRect.height - gap));
-      left = rightLeft;
-    } else if (fitsLeft) {
-      top = Math.max(gap, Math.min(rect.top, window.innerHeight - overlayRect.height - gap));
-      left = leftLeft;
+    if (chosen) {
+      top = chosen.top;
+      left = chosen.left;
     } else {
-      // The current frame is too constrained to place the bubble without overlap.
-      // Keep it inside the frame as a last resort; cross-frame rendering cleanup
-      // still guarantees that only one guidance bubble is active.
-      top = Math.max(gap, Math.min(belowTop, window.innerHeight - overlayRect.height - gap));
-      left = Math.max(gap, Math.min(rect.left, window.innerWidth - overlayRect.width - gap));
+      // No preferred side fits completely. Keep the bubble inside the viewport
+      // while preserving the target-relative position as closely as possible.
+      top = Math.max(gap, Math.min(rect.bottom + gap, window.innerHeight - overlayRect.height - gap));
+      left = Math.max(gap, Math.min(centeredLeft, window.innerWidth - overlayRect.width - gap));
     }
 
     left = Math.max(gap, Math.min(left, window.innerWidth - overlayRect.width - gap));
