@@ -23,7 +23,8 @@
             frame: element.frame ? { ...element.frame } : null
           }
         : null,
-      validation: validation ? { ...validation } : null
+      validation: validation ? { ...validation } : null,
+      interactionType: "auto"
     };
 
     steps.push(step);
@@ -44,7 +45,8 @@
       element: element
         ? { tagName: element.tagName || "", text: element.text || "", frame: element.frame ? { ...element.frame } : null }
         : steps[index].element,
-      validation: validation ? { ...validation } : null
+      validation: validation ? { ...validation } : null,
+      interactionType: "auto"
     };
     return { ...steps[index] };
   }
@@ -113,7 +115,8 @@
           text: "",
           frame: step.frame ? { ...step.frame } : null
         },
-        validation: step.validation ? { ...step.validation } : null
+        validation: step.validation ? { ...step.validation } : null,
+        interactionType: step.interactionType || "auto"
       });
     });
 
