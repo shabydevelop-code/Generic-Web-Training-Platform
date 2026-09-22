@@ -47,9 +47,6 @@ async function showTrainingStep(step, navigation = {}) {
   }
 
   const target = targetResult.element;
-  const interactionType = step.interactionType || "auto";
-  const isActionableTarget = Boolean(target?.matches?.("button, a[href], input[type='button'], input[type='submit'], input[type='reset'], [role='button'], [role='link']"));
-  const advancesOnTargetClick = interactionType === "auto" && isActionableTarget && !step.validation;
 
   if (!target && !navigation.allowDetached) {
     return { success: false, message: "Step element was not found on this page." };
@@ -635,45 +632,6 @@ async function showTrainingStep(step, navigation = {}) {
 
   const stepIndex = Number.isInteger(navigation.stepIndex) ? navigation.stepIndex : 0;
   const totalSteps = navigation.totalSteps || 1;
-
-  if (advancesOnTargetClick && target) {
-    let targetAdvanceInProgress = false;
-    target.addEventListener("click", () => {
-      if (targetAdvanceInProgress) return;
-      targetAdvanceInProgress = true;
-
-      const action = stepIndex >= totalSteps - 1
-        ? (navigation.mode === "preview" ? "GWTP_PREVIEW_COMPLETE" : "GWTP_TRAINING_COMPLETE")
-        : (navigation.mode === "preview" ? "GWTP_PREVIEW_NEXT" : "GWTP_TRAINING_NEXT");
-
-      chrome.runtime.sendMessage({ type: action }).then((response) => {
-        if (!response?.success) {
-          targetAdvanceInProgress = false;
-          return;
-        }
-
-        if (advancesOnTargetClick) {
-    // Actionable steps complete by performing the highlighted action; no Next/Finish
-    // button is shown because requiring both interactions is ambiguous.
-  } else if (stepIndex >= totalSteps - 1) {
-          clearTrainingStep();
-          clearHighlight();
-          chrome.runtime.sendMessage({
-            type: navigation.mode === "preview" ? "GWTP_PREVIEW_COMPLETED" : "GWTP_TRAINING_COMPLETED",
-            guideId: response.result?.guideId
-          }).catch(() => {});
-          return;
-        }
-
-        chrome.runtime.sendMessage({
-          type: navigation.mode === "preview" ? "GWTP_PREVIEW_STEP_CHANGED" : "GWTP_TRAINING_STEP_CHANGED",
-          current: response.current
-        }).catch(() => {});
-      }).catch(() => {
-        targetAdvanceInProgress = false;
-      });
-    }, { once: true });
-  }
 
   overlay.dir = navigation.direction || "ltr";
 
