@@ -8,6 +8,22 @@
     return tab;
   }
 
+  function isSupportedPageUrl(url) {
+    return /^https?:\/\//i.test(String(url || ""));
+  }
+
+  function createUnsupportedPageError(url) {
+    const error = new Error(`GWTP cannot access this browser page: ${url || "unknown"}`);
+    error.code = "GWTP_UNSUPPORTED_PAGE";
+    return error;
+  }
+
+  function ensureSupportedPage(tab) {
+    if (!isSupportedPageUrl(tab?.url)) {
+      throw createUnsupportedPageError(tab?.url);
+    }
+  }
+
   function isMissingReceiverError(error) {
     return error?.message?.includes("Receiving end does not exist");
   }
@@ -19,6 +35,7 @@
     if (!tab?.id) {
       throw new Error("No active browser tab was found.");
     }
+    ensureSupportedPage(tab);
 
     const allFrames = options.allFrames === true;
 
@@ -46,6 +63,7 @@
   async function sendToAllFrames(message, options = {}) {
     const tab = await getActiveTab();
     if (!tab?.id) throw new Error("No active browser tab was found.");
+    ensureSupportedPage(tab);
 
     const frames = await chrome.scripting.executeScript({
       target: { tabId: tab.id, allFrames: true },
@@ -67,6 +85,7 @@
   async function sendToMatchingFrame(message, matcher) {
     const tab = await getActiveTab();
     if (!tab?.id) throw new Error("No active browser tab was found.");
+    ensureSupportedPage(tab);
 
     const frames = await chrome.scripting.executeScript({
       target: { tabId: tab.id, allFrames: true },
@@ -86,6 +105,7 @@
   }
 
   window.messagingService = {
+    isUnsupportedPageError: (error) => error?.code === "GWTP_UNSUPPORTED_PAGE",
     sendToActivePage,
     sendToAllFrames,
     sendToMatchingFrame
