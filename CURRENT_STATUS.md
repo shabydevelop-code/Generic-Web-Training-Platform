@@ -492,3 +492,5 @@ Later accessibility phases must add their own concrete regression checks to this
 - **Axis-specific training bubble spacing (2026-09-22; pending local verification):** target-relative placement now uses 16px above/below and 28px left/right, while viewport edge padding remains independent. This keeps bottom placement compact while giving side placement clearer visual separation.
 
 - **Bubble fallback ReferenceError fix (2026-09-22):** completed the axis-specific spacing refactor by replacing stale runtime `gap` references in fallback/clamp positioning with `viewportGap`, `verticalGap`, or `horizontalGap` as appropriate. Added a source regression check so an undefined legacy gap identifier cannot remain in the positioning function.
+
+- **E2E reload/POSTBACK recovery coverage (2026-09-22; pending local execution):** Playwright now starts a real learner guide on the Demo CRM, verifies the live training overlay, performs a full page reload (the browser lifecycle equivalent exercised by a server POSTBACK), and verifies that the overlay is restored on the same persisted learner step. This complements the source-contract check for same-step overlay survival.
