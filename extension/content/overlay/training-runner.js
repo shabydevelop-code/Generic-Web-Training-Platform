@@ -746,46 +746,23 @@ async function showTrainingStep(step, navigation = {}) {
       candidate.top + overlayRect.height <= window.innerHeight - gap &&
       candidate.left + overlayRect.width <= window.innerWidth - gap;
 
-    const intersectionArea = (a, b) => {
-      const width = Math.max(0, Math.min(a.right, b.right) - Math.max(a.left, b.left));
-      const height = Math.max(0, Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top));
-      return width * height;
+    const doesNotOverlapTarget = (candidate) => {
+      const candidateRight = candidate.left + overlayRect.width;
+      const candidateBottom = candidate.top + overlayRect.height;
+      return (
+        candidateBottom <= rect.top - gap ||
+        candidate.top >= rect.bottom + gap ||
+        candidateRight <= rect.left - gap ||
+        candidate.left >= rect.right + gap
+      );
     };
 
-    // Score visible candidates against nearby page containers. A popup/menu that
-    // contains the target is useful context and should be obscured as little as
-    // possible. This stays generic: no site-, selector-, or role-specific rules.
-    const contextualRects = [];
-    let contextNode = gwtpTrainingTarget.parentElement;
-    while (contextNode && contextNode !== document.body && contextNode !== document.documentElement) {
-      const contextRect = contextNode.getBoundingClientRect();
-      if (
-        contextRect.width > rect.width &&
-        contextRect.height > rect.height &&
-        contextRect.width <= window.innerWidth &&
-        contextRect.height <= window.innerHeight
-      ) {
-        contextualRects.push(contextRect);
-      }
-      contextNode = contextNode.parentElement;
-    }
-
-    const visibleCandidates = candidates.filter(fitsViewport);
-    const chosen = visibleCandidates
-      .map((candidate, priority) => {
-        const candidateRect = {
-          left: candidate.left,
-          top: candidate.top,
-          right: candidate.left + overlayRect.width,
-          bottom: candidate.top + overlayRect.height
-        };
-        const overlap = contextualRects.reduce(
-          (total, contextRect) => total + intersectionArea(candidateRect, contextRect),
-          0
-        );
-        return { candidate, overlap, priority };
-      })
-      .sort((a, b) => a.overlap - b.overlap || a.priority - b.priority)[0]?.candidate;
+    // Keep placement deterministic and target-safe. Prefer below, then above,
+    // right and left. A candidate is valid only when it fits the viewport and
+    // preserves the full gap from the highlighted target.
+    const chosen = candidates.find(
+      (candidate) => fitsViewport(candidate) && doesNotOverlapTarget(candidate)
+    );
 
     let top;
     let left;
@@ -794,10 +771,27 @@ async function showTrainingStep(step, navigation = {}) {
       top = chosen.top;
       left = chosen.left;
     } else {
-      // No preferred side fits completely. Keep the bubble inside the viewport
-      // while preserving the target-relative position as closely as possible.
+      // Last resort: clamp inside the viewport, then keep the overlay away from
+      // the target whenever one axis still provides enough room.
       top = Math.max(gap, Math.min(rect.bottom + gap, window.innerHeight - overlayRect.height - gap));
       left = Math.max(gap, Math.min(centeredLeft, window.innerWidth - overlayRect.width - gap));
+
+      const fallback = { top, left };
+      if (!doesNotOverlapTarget(fallback)) {
+        const aboveTop = rect.top - overlayRect.height - gap;
+        const rightLeft = rect.right + gap;
+        const leftLeft = rect.left - overlayRect.width - gap;
+
+        if (aboveTop >= gap) {
+          top = aboveTop;
+        } else if (rightLeft + overlayRect.width <= window.innerWidth - gap) {
+          top = Math.max(gap, Math.min(centeredTop, window.innerHeight - overlayRect.height - gap));
+          left = rightLeft;
+        } else if (leftLeft >= gap) {
+          top = Math.max(gap, Math.min(centeredTop, window.innerHeight - overlayRect.height - gap));
+          left = leftLeft;
+        }
+      }
     }
 
     left = Math.max(gap, Math.min(left, window.innerWidth - overlayRect.width - gap));
