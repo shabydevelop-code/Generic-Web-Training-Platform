@@ -1540,7 +1540,14 @@ async function highlightEditorStep(step) {
       (frameInfo) => frameMatchesStep(frameInfo, stepFrame)
     );
     matched = response?.success === true;
-  } else {
+  }
+
+  // Frame metadata is a routing hint, not a hard requirement. Older persisted
+  // steps may not contain the current frame metadata shape, and a page can
+  // legitimately recreate or rename frames. If the preferred frame did not
+  // resolve the selector, search every accessible frame before reporting that
+  // the element is missing.
+  if (!matched) {
     const responses = await window.messagingService.sendToAllFrames({
       type: "GWTP_HIGHLIGHT_ELEMENT",
       selector: step.selector
@@ -1548,7 +1555,11 @@ async function highlightEditorStep(step) {
     matched = responses.some((item) => item.response?.success);
   }
 
-  if (matched) return;
+  if (matched) {
+    elementPickerStatus.textContent = "";
+    delete elementPickerStatus.dataset.type;
+    return;
+  }
 
   const language = window.i18nService.getLanguage();
   elementPickerStatus.textContent = window.i18nService.translate("selectedElementNotFound", language);
