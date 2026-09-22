@@ -3007,7 +3007,7 @@ test("stage 6 element highlight - editor and picker outlines use important prior
 
 test("stage 6 learner guidance - host link clicks are not intercepted or replayed", async ({ page }) => {
   const runnerSource = await fs.promises.readFile(
-    path.join(extensionPath, "content", "overlay", "training-runner.js"),
+    path.join(EXTENSION_PATH, "content", "overlay", "training-runner.js"),
     "utf8"
   );
 
@@ -3020,9 +3020,9 @@ test("stage 6 learner guidance - host link clicks are not intercepted or replaye
 
 test("stage 6 learner guidance - unavailable message is generic and bubble avoids target overlap", async () => {
   const [panelSource, i18nSource, runnerSource] = await Promise.all([
-    fs.promises.readFile(path.join(extensionPath, "sidepanel", "sidepanel.js"), "utf8"),
-    fs.promises.readFile(path.join(extensionPath, "services", "i18nService.js"), "utf8"),
-    fs.promises.readFile(path.join(extensionPath, "content", "overlay", "training-runner.js"), "utf8")
+    fs.promises.readFile(path.join(EXTENSION_PATH, "sidepanel", "sidepanel.js"), "utf8"),
+    fs.promises.readFile(path.join(EXTENSION_PATH, "services", "i18nService.js"), "utf8"),
+    fs.promises.readFile(path.join(EXTENSION_PATH, "content", "overlay", "training-runner.js"), "utf8")
   ]);
 
   expect(panelSource).toContain('translate("stepTargetUnavailable"');
@@ -3036,8 +3036,8 @@ test("stage 6 learner guidance - unavailable message is generic and bubble avoid
 
 test("stage 6 learner guidance - step render clears stale guidance in all accessible frames", async () => {
   const [guideRunnerSource, runnerSource] = await Promise.all([
-    fs.promises.readFile(path.join(extensionPath, "learner", "guide-runner.js"), "utf8"),
-    fs.promises.readFile(path.join(extensionPath, "content", "overlay", "training-runner.js"), "utf8")
+    fs.promises.readFile(path.join(EXTENSION_PATH, "learner", "guide-runner.js"), "utf8"),
+    fs.promises.readFile(path.join(EXTENSION_PATH, "content", "overlay", "training-runner.js"), "utf8")
   ]);
 
   expect(guideRunnerSource).toContain('sendToAllFrames({ type: "GWTP_CLEAR_TRAINING_STEP" })');
@@ -3055,7 +3055,7 @@ test("stage 6 learner guidance - step render clears stale guidance in all access
 
 test("stage 6 learner guidance - redundant restore keeps the rendered step intact", async () => {
   const guideRunnerSource = await fs.promises.readFile(
-    path.join(extensionPath, "learner", "guide-runner.js"),
+    path.join(EXTENSION_PATH, "learner", "guide-runner.js"),
     "utf8"
   );
 
@@ -3070,7 +3070,7 @@ test("stage 6 learner guidance - redundant restore keeps the rendered step intac
 
 test("stage 6 learner guidance - placement is target-centered and viewport-aware", async () => {
   const runnerSource = await fs.promises.readFile(
-    path.join(extensionPath, "content", "overlay", "training-runner.js"),
+    path.join(EXTENSION_PATH, "content", "overlay", "training-runner.js"),
     "utf8"
   );
 
@@ -3083,7 +3083,7 @@ test("stage 6 learner guidance - placement is target-centered and viewport-aware
 
 test("stage 6 learner guidance - placement minimizes overlap with target context", async () => {
   const runnerSource = await fs.promises.readFile(
-    path.join(extensionPath, "content", "overlay", "training-runner.js"),
+    path.join(EXTENSION_PATH, "content", "overlay", "training-runner.js"),
     "utf8"
   );
 
@@ -3097,8 +3097,8 @@ test("stage 6 learner guidance - placement minimizes overlap with target context
 
 test("stage 6 editor preview - uses learner-equivalent adjacent-step availability guard", async () => {
   const [runnerSource, sidepanelSource] = await Promise.all([
-    fs.promises.readFile(path.join(extensionPath, "content", "overlay", "training-runner.js"), "utf8"),
-    fs.promises.readFile(path.join(extensionPath, "sidepanel", "sidepanel.js"), "utf8")
+    fs.promises.readFile(path.join(EXTENSION_PATH, "content", "overlay", "training-runner.js"), "utf8"),
+    fs.promises.readFile(path.join(EXTENSION_PATH, "sidepanel", "sidepanel.js"), "utf8")
   ]);
 
   expect(runnerSource).toContain('action === "GWTP_PREVIEW_NEXT"');
@@ -3111,8 +3111,8 @@ test("stage 6 editor preview - uses learner-equivalent adjacent-step availabilit
 
 test("stage 6 editor preview - shares learner navigation decision helpers", async () => {
   const [runnerSource, sidepanelSource] = await Promise.all([
-    fs.promises.readFile(path.join(extensionPath, "content", "overlay", "training-runner.js"), "utf8"),
-    fs.promises.readFile(path.join(extensionPath, "sidepanel", "sidepanel.js"), "utf8")
+    fs.promises.readFile(path.join(EXTENSION_PATH, "content", "overlay", "training-runner.js"), "utf8"),
+    fs.promises.readFile(path.join(EXTENSION_PATH, "sidepanel", "sidepanel.js"), "utf8")
   ]);
 
   expect(runnerSource).toContain('const isForward = action === "GWTP_TRAINING_NEXT" || action === "GWTP_PREVIEW_NEXT";');
@@ -3125,7 +3125,7 @@ test("stage 6 editor preview - shares learner navigation decision helpers", asyn
 
 test("stage 6 editor preview - pending move resumes when PAGE_READY exposes target", async () => {
   const sidepanelSource = await fs.promises.readFile(
-    path.join(extensionPath, "sidepanel", "sidepanel.js"),
+    path.join(EXTENSION_PATH, "sidepanel", "sidepanel.js"),
     "utf8"
   );
 
@@ -3139,11 +3139,11 @@ test("stage 6 editor preview - pending move resumes when PAGE_READY exposes targ
 
 test("stage 6 same-step idempotence verifies the overlay survived before skipping restore", async () => {
   const guideRunnerSource = await fs.promises.readFile(
-    path.join(extensionPath, "learner", "guide-runner.js"),
+    path.join(EXTENSION_PATH, "learner", "guide-runner.js"),
     "utf8"
   );
   const contentScriptSource = await fs.promises.readFile(
-    path.join(extensionPath, "content", "content-script.js"),
+    path.join(EXTENSION_PATH, "content", "content-script.js"),
     "utf8"
   );
 
@@ -3158,7 +3158,7 @@ test("stage 6 same-step idempotence verifies the overlay survived before skippin
 
 test("stage 6 training bubble keeps a 20px target-safe gap", async () => {
   const runnerSource = await fs.promises.readFile(
-    path.join(extensionPath, "content", "overlay", "training-runner.js"),
+    path.join(EXTENSION_PATH, "content", "overlay", "training-runner.js"),
     "utf8"
   );
 
@@ -3171,7 +3171,7 @@ test("stage 6 training bubble keeps a 20px target-safe gap", async () => {
 
 test("stage 6 bubble fallback has no stale gap identifier", async () => {
   const runnerSource = await fs.promises.readFile(
-    path.join(extensionPath, "content", "overlay", "training-runner.js"),
+    path.join(EXTENSION_PATH, "content", "overlay", "training-runner.js"),
     "utf8"
   );
   const positioningSource = runnerSource.slice(runnerSource.indexOf("const positionOverlay = () =>"));
