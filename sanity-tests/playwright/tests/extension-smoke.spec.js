@@ -2755,3 +2755,43 @@ test("stage 6 browser-internal page - editor picker fails gracefully without Chr
   await browserPage.close();
   await panel.close();
 });
+
+
+test("stage 6 editor missing selected element - localized error stays with element selection", async () => {
+  const panel = await openPanel();
+  await login(panel, "sanity.editor");
+
+  const guideCard = panel.locator("[data-guide-id]").first();
+  await expect(guideCard).toBeVisible({ timeout: 10000 });
+  await guideCard.click();
+  await expect(panel.locator("#stepsSection")).toBeVisible();
+
+  const stepCard = panel.locator("#stepsList .step-item").first();
+  await expect(stepCard).toBeVisible();
+  await stepCard.click();
+  await expect(panel.locator("#stepEditor")).toBeVisible();
+
+  // Move away from the guide's target page so the persisted selector cannot resolve.
+  const unrelated = await context.newPage();
+  await unrelated.goto(`${SITE_URL}/site.html`);
+  await unrelated.bringToFront();
+  await stepCard.click();
+
+  const pickerStatus = panel.locator("#elementPickerStatus");
+  await expect(pickerStatus).toHaveAttribute("data-type", "error");
+  await expect(pickerStatus).toContainText("לא ניתן למצוא את האלמנט שנבחר בעמוד הנוכחי.");
+  await expect(panel.locator("#status")).not.toContainText("Could not find the selected element");
+
+  // The error belongs structurally to the element-selection area, immediately
+  // after the Select button and before the selected-element details.
+  const placement = await panel.evaluate(() => {
+    const select = document.querySelector("#selectButton");
+    const pickerStatus = document.querySelector("#elementPickerStatus");
+    const selected = document.querySelector("#selectedElement");
+    return select?.nextElementSibling === pickerStatus && pickerStatus?.nextElementSibling === selected;
+  });
+  expect(placement).toBeTruthy();
+
+  await unrelated.close();
+  await panel.close();
+});
