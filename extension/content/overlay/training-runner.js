@@ -732,7 +732,7 @@ async function showTrainingStep(step, navigation = {}) {
 
     const rect = gwtpTrainingTarget.getBoundingClientRect();
     const overlayRect = gwtpTrainingOverlay.getBoundingClientRect();
-    const gap = 14;
+    const gap = 20;
 
     const centeredLeft = rect.left + (rect.width - overlayRect.width) / 2;
     const centeredTop = rect.top + (rect.height - overlayRect.height) / 2;
