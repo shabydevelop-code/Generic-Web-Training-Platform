@@ -3,6 +3,7 @@
   let learnerRenderVersion = 0;
   let pendingNavigationResumePromise = null;
   let pendingNavigationResumeQueued = false;
+  let pendingNavigationReadyVersion = 0;
   let renderedStepIdentity = null;
 
   function getStepIdentity(step, stepIndex, mode) {
@@ -440,11 +441,12 @@
 
 
   async function resumePendingNavigation() {
-    // PAGE_READY is emitted by every loaded frame. The top page can become ready
-    // before the target content frame, while that frame may report PAGE_READY during
-    // the first availability check. Do not collapse that second readiness event:
-    // serialize progress mutation, but queue one follow-up check when another frame
-    // becomes ready while a resume attempt is still in flight.
+    // PAGE_READY is emitted by every loaded frame. Count every readiness event,
+    // including events received while a resume attempt is already running. The
+    // active attempt drains all newer readiness versions before it stops, so no
+    // destination-frame event is lost without introducing timer-based polling.
+    pendingNavigationReadyVersion += 1;
+
     if (pendingNavigationResumePromise) {
       pendingNavigationResumeQueued = true;
       return pendingNavigationResumePromise;
@@ -452,11 +454,16 @@
 
     pendingNavigationResumePromise = (async () => {
       let resumed = false;
+      let processedReadyVersion = 0;
 
       do {
         pendingNavigationResumeQueued = false;
+        processedReadyVersion = pendingNavigationReadyVersion;
         resumed = await resumePendingNavigationCore();
-      } while (!resumed && pendingNavigationResumeQueued);
+      } while (
+        !resumed &&
+        (pendingNavigationResumeQueued || processedReadyVersion !== pendingNavigationReadyVersion)
+      );
 
       return resumed;
     })();
