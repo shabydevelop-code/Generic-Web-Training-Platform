@@ -2862,3 +2862,35 @@ test("stage 6 editor picker - Escape in side panel cancels active selection", as
   await panel.close();
   await crm.close();
 });
+
+
+test("stage 6 editor highlight - falls back when persisted frame metadata is stale", async () => {
+  const panel = await openPanel();
+  await login(panel, "sanity.editor");
+
+  const page = await context.newPage();
+  await page.goto(`${SITE_URL}/site.html`);
+  await page.bringToFront();
+
+  const result = await panel.evaluate(async () => {
+    const original = window.messagingService.sendToMatchingFrame;
+    window.messagingService.sendToMatchingFrame = async () => null;
+    try {
+      const step = {
+        id: "stale-frame-highlight-test",
+        selector: "body",
+        element: { frame: { url: "https://stale.example/", name: "old-frame" } }
+      };
+      await highlightEditorStep(step);
+      return document.querySelector("#elementPickerStatus").textContent;
+    } finally {
+      window.messagingService.sendToMatchingFrame = original;
+    }
+  });
+
+  expect(result).toBe("");
+  await expect(page.locator("body")).toHaveAttribute("data-gwtp-highlighted", "true");
+
+  await panel.close();
+  await page.close();
+});
