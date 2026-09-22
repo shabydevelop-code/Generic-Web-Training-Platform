@@ -3,6 +3,7 @@
     en: Object.freeze({
       elementSelectionTitle: "Element Selection",
       selectionModeActive: "Selection mode active.",
+      cancelElementSelectionButton: "Cancel element selection",
       selectionModeStartError: "Could not start element selection on this page. Reload the page and try again.",
       pageControlUnavailable: "This action is not available on browser-internal pages. Open a regular web page and try again.",
       selectedElementNotFound: "Could not find the selected element on the current page.",
@@ -241,6 +242,7 @@
     he: Object.freeze({
       elementSelectionTitle: "בחירת אלמנט",
       selectionModeActive: "מצב בחירת אלמנט פעיל.",
+      cancelElementSelectionButton: "בטל בחירת אלמנט",
       selectionModeStartError: "לא ניתן להתחיל בחירת אלמנט בעמוד זה. רענן את העמוד ונסה שוב.",
       pageControlUnavailable: "לא ניתן להתחיל בחירת אלמנט בעמוד זה. רענן את העמוד ונסה שוב. עמודים פנימיים של הדפדפן אינם נתמכים.",
       selectedElementNotFound: "לא ניתן למצוא את האלמנט שנבחר בעמוד הנוכחי.",
