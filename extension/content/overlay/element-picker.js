@@ -26,10 +26,20 @@ function getFrameContext() {
 function clearPickerHover() {
   if (!hoveredElement) return;
 
-  hoveredElement.style.outline = hoveredElement.dataset.gwtpPickerPreviousOutline || "";
-  hoveredElement.style.outlineOffset = hoveredElement.dataset.gwtpPickerPreviousOutlineOffset || "";
+  hoveredElement.style.setProperty(
+    "outline",
+    hoveredElement.dataset.gwtpPickerPreviousOutline || "",
+    hoveredElement.dataset.gwtpPickerPreviousOutlinePriority || ""
+  );
+  hoveredElement.style.setProperty(
+    "outline-offset",
+    hoveredElement.dataset.gwtpPickerPreviousOutlineOffset || "",
+    hoveredElement.dataset.gwtpPickerPreviousOutlineOffsetPriority || ""
+  );
   delete hoveredElement.dataset.gwtpPickerPreviousOutline;
+  delete hoveredElement.dataset.gwtpPickerPreviousOutlinePriority;
   delete hoveredElement.dataset.gwtpPickerPreviousOutlineOffset;
+  delete hoveredElement.dataset.gwtpPickerPreviousOutlineOffsetPriority;
   hoveredElement.removeAttribute(PICKER_ATTRIBUTE);
   hoveredElement = null;
 }
@@ -39,11 +49,13 @@ function onPickerMouseOver(event) {
 
   clearPickerHover();
   hoveredElement = event.target;
-  hoveredElement.dataset.gwtpPickerPreviousOutline = hoveredElement.style.outline;
-  hoveredElement.dataset.gwtpPickerPreviousOutlineOffset = hoveredElement.style.outlineOffset;
+  hoveredElement.dataset.gwtpPickerPreviousOutline = hoveredElement.style.getPropertyValue("outline");
+  hoveredElement.dataset.gwtpPickerPreviousOutlinePriority = hoveredElement.style.getPropertyPriority("outline");
+  hoveredElement.dataset.gwtpPickerPreviousOutlineOffset = hoveredElement.style.getPropertyValue("outline-offset");
+  hoveredElement.dataset.gwtpPickerPreviousOutlineOffsetPriority = hoveredElement.style.getPropertyPriority("outline-offset");
   hoveredElement.setAttribute(PICKER_ATTRIBUTE, "true");
-  hoveredElement.style.outline = "3px solid #f59e0b";
-  hoveredElement.style.outlineOffset = "2px";
+  hoveredElement.style.setProperty("outline", "3px solid #f59e0b", "important");
+  hoveredElement.style.setProperty("outline-offset", "2px", "important");
 }
 
 function stopElementPicker() {
