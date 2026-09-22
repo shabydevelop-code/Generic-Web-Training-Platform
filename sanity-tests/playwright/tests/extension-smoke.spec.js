@@ -94,6 +94,130 @@ test("dynamic fixture behaves like a modern web app without timing assumptions",
 });
 
 
+test("stage 6 dynamic web app - GWTP follows SPA, DOM replacement, dynamic frame and real navigation", async () => {
+  const editor = await openPanel();
+  await login(editor, "sanity.editor");
+
+  const auth = await editor.evaluate(async () => {
+    const stored = await chrome.storage.local.get("gwtp.auth.user");
+    return stored["gwtp.auth.user"];
+  });
+
+  const fixtureName = "GWTP Dynamic Regression";
+  const setup = await editor.evaluate(async ({ token, fixtureName, siteUrl }) => {
+    const headers = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
+    const getJson = async (path) => {
+      const response = await fetch(`${globalThis.appConfig.api.baseUrl}${path}`, { headers });
+      if (!response.ok) throw new Error(`GET ${path} failed: ${response.status}`);
+      return response.json();
+    };
+
+    const topics = await getJson("/api/topics");
+    let topic = topics.find((item) => item.name === fixtureName);
+    if (!topic) {
+      const response = await fetch(`${globalThis.appConfig.api.baseUrl}/api/topics`, {
+        method: "POST", headers, body: JSON.stringify({ name: fixtureName })
+      });
+      if (!response.ok) throw new Error(`Create topic failed: ${response.status}`);
+      topic = await response.json();
+    }
+
+    const guides = await getJson("/api/guides");
+    const existing = guides.find((item) => item.name === fixtureName);
+    if (existing) {
+      const response = await fetch(`${globalThis.appConfig.api.baseUrl}/api/guides/${existing.id}`, {
+        method: "DELETE", headers
+      });
+      if (!response.ok && response.status !== 404) throw new Error(`Delete guide failed: ${response.status}`);
+    }
+
+    const guideResponse = await fetch(`${globalThis.appConfig.api.baseUrl}/api/guides`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        topicId: topic.id,
+        name: fixtureName,
+        startUrl: `${siteUrl}/dynamic-app.html`,
+        isAvailable: true,
+        steps: [
+          { selector: "#js-launcher", instruction: "Open launcher", screenName: "Dynamic", frame: null, validation: null },
+          { selector: "#spa-target", instruction: "SPA target", screenName: "Dynamic", frame: null, validation: null },
+          { selector: "#dynamic-target", instruction: "Replace DOM target", screenName: "Dynamic", frame: null, validation: null },
+          { selector: "#replace-frame", instruction: "Create frame", screenName: "Dynamic", frame: null, validation: null },
+          { selector: "#frame-target", instruction: "Dynamic frame target", screenName: "Dynamic frame", frame: { name: "DynamicContent", srcIncludes: "dynamic-frame.html" }, validation: null },
+          { selector: "#real-navigation", instruction: "Navigate", screenName: "Dynamic", frame: null, validation: null },
+          { selector: "#destination-target", instruction: "Destination target", screenName: "Destination", frame: null, validation: null }
+        ]
+      })
+    });
+    if (!guideResponse.ok) throw new Error(`Create guide failed: ${guideResponse.status} ${await guideResponse.text()}`);
+    return { topicId: topic.id, guide: await guideResponse.json() };
+  }, { token: auth.accessToken, fixtureName, siteUrl: SITE_URL });
+
+  await editor.close();
+
+  const panel = await openPanel();
+  await login(panel, "sanity.learner");
+  const app = await context.newPage();
+  await app.goto(`${SITE_URL}/dynamic-app.html`);
+  await app.bringToFront();
+
+  await panel.locator("#learnerTopicSelect").selectOption(String(setup.topicId));
+  await panel.locator("#learnerGuideSelect").selectOption(String(setup.guide.id));
+  await panel.locator("#startLearningButton").click();
+  await expect(app.locator("#js-launcher")).toHaveCSS("outline-width", "3px", { timeout: 10000 });
+
+  // JavaScript anchor opens UI but does not navigate. Pending intent must not
+  // advance progress merely because the target was activated.
+  await app.locator("#js-launcher").click();
+  await expect(app.locator("#launcher-result")).toBeVisible();
+  await expect(app).toHaveURL(/\/dynamic-app\.html$/);
+  expect(await panel.evaluate(async () => (await chrome.runtime.sendMessage({ type: "GWTP_TRAINING_GET_CURRENT" }))?.current?.stepIndex)).toBe(0);
+
+  // The host app creates the next SPA target. Next now advances to that target.
+  await app.locator("#spa-screen-action").click();
+  await expect(app.locator("#spa-target")).toBeVisible();
+  await app.locator(".gwtp-training-overlay button").filter({ hasText: /הבא|Next/i }).click();
+  await expect(app.locator("#spa-target")).toHaveCSS("outline-width", "3px");
+
+  // Advance to a target whose actual DOM node is then replaced under the same selector.
+  await app.locator(".gwtp-training-overlay button").filter({ hasText: /הבא|Next/i }).click();
+  await expect(app.locator("#dynamic-target")).toHaveCSS("outline-width", "3px");
+  await app.locator("#replace-region").click();
+  await expect(app.locator("#dynamic-target")).toHaveAttribute("data-version", "replacement");
+
+  // Continue to the frame-creation action, create the frame, then advance only
+  // after its target exists as a consequence of that event.
+  await app.locator(".gwtp-training-overlay button").filter({ hasText: /הבא|Next/i }).click();
+  await expect(app.locator("#replace-frame")).toHaveCSS("outline-width", "3px");
+  await app.locator("#replace-frame").click();
+  const frame = app.frameLocator('iframe[name="DynamicContent"]');
+  await expect(frame.locator("#frame-target")).toBeVisible();
+  await app.locator(".gwtp-training-overlay button").filter({ hasText: /הבא|Next/i }).click();
+  await expect(frame.locator("#frame-target")).toHaveCSS("outline-width", "3px");
+
+  // Move to the real navigation link and let the host page navigate normally.
+  await frame.locator(".gwtp-training-overlay button").filter({ hasText: /הבא|Next/i }).click();
+  await expect(app.locator("#real-navigation")).toHaveCSS("outline-width", "3px");
+  await app.locator("#real-navigation").click();
+  await expect(app).toHaveURL(/\/dynamic-destination\.html$/);
+  await expect(app.locator("#destination-target")).toHaveCSS("outline-width", "3px", { timeout: 10000 });
+
+  await panel.close();
+  await app.close();
+
+  // Keep the sanity database clean so the fixture does not appear in normal UI.
+  const cleanup = await openPanel();
+  await login(cleanup, "sanity.editor");
+  await cleanup.evaluate(async ({ token, guideId, topicId }) => {
+    const headers = { Authorization: `Bearer ${token}` };
+    await fetch(`${globalThis.appConfig.api.baseUrl}/api/guides/${guideId}`, { method: "DELETE", headers });
+    await fetch(`${globalThis.appConfig.api.baseUrl}/api/topics/${topicId}`, { method: "DELETE", headers });
+  }, { token: auth.accessToken, guideId: setup.guide.id, topicId: setup.topicId });
+  await cleanup.close();
+});
+
+
 test("Demo CRM loads with the GWTP content script", async () => {
   const page = await context.newPage();
   await page.goto(`${SITE_URL}/site.html`);
