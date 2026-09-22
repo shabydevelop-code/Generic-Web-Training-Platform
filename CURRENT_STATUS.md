@@ -518,3 +518,14 @@ Later accessibility phases must add their own concrete regression checks to this
 - **Stage 6 regression test stabilization (2026-09-22; verified locally):** the missing-selected-element test now uses the existing `dynamic-destination.html` fixture instead of intentionally requesting a nonexistent URL, avoiding Chromium `ERR_HTTP_RESPONSE_CODE_FAILURE` before the actual editor behavior can be asserted. The outline restoration assertion now verifies preserved `!important` priority plus the browser-computed transparent 1px outline rather than depending on CSSOM shorthand serialization order (`1px solid transparent` vs `transparent solid 1px`). No runtime behavior changed.
 
 - **Full Playwright regression (2026-09-22; verified locally):** complete suite passed **82/82** in 2.4 minutes after the dynamic-web navigation fix and Stage 6 regression-test stabilization.
+
+## Playwright test architecture refactor — completed 2026-09-23
+- Playwright coverage is organized by capability rather than by whichever application page happens to be open.
+- Generic Extension UI, authoring, learner navigation, validation, and generic resilience tests use site/gwtp-test-fixture.html.
+- Generic validation tests create and clean up their own temporary guides instead of depending on the seeded Demo CRM validation guide.
+- Generic learner resilience coverage for duplicate GWTP_PAGE_READY and rapid duplicate Next uses temporary fixture guides.
+- site/dynamic-app.html remains responsible for SPA, DOM replacement, dynamic-frame, and native-navigation behavior.
+- Demo CRM remains reserved for genuine business-system integration behavior such as server postback/reload, server save, cross-screen business navigation, frame reload, and server-rendered Grid behavior.
+- The global Playwright prerequisite no longer requires the Demo CRM site.html; it verifies the deterministic test fixture instead.
+- Full Playwright regression after the refactor: 82/82 tests passed in 2.4 minutes.
+- The refactor preserved coverage while reducing unnecessary coupling between generic GWTP tests and Demo CRM.
