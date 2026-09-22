@@ -732,31 +732,33 @@ async function showTrainingStep(step, navigation = {}) {
 
     const rect = gwtpTrainingTarget.getBoundingClientRect();
     const overlayRect = gwtpTrainingOverlay.getBoundingClientRect();
-    const gap = 20;
+    const viewportGap = 14;
+    const verticalGap = 16;
+    const horizontalGap = 28;
 
     const centeredLeft = rect.left + (rect.width - overlayRect.width) / 2;
     const centeredTop = rect.top + (rect.height - overlayRect.height) / 2;
     const candidates = [
-      { side: "below", top: rect.bottom + gap, left: centeredLeft },
-      { side: "above", top: rect.top - overlayRect.height - gap, left: centeredLeft },
-      { side: "right", top: centeredTop, left: rect.right + gap },
-      { side: "left", top: centeredTop, left: rect.left - overlayRect.width - gap }
+      { side: "below", top: rect.bottom + verticalGap, left: centeredLeft },
+      { side: "above", top: rect.top - overlayRect.height - verticalGap, left: centeredLeft },
+      { side: "right", top: centeredTop, left: rect.right + horizontalGap },
+      { side: "left", top: centeredTop, left: rect.left - overlayRect.width - horizontalGap }
     ];
 
     const fitsViewport = (candidate) =>
-      candidate.top >= gap &&
-      candidate.left >= gap &&
-      candidate.top + overlayRect.height <= window.innerHeight - gap &&
-      candidate.left + overlayRect.width <= window.innerWidth - gap;
+      candidate.top >= viewportGap &&
+      candidate.left >= viewportGap &&
+      candidate.top + overlayRect.height <= window.innerHeight - viewportGap &&
+      candidate.left + overlayRect.width <= window.innerWidth - viewportGap;
 
     const doesNotOverlapTarget = (candidate) => {
       const candidateRight = candidate.left + overlayRect.width;
       const candidateBottom = candidate.top + overlayRect.height;
       return (
-        candidateBottom <= rect.top - gap ||
-        candidate.top >= rect.bottom + gap ||
-        candidateRight <= rect.left - gap ||
-        candidate.left >= rect.right + gap
+        candidateBottom <= rect.top - verticalGap ||
+        candidate.top >= rect.bottom + verticalGap ||
+        candidateRight <= rect.left - horizontalGap ||
+        candidate.left >= rect.right + horizontalGap
       );
     };
 
@@ -781,17 +783,17 @@ async function showTrainingStep(step, navigation = {}) {
 
       const fallback = { top, left };
       if (!doesNotOverlapTarget(fallback)) {
-        const aboveTop = rect.top - overlayRect.height - gap;
-        const rightLeft = rect.right + gap;
-        const leftLeft = rect.left - overlayRect.width - gap;
+        const aboveTop = rect.top - overlayRect.height - verticalGap;
+        const rightLeft = rect.right + horizontalGap;
+        const leftLeft = rect.left - overlayRect.width - horizontalGap;
 
-        if (aboveTop >= gap) {
+        if (aboveTop >= viewportGap) {
           top = aboveTop;
-        } else if (rightLeft + overlayRect.width <= window.innerWidth - gap) {
-          top = Math.max(gap, Math.min(centeredTop, window.innerHeight - overlayRect.height - gap));
+        } else if (rightLeft + overlayRect.width <= window.innerWidth - viewportGap) {
+          top = Math.max(viewportGap, Math.min(centeredTop, window.innerHeight - overlayRect.height - gap));
           left = rightLeft;
-        } else if (leftLeft >= gap) {
-          top = Math.max(gap, Math.min(centeredTop, window.innerHeight - overlayRect.height - gap));
+        } else if (leftLeft >= viewportGap) {
+          top = Math.max(viewportGap, Math.min(centeredTop, window.innerHeight - overlayRect.height - gap));
           left = leftLeft;
         }
       }
