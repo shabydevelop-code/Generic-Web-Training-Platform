@@ -2746,7 +2746,7 @@ test("stage 6 browser-internal page - editor picker fails gracefully without Chr
   });
 
   await panel.locator("#selectButton").click();
-  await expect(panel.locator("#elementPickerStatus")).toContainText(/browser-internal|דפדפן פנימיים/i);
+  await expect(panel.locator("#elementPickerStatus")).toContainText(/browser-internal|פנימיים של הדפדפן/i);
   expect(consoleErrors.some((message) =>
     message.includes("Cannot access a chrome:// URL")
     || message.includes("GWTP cannot access this browser page")
