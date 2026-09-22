@@ -231,6 +231,20 @@ function clearFieldInvalid(...fields) {
 
 
 
+function checkStepAvailability(current) {
+  return window.guideRunner.canShowStep(current)
+    .then((success) => ({
+      success,
+      message: success
+        ? ""
+        : window.i18nService.translate("stepTargetUnavailable", window.i18nService.getLanguage())
+    }))
+    .catch(() => ({
+      success: false,
+      message: window.i18nService.translate("stepTargetUnavailable", window.i18nService.getLanguage())
+    }));
+}
+
 function updatePreviewUi() {
   const active = Boolean(previewSession);
   previewGuideButton.hidden = active;
@@ -2684,17 +2698,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     }
 
     if (message?.type === "GWTP_CHECK_NEXT_STEP_AVAILABLE") {
-      window.guideRunner.canShowStep(message.current)
-        .then((success) => sendResponse({
-          success,
-          message: success
-            ? ""
-            : window.i18nService.translate("stepTargetUnavailable", window.i18nService.getLanguage())
-        }))
-        .catch(() => sendResponse({
-          success: false,
-          message: window.i18nService.translate("stepTargetUnavailable", window.i18nService.getLanguage())
-        }));
+      checkStepAvailability(message.current).then(sendResponse);
       return true;
     }
 
@@ -2720,17 +2724,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (role !== "learner") return;
 
   if (message?.type === "GWTP_CHECK_NEXT_STEP_AVAILABLE") {
-    window.guideRunner.canShowStep(message.current)
-      .then((success) => sendResponse({
-        success,
-        message: success
-          ? ""
-          : window.i18nService.translate("stepTargetUnavailable", window.i18nService.getLanguage())
-      }))
-      .catch(() => sendResponse({
-        success: false,
-        message: window.i18nService.translate("stepTargetUnavailable", window.i18nService.getLanguage())
-      }));
+    checkStepAvailability(message.current).then(sendResponse);
     return true;
   }
 
