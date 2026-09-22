@@ -2991,7 +2991,7 @@ test("stage 6 editor missing selected element - localized error stays with eleme
 
   // Move away from the guide's target page so the persisted selector cannot resolve.
   const unrelated = await context.newPage();
-  await unrelated.goto(`${SITE_URL}/__gwtp-missing-element-test.html`);
+  await unrelated.goto(`${SITE_URL}/dynamic-destination.html`);
   await unrelated.bringToFront();
   await stepCard.click();
 
@@ -3157,10 +3157,10 @@ test("stage 6 element highlight - editor and picker outlines use important prior
     outline: document.body.style.getPropertyValue("outline"),
     priority: document.body.style.getPropertyPriority("outline")
   }));
-  expect(restored).toEqual({
-    outline: "1px solid transparent",
-    priority: "important"
-  });
+  expect(restored.priority).toBe("important");
+  expect(restored.outline).toBeTruthy();
+  const restoredComputed = await page.evaluate(() => getComputedStyle(document.body).outline);
+  expect(restoredComputed).toBe("rgba(0, 0, 0, 0) solid 1px");
 
   await page.close();
 });
