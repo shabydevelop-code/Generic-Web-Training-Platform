@@ -36,6 +36,7 @@ CREATE TABLE IF NOT EXISTS GuideSteps (
     Selector TEXT NOT NULL,
     Instruction TEXT NOT NULL,
     ScreenName TEXT,
+    InteractionType TEXT NOT NULL DEFAULT 'auto',
     FrameTarget TEXT,
     ValidationEngine TEXT,
     ValidationExpression TEXT,
