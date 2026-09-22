@@ -1696,7 +1696,8 @@ async function persistStepChanges() {
           instruction: step.instruction,
           screenName: step.screenName || null,
           frame: step.element?.frame || null,
-          validation: step.validation || null
+          validation: step.validation || null,
+          interactionType: step.interactionType || "auto"
         }))
       )
     });
@@ -1993,7 +1994,8 @@ async function persistExistingGuide() {
         selector: step.selector,
         instruction: step.instruction,
         frame: step.element?.frame || null,
-        validation: step.validation || null
+        validation: step.validation || null,
+          interactionType: step.interactionType || "auto"
       }))
     })
   });
@@ -2239,7 +2241,8 @@ saveGuideButton.addEventListener("click", async () => {
           instruction: step.instruction,
           screenName: step.screenName || null,
           frame: step.element?.frame || null,
-          validation: step.validation || null
+          validation: step.validation || null,
+          interactionType: step.interactionType || "auto"
         }))
       })
     });
