@@ -69,10 +69,40 @@ async function showTrainingStep(step, navigation = {}) {
   }
 
   // Do not intercept or replay host-page clicks. Some web applications use links
-  // as JavaScript menu triggers (for example, app launchers). Preventing the native
-  // click and navigating to href changes the application's behavior. GWTP observes
-  // page readiness after genuine navigation and keeps business interactions owned
-  // entirely by the host application.
+  // as JavaScript menu triggers (for example, app launchers). GWTP keeps business
+  // interactions owned entirely by the host application.
+  //
+  // A genuine navigation may destroy this document before the learner can press
+  // Next. Record only the learning intent on activation; never preventDefault,
+  // synthesize a click, or navigate on the host application's behalf. If the
+  // activation does not navigate, the pending intent is harmless: progress is not
+  // mutated until a later PAGE_READY exposes the adjacent authored target.
+  if (
+    target &&
+    navigation.mode !== "preview" &&
+    Number.isInteger(navigation.stepIndex)
+  ) {
+    let activationPendingStored = false;
+
+    const persistActivationIntent = () => {
+      if (activationPendingStored) return;
+      activationPendingStored = true;
+      chrome.runtime.sendMessage({
+        type: "GWTP_TRAINING_PENDING_SET",
+        pending: {
+          direction: 1,
+          stepIndex: navigation.stepIndex
+        }
+      }).catch(() => {
+        activationPendingStored = false;
+      });
+    };
+
+    target.addEventListener("pointerdown", persistActivationIntent, { once: true });
+    target.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" || event.key === " ") persistActivationIntent();
+    }, { once: true });
+  }
 
 
   if (target && step.selector.startsWith("gwtp-grid:")) {
