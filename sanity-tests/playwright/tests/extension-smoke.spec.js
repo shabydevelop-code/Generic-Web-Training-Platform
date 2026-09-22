@@ -3144,6 +3144,19 @@ test("stage 6 editor preview - pending move resumes when PAGE_READY exposes targ
 });
 
 
+test("stage 6 pending learner navigation drains PAGE_READY events without timer polling", async () => {
+  const guideRunnerSource = await fs.promises.readFile(
+    path.join(EXTENSION_PATH, "learner", "guide-runner.js"),
+    "utf8"
+  );
+
+  expect(guideRunnerSource).toContain("let pendingNavigationReadyVersion = 0;");
+  expect(guideRunnerSource).toContain("pendingNavigationReadyVersion += 1;");
+  expect(guideRunnerSource).toContain("processedReadyVersion !== pendingNavigationReadyVersion");
+  expect(guideRunnerSource).not.toContain("setTimeout(resolve, 100)");
+});
+
+
 test("stage 6 same-step idempotence verifies the overlay survived before skipping restore", async () => {
   const guideRunnerSource = await fs.promises.readFile(
     path.join(EXTENSION_PATH, "learner", "guide-runner.js"),
