@@ -1549,7 +1549,9 @@ async function highlightEditorStep(step) {
 
   if (matched) return;
 
-  setStatus("Could not find the selected element on the current page.", "error");
+  const language = window.i18nService.getLanguage();
+  elementPickerStatus.textContent = window.i18nService.translate("selectedElementNotFound", language);
+  elementPickerStatus.dataset.type = "error";
 }
 
 function closeStepCreator() {
