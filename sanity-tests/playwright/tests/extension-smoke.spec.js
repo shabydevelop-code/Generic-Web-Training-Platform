@@ -3028,8 +3028,9 @@ test("stage 6 learner guidance - placement minimizes overlap with target context
     "utf8"
   );
 
-  expect(runnerSource).toContain("const intersectionArea =");
-  expect(runnerSource).toContain("const contextualRects = [];");
-  expect(runnerSource).toContain("const visibleCandidates = candidates.filter(fitsViewport);");
-  expect(runnerSource).toContain(".sort((a, b) => a.overlap - b.overlap || a.priority - b.priority)");
+  expect(runnerSource).toContain("const doesNotOverlapTarget =");
+  expect(runnerSource).toContain("candidate.top >= rect.bottom + gap");
+  expect(runnerSource).toContain("fitsViewport(candidate) && doesNotOverlapTarget(candidate)");
+  expect(runnerSource).not.toContain("const contextualRects = [];");
+  expect(runnerSource).not.toContain("const intersectionArea =");
 });
