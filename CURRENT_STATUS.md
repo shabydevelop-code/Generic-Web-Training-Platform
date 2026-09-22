@@ -22,6 +22,12 @@ Last updated: 2026-09-22
 ## Repository rule
 Every functional or architectural code change must update this file in the same change set. Completed work must not remain documented as pending.
 
+### Event-driven synchronization rule
+- Runtime synchronization with pages, frames, postbacks, DOM replacement, and target availability must be event/state-driven.
+- Do not solve readiness or target-availability problems with arbitrary sleeps, fixed delays, timer-based polling, or retry windows (for example `setTimeout` loops).
+- If a target is not available, preserve the current/pending state and retry only when a meaningful lifecycle/state event indicates that availability may have changed.
+- Timeouts are allowed only as safety/error boundaries for operations or tests; they must not be the mechanism that makes runtime behavior work.
+
 ## Current learner architecture
 - GWTP owns learning progress; the live application owns business/page state.
 - No automatic replay of old clicks or reconstruction of business state.
