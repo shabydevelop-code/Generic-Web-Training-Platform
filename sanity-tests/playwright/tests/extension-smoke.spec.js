@@ -2715,3 +2715,31 @@ test("stage 4 grid editor - picker-authored grid selector survives row reorder",
   await panel.close();
   await crm.close();
 });
+
+
+test("stage 6 browser-internal page - editor picker fails gracefully without Chrome access error", async () => {
+  const panel = await openPanel();
+  await login(panel, "sanity.editor");
+
+  const guideCard = panel.locator("[data-guide-id]").first();
+  await expect(guideCard).toBeVisible({ timeout: 10000 });
+  await guideCard.click();
+  await panel.locator("#addStepButton").click();
+  await expect(panel.locator("#stepEditor")).toBeVisible();
+
+  const browserPage = await context.newPage();
+  await browserPage.goto("chrome://version/");
+  await browserPage.bringToFront();
+
+  const consoleErrors = [];
+  panel.on("console", (message) => {
+    if (message.type() === "error") consoleErrors.push(message.text());
+  });
+
+  await panel.locator("#selectButton").click();
+  await expect(panel.locator("#elementPickerStatus")).toContainText(/browser-internal|דפדפן פנימיים/i);
+  expect(consoleErrors.some((message) => message.includes("Cannot access a chrome:// URL"))).toBeFalsy();
+
+  await browserPage.close();
+  await panel.close();
+});
