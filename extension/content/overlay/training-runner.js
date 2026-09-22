@@ -735,28 +735,34 @@ async function showTrainingStep(step, navigation = {}) {
     const aboveTop = rect.top - overlayRect.height - gap;
     const fitsBelow = belowTop + overlayRect.height <= window.innerHeight - gap;
     const fitsAbove = aboveTop >= gap;
+    const rightLeft = rect.right + gap;
+    const leftLeft = rect.left - overlayRect.width - gap;
+    const fitsRight = rightLeft + overlayRect.width <= window.innerWidth - gap;
+    const fitsLeft = leftLeft >= gap;
 
     let top;
+    let left;
+
     if (fitsBelow) {
       top = belowTop;
+      left = rect.left;
     } else if (fitsAbove) {
       top = aboveTop;
-    } else {
-      // Neither vertical position fits without covering the target. Place the
-      // bubble beside it instead of overlapping the highlighted element.
+      left = rect.left;
+    } else if (fitsRight) {
       top = Math.max(gap, Math.min(rect.top, window.innerHeight - overlayRect.height - gap));
+      left = rightLeft;
+    } else if (fitsLeft) {
+      top = Math.max(gap, Math.min(rect.top, window.innerHeight - overlayRect.height - gap));
+      left = leftLeft;
+    } else {
+      // The current frame is too constrained to place the bubble without overlap.
+      // Keep it inside the frame as a last resort; cross-frame rendering cleanup
+      // still guarantees that only one guidance bubble is active.
+      top = Math.max(gap, Math.min(belowTop, window.innerHeight - overlayRect.height - gap));
+      left = Math.max(gap, Math.min(rect.left, window.innerWidth - overlayRect.width - gap));
     }
 
-    let left = rect.left;
-    if (!fitsBelow && !fitsAbove) {
-      const rightLeft = rect.right + gap;
-      const leftLeft = rect.left - overlayRect.width - gap;
-      if (rightLeft + overlayRect.width <= window.innerWidth - gap) {
-        left = rightLeft;
-      } else if (leftLeft >= gap) {
-        left = leftLeft;
-      }
-    }
     left = Math.max(gap, Math.min(left, window.innerWidth - overlayRect.width - gap));
 
     gwtpTrainingOverlay.style.top = `${top}px`;
