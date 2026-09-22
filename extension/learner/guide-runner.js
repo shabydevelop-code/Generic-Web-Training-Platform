@@ -3,6 +3,13 @@
   let learnerRenderVersion = 0;
   let pendingNavigationResumePromise = null;
   let pendingNavigationResumeQueued = false;
+  let renderedStepIdentity = null;
+
+  function getStepIdentity(step, stepIndex, mode) {
+    const persistedId = step?.id ?? step?.Id;
+    const selector = step?.selector || "";
+    return `${mode || "learner"}:${persistedId ?? `index-${stepIndex ?? 0}`}:${selector}`;
+  }
 
   async function getActiveTabId() {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
@@ -137,14 +144,24 @@
       return { success: false, stale: true };
     }
 
+    const stepIndex = Number.isInteger(guide.stepIndex) ? guide.stepIndex : 0;
+    const mode = guide.mode || "learner";
+    const stepIdentity = getStepIdentity(firstStep, stepIndex, mode);
+
+    // PAGE_READY/DOM activity can request restoration of the same step repeatedly.
+    // If that exact step is already rendered, leave its bubble/highlight untouched.
+    if (renderedStepIdentity === stepIdentity) {
+      return { success: true, unchanged: true };
+    }
+
     // Never remove the currently visible step until the replacement target is
     // known to exist. This preserves the current guidance when Next/Previous points
     // to a hidden menu item, another tab, or content that has not rendered yet.
     const available = await canShowStep({
       step: firstStep,
-      stepIndex: Number.isInteger(guide.stepIndex) ? guide.stepIndex : 0,
+      stepIndex,
       totalSteps: guide.totalSteps || guide.steps.length,
-      mode: guide.mode || "learner"
+      mode
     });
     if (!available) {
       return { success: false, unavailable: true, message: "Step element was not found on this page." };
@@ -193,6 +210,7 @@
       throw new Error(response?.message || "Could not show the guide step.");
     }
 
+    renderedStepIdentity = stepIdentity;
     return response;
   }
 
