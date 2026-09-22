@@ -1870,7 +1870,9 @@ function renderSteps() {
       // may intentionally be on another screen (or have no GWTP content script),
       // so never let a missing receiver become an unhandled promise rejection.
       highlightEditorStep(step).catch((error) => {
-        console.info("GWTP editor highlight skipped:", error);
+        if (!window.messagingService.isUnsupportedPageError(error)) {
+          console.info("GWTP editor highlight skipped:", error);
+        }
       });
     });
     item.addEventListener("keydown", (event) => {
@@ -1879,7 +1881,9 @@ function renderSteps() {
         event.preventDefault();
         openStepEditor(step);
         highlightEditorStep(step).catch((error) => {
-          console.info("GWTP editor highlight skipped:", error);
+          if (!window.messagingService.isUnsupportedPageError(error)) {
+            console.info("GWTP editor highlight skipped:", error);
+          }
         });
       }
     });
@@ -1907,7 +1911,9 @@ selectButton.addEventListener("click", async () => {
     setElementPickerStatus(started ? "selectionModeActive" : "selectionModeStartError", started ? "info" : "error");
   } catch (error) {
     setElementPickerStatus("pageControlUnavailable", "error");
-    console.error(error);
+    if (!window.messagingService.isUnsupportedPageError(error)) {
+      console.error(error);
+    }
   }
 });
 
@@ -2381,7 +2387,9 @@ async function handleLogout() {
       type: "GWTP_CLEAR_HIGHLIGHT"
     });
   } catch (error) {
-    console.info("GWTP page cleanup skipped during logout:", error);
+    if (!window.messagingService.isUnsupportedPageError(error)) {
+      console.info("GWTP page cleanup skipped during logout:", error);
+    }
   }
 
   await chrome.runtime.sendMessage({
