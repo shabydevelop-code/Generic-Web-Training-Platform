@@ -3028,9 +3028,12 @@ test("stage 6 learner guidance - unavailable message is generic and bubble avoid
   expect(panelSource).toContain('translate("stepTargetUnavailable"');
   expect(i18nSource).toContain('stepTargetUnavailable: "The next step is not available right now.');
   expect(i18nSource).toContain('stepTargetUnavailable: "השלב הבא אינו זמין כרגע.');
-  expect(runnerSource).toContain("const fitsBelow =");
-  expect(runnerSource).toContain("const fitsAbove =");
-  expect(runnerSource).toContain("const rightLeft = rect.right + gap;");
+  expect(runnerSource).toContain("const verticalGap = 16;");
+  expect(runnerSource).toContain("const horizontalGap = 28;");
+  expect(runnerSource).toContain('{ side: "below", top: rect.bottom + verticalGap');
+  expect(runnerSource).toContain('{ side: "above", top: rect.top - overlayRect.height - verticalGap');
+  expect(runnerSource).toContain('{ side: "right", top: centeredTop, left: rect.right + horizontalGap');
+  expect(runnerSource).toContain('{ side: "left", top: centeredTop, left: rect.left - overlayRect.width - horizontalGap');
 });
 
 
@@ -3048,8 +3051,8 @@ test("stage 6 learner guidance - step render clears stale guidance in all access
   expect(clearIndex).toBeGreaterThan(availabilityIndex);
   expect(showIndex).toBeGreaterThan(clearIndex);
   expect(guideRunnerSource).toContain("if (!available) {");
-  expect(runnerSource).toContain("const fitsRight =");
-  expect(runnerSource).toContain("const fitsLeft =");
+  expect(runnerSource).toContain("const candidates = [");
+  expect(runnerSource).toContain("fitsViewport(candidate) && doesNotOverlapTarget(candidate)");
 });
 
 
@@ -3077,7 +3080,8 @@ test("stage 6 learner guidance - placement is target-centered and viewport-aware
   expect(runnerSource).toContain("const centeredLeft =");
   expect(runnerSource).toContain("const centeredTop =");
   expect(runnerSource).toContain("const candidates = [");
-  expect(runnerSource).toContain("const chosen = candidates.find(fitsViewport);");
+  expect(runnerSource).toContain("const chosen = candidates.find(");
+  expect(runnerSource).toContain("fitsViewport(candidate) && doesNotOverlapTarget(candidate)");
 });
 
 
@@ -3088,7 +3092,8 @@ test("stage 6 learner guidance - placement minimizes overlap with target context
   );
 
   expect(runnerSource).toContain("const doesNotOverlapTarget =");
-  expect(runnerSource).toContain("candidate.top >= rect.bottom + gap");
+  expect(runnerSource).toContain("candidate.top >= rect.bottom + verticalGap");
+  expect(runnerSource).toContain("candidate.left >= rect.right + horizontalGap");
   expect(runnerSource).toContain("fitsViewport(candidate) && doesNotOverlapTarget(candidate)");
   expect(runnerSource).not.toContain("const contextualRects = [];");
   expect(runnerSource).not.toContain("const intersectionArea =");
@@ -3174,6 +3179,9 @@ test("stage 6 bubble fallback has no stale gap identifier", async () => {
     path.join(EXTENSION_PATH, "content", "overlay", "training-runner.js"),
     "utf8"
   );
-  const positioningSource = runnerSource.slice(runnerSource.indexOf("const positionOverlay = () =>"));
-  expect(positioningSource).not.toMatch(/\bgap\b(?=\s*[,;)])/);
+  const targetPositioningSource = runnerSource.slice(runnerSource.indexOf("const rect = gwtpTrainingTarget.getBoundingClientRect();"));
+  expect(targetPositioningSource).not.toMatch(/\bgap\b(?=\s*[,;)])/);
+  expect(targetPositioningSource).toContain("viewportGap");
+  expect(targetPositioningSource).toContain("verticalGap");
+  expect(targetPositioningSource).toContain("horizontalGap");
 });
