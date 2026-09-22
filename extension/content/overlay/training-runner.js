@@ -522,17 +522,22 @@ async function showTrainingStep(step, navigation = {}) {
           button.disabled = false;
         });
 
-        const guardedLearnerAction =
-          action === "GWTP_TRAINING_NEXT" || action === "GWTP_TRAINING_PREVIOUS";
+        const guardedStepAction =
+          action === "GWTP_TRAINING_NEXT" ||
+          action === "GWTP_TRAINING_PREVIOUS" ||
+          action === "GWTP_PREVIEW_NEXT" ||
+          action === "GWTP_PREVIEW_PREVIOUS";
 
-        if (!guardedLearnerAction) {
+        if (!guardedStepAction) {
           moveStep();
           return;
         }
 
-        const peekType = action === "GWTP_TRAINING_NEXT"
-          ? "GWTP_TRAINING_PEEK_NEXT"
-          : "GWTP_TRAINING_PEEK_PREVIOUS";
+        const peekType =
+          action === "GWTP_TRAINING_NEXT" ? "GWTP_TRAINING_PEEK_NEXT" :
+          action === "GWTP_TRAINING_PREVIOUS" ? "GWTP_TRAINING_PEEK_PREVIOUS" :
+          action === "GWTP_PREVIEW_NEXT" ? "GWTP_PREVIEW_PEEK_NEXT" :
+          "GWTP_PREVIEW_PEEK_PREVIOUS";
 
         chrome.runtime.sendMessage({ type: peekType }).then(async (peekResponse) => {
           if (!peekResponse?.success || !peekResponse.current?.step) {
@@ -547,9 +552,9 @@ async function showTrainingStep(step, navigation = {}) {
           });
 
           if (!availability?.success) {
-            // Keep the pending learning intent. The live application owns navigation;
-            // when the learner reaches a page where the requested step exists,
-            // GWTP_PAGE_READY will resume the move in the requested direction.
+            // Keep the current bubble visible. Learner mode may also retain its
+            // pending navigation intent for PAGE_READY; Preview has no persisted
+            // learner progress and simply waits for the editor to expose the target.
             validationError.style.display = "block";
             validationError.textContent = availability?.message || "";
             navigationInProgress = false;
