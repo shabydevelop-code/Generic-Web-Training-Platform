@@ -2695,17 +2695,11 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
         success,
         message: success
           ? ""
-          : message.current?.step?.screenName
-            ? window.i18nService.translate("stepTargetOnNamedScreen", window.i18nService.getLanguage())
-                .replace("{screen}", message.current.step.screenName)
-            : window.i18nService.translate("stepTargetOnAnotherPage", window.i18nService.getLanguage())
+          : window.i18nService.translate("stepTargetUnavailable", window.i18nService.getLanguage())
       }))
       .catch(() => sendResponse({
         success: false,
-        message: message.current?.step?.screenName
-          ? window.i18nService.translate("stepTargetOnNamedScreen", window.i18nService.getLanguage())
-              .replace("{screen}", message.current.step.screenName)
-          : window.i18nService.translate("stepTargetOnAnotherPage", window.i18nService.getLanguage())
+        message: window.i18nService.translate("stepTargetUnavailable", window.i18nService.getLanguage())
       }));
     return true;
   }
