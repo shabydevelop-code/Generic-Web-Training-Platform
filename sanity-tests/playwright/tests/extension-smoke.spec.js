@@ -39,6 +39,32 @@ async function login(page, username) {
   await expect(page.locator("#loginView")).toBeHidden();
 }
 
+async function createTemporaryFixtureGuide(panel, name, steps) {
+  const auth = await panel.evaluate(async () => (await chrome.storage.local.get("gwtp.auth.user"))["gwtp.auth.user"]);
+  return panel.evaluate(async ({ token, name, siteUrl, steps }) => {
+    const headers = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
+    const requestJson = async (url, options = {}) => {
+      const response = await fetch(`${globalThis.appConfig.api.baseUrl}${url}`, { headers, ...options });
+      if (!response.ok) throw new Error(`${options.method || "GET"} ${url} failed: ${response.status} ${await response.text()}`);
+      return response.status === 204 ? null : response.json();
+    };
+    const topic = await requestJson("/api/topics", { method: "POST", body: JSON.stringify({ name }) });
+    const guide = await requestJson("/api/guides", {
+      method: "POST",
+      body: JSON.stringify({ topicId: topic.id, name, startUrl: `${siteUrl}/gwtp-test-fixture.html`, isAvailable: true, steps })
+    });
+    return { token, topicId: topic.id, guideId: guide.id };
+  }, { token: auth.accessToken, name, siteUrl: SITE_URL, steps });
+}
+
+async function deleteTemporaryFixtureGuide(panel, setup) {
+  await panel.evaluate(async ({ token, guideId, topicId }) => {
+    const headers = { Authorization: `Bearer ${token}` };
+    await fetch(`${globalThis.appConfig.api.baseUrl}/api/guides/${guideId}`, { method: "DELETE", headers });
+    await fetch(`${globalThis.appConfig.api.baseUrl}/api/topics/${topicId}`, { method: "DELETE", headers });
+  }, setup);
+}
+
 test.beforeAll(async ({ request }) => {
   await requireHealthyStack(request);
 
@@ -915,106 +941,80 @@ test("stage 5 management validation - guide identity and availability rules bloc
   }
 });
 
-test("learner can start a real Demo CRM guide and receives visible guidance", async () => {
+test("learner can start a generic guide and receives visible guidance", async () => {
   const panel = await openPanel();
-  await login(panel, "sanity.learner");
+  await login(panel, "sanity.editor");
+  const name = `GWTP Learner Start ${Date.now()}`;
+  const setup = await createTemporaryFixtureGuide(panel, name, [
+    { selector: "#fixture-code", instruction: "Start fixture guidance", screenName: "Fixture", frame: null, validation: null }
+  ]);
 
-  // A real Chrome Side Panel does not become the active browser tab. Opening the
-  // extension document as a normal Playwright tab does, so restore a normal web
-  // tab as active before starting the guide. guideRunner intentionally targets
-  // chrome.tabs.query({ active: true, currentWindow: true }).
-  const crm = await context.newPage();
-  await crm.goto(`${SITE_URL}/site.html`);
-  await crm.bringToFront();
+  try {
+    await panel.close();
+    const learner = await openPanel();
+    await login(learner, "sanity.learner");
+    const fixture = await context.newPage();
+    await fixture.goto(`${SITE_URL}/gwtp-test-fixture.html`);
+    await fixture.bringToFront();
 
-  const topicOptions = panel.locator("#learnerTopicSelect option");
-  const demoTopic = topicOptions.filter({ hasText: "Demo CRM" });
-  await expect(demoTopic).toHaveCount(1);
-  await panel.locator("#learnerTopicSelect").selectOption(await demoTopic.getAttribute("value"));
+    await learner.locator("#learnerTopicSelect").selectOption(String(setup.topicId));
+    await learner.locator("#learnerGuideSelect").selectOption(String(setup.guideId));
+    await learner.locator("#startLearningButton").click();
 
-  const guideOptions = panel.locator("#learnerGuideSelect option");
-  const fullGuide = guideOptions.filter({ hasText: "תרגול מלא - Demo CRM" });
-  await expect(fullGuide).toHaveCount(1);
-  await panel.locator("#learnerGuideSelect").selectOption(await fullGuide.getAttribute("value"));
+    const overlay = fixture.locator(".gwtp-training-overlay");
+    await expect(overlay).toBeVisible({ timeout: 10000 });
+    await expect(overlay.locator("button")).not.toHaveCount(0);
+    await expect(fixture.locator("#fixture-code")).toHaveCSS("outline-width", "3px");
 
-  // This smoke test only verifies that a guide can start and render guidance.
-  // Keep it independent from progress left by later E2E tests by explicitly
-  // restarting when the dedicated sanity learner already has saved progress.
-  const restart = panel.locator("#restartLearningButton");
-  if (await restart.isVisible()) {
-    await restart.click();
-  } else {
-    const start = panel.locator("#startLearningButton");
-    await expect(start).toBeEnabled();
-    await start.click();
+    await learner.close();
+    await fixture.close();
+  } finally {
+    const cleanup = await openPanel();
+    await login(cleanup, "sanity.editor");
+    await deleteTemporaryFixtureGuide(cleanup, setup);
+    await cleanup.close();
   }
-
-  // Restart/start replaces TargetContent, so use FrameLocator rather than
-  // enumerating transient Frame objects that can detach during navigation.
-  const content = crm.frameLocator('iframe[name="TargetContent"]');
-  const overlay = content.locator(".gwtp-training-overlay");
-  await expect(overlay).toBeVisible({ timeout: 10000 });
-  await expect(overlay.locator("button")).not.toHaveCount(0);
-  await expect(content.locator("#site-code")).toHaveCSS("outline-width", "3px");
-
-  await panel.close();
-  await crm.close();
 });
 
-
-test("learner Next and Previous move between real Demo CRM steps", async () => {
+test("learner Next and Previous move between generic fixture steps", async () => {
   const panel = await openPanel();
-  await login(panel, "sanity.learner");
+  await login(panel, "sanity.editor");
+  const name = `GWTP Learner Navigation ${Date.now()}`;
+  const setup = await createTemporaryFixtureGuide(panel, name, [
+    { selector: "#fixture-code", instruction: "Fixture code", screenName: "Fixture", frame: null, validation: null },
+    { selector: "#fixture-name", instruction: "Fixture name", screenName: "Fixture", frame: null, validation: null }
+  ]);
 
-  const crm = await context.newPage();
-  await crm.goto(`${SITE_URL}/site.html`);
-  await crm.bringToFront();
+  try {
+    await panel.close();
+    const learner = await openPanel();
+    await login(learner, "sanity.learner");
+    const fixture = await context.newPage();
+    await fixture.goto(`${SITE_URL}/gwtp-test-fixture.html`);
+    await fixture.bringToFront();
 
-  const demoTopic = panel.locator("#learnerTopicSelect option").filter({ hasText: "Demo CRM" });
-  await panel.locator("#learnerTopicSelect").selectOption(await demoTopic.getAttribute("value"));
-  const fullGuide = panel.locator("#learnerGuideSelect option").filter({ hasText: "תרגול מלא - Demo CRM" });
-  await panel.locator("#learnerGuideSelect").selectOption(await fullGuide.getAttribute("value"));
+    await learner.locator("#learnerTopicSelect").selectOption(String(setup.topicId));
+    await learner.locator("#learnerGuideSelect").selectOption(String(setup.guideId));
+    await learner.locator("#startLearningButton").click();
 
-  // Always begin this navigation test from step 1 even if the dedicated sanity
-  // learner retained progress from an earlier E2E run.
-  const restart = panel.locator("#restartLearningButton");
-  if (await restart.isVisible()) {
-    await restart.click();
-  } else {
-    await panel.locator("#startLearningButton").click();
+    const overlay = fixture.locator(".gwtp-training-overlay");
+    await expect(fixture.locator("#fixture-code")).toHaveCSS("outline-width", "3px", { timeout: 10000 });
+    await overlay.locator("button").filter({ hasText: /הבא|Next/i }).click();
+    await expect(fixture.locator("#fixture-name")).toHaveCSS("outline-width", "3px");
+
+    await fixture.locator(".gwtp-training-overlay button").filter({ hasText: /הקודם|Previous/i }).click();
+    await expect(fixture.locator("#fixture-code")).toHaveCSS("outline-width", "3px");
+    await expect(fixture.locator(".gwtp-training-overlay")).toBeVisible();
+
+    await learner.close();
+    await fixture.close();
+  } finally {
+    const cleanup = await openPanel();
+    await login(cleanup, "sanity.editor");
+    await deleteTemporaryFixtureGuide(cleanup, setup);
+    await cleanup.close();
   }
-
-  // Restart/start navigates the active CRM tab to the guide StartUrl. That
-  // navigation replaces the iframe document, so resolve TargetContent only after
-  // the navigation has settled instead of retaining a stale Frame object.
-  const content = crm.frameLocator('iframe[name="TargetContent"]');
-  const overlay = content.locator(".gwtp-training-overlay");
-  await expect(overlay).toBeVisible({ timeout: 10000 });
-  await expect(content.locator("#site-code")).toHaveCSS("outline-width", "3px");
-
-  const next = overlay.locator("button").filter({ hasText: /הבא|Next/i });
-  await expect(next).toBeEnabled();
-  await next.click();
-
-  // Training guidance uses its own !important inline outline and does not use
-  // data-gwtp-highlighted (that attribute belongs to the generic highlighter).
-  // Prove the move by checking the new target plus the overlay's step-specific
-  // navigation state rather than assuming the previous field has no native outline.
-  await expect(content.locator("#site-name")).toHaveCSS("outline-width", "3px");
-  await expect(content.locator(".gwtp-training-overlay")).toHaveCount(1);
-  await expect(content.locator(".gwtp-training-overlay")).toBeVisible();
-
-  const previous = content.locator(".gwtp-training-overlay button").filter({ hasText: /הקודם|Previous/i });
-  await expect(previous).toBeEnabled();
-  await previous.click();
-
-  await expect(content.locator("#site-code")).toHaveCSS("outline-width", "3px");
-  await expect(content.locator(".gwtp-training-overlay")).toBeVisible();
-
-  await panel.close();
-  await crm.close();
 });
-
 
 test("learner required validation blocks Next until corrected", async () => {
   const panel = await openPanel();
