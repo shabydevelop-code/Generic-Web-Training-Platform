@@ -3309,7 +3309,10 @@ test("stage 6 learner activation stores pending intent without intercepting host
     "utf8"
   );
 
-  expect(runnerSource).toContain('target.addEventListener("pointerdown", persistActivationIntent');
+  expect(runnerSource).toContain('const nativeNavigationAnchor = target?.closest?.("a[href]")');
+  expect(runnerSource).toContain('nativeNavigationHref !== "#"');
+  expect(runnerSource).toContain('!nativeNavigationHref.toLowerCase().startsWith("javascript:")');
+  expect(runnerSource).toContain('nativeNavigationAnchor.addEventListener("pointerdown", persistActivationIntent');
   expect(runnerSource).toContain('type: "GWTP_TRAINING_PENDING_SET"');
   const activationBlock = runnerSource.slice(
     runnerSource.indexOf("const persistActivationIntent"),
