@@ -1017,189 +1017,116 @@ test("learner Next and Previous move between generic fixture steps", async () =>
 });
 
 test("learner required validation blocks Next until corrected", async () => {
-  const panel = await openPanel();
-  await login(panel, "sanity.learner");
-
-  const crm = await context.newPage();
-  await crm.goto(`${SITE_URL}/site.html`);
-  await crm.bringToFront();
-
-  const topic = panel.locator("#learnerTopicSelect option").filter({ hasText: "Demo CRM" });
-  await panel.locator("#learnerTopicSelect").selectOption(await topic.getAttribute("value"));
-
-  const guide = panel.locator("#learnerGuideSelect option").filter({ hasText: "בדיקת כל חוקי הוולידציה" });
-  await expect(guide).toHaveCount(1);
-  await panel.locator("#learnerGuideSelect").selectOption(await guide.getAttribute("value"));
-
-  const restart = panel.locator("#restartLearningButton");
-  if (await restart.isVisible()) await restart.click();
-  else await panel.locator("#startLearningButton").click();
-
-  const content = crm.frameLocator('iframe[name="TargetContent"]');
-  const overlay = content.locator(".gwtp-training-overlay");
-  const siteName = content.locator("#site-name");
-
-  await expect(overlay).toBeVisible({ timeout: 10000 });
-  await siteName.fill("");
-
-  const next = overlay.locator("button").filter({ hasText: /הבא|Next/i });
-  await next.click();
-
-  await expect(overlay).toBeVisible();
-  await expect(siteName).toHaveCSS("outline-width", "3px");
-  await expect(overlay).toContainText("יש להזין שם אתר לפני המעבר לשלב הבא.");
-
-  await siteName.fill("Playwright Validation Site");
-  await next.click();
-
-  await expect(content.locator("#site-type")).toHaveCSS("outline-width", "3px");
-  await expect(content.locator(".gwtp-training-overlay")).toBeVisible();
-
-  await panel.close();
-  await crm.close();
+  const editor = await openPanel();
+  await login(editor, "sanity.editor");
+  const setup = await createTemporaryFixtureGuide(editor, `GWTP Validation Required ${Date.now()}`, [
+    { selector: "#fixture-name", instruction: "Required", screenName: "Fixture", frame: null, validation: { engine: "required", expression: "__required__", errorMessage: "יש להזין שם אתר לפני המעבר לשלב הבא.", builderType: "required", builderValue: "" } },
+    { selector: "#fixture-type", instruction: "Equals", screenName: "Fixture", frame: null, validation: { engine: "regex", expression: "^branch$", errorMessage: "יש לבחור סניף מכירות", builderType: "equals", builderValue: "branch" } },
+    { selector: "#fixture-type", instruction: "Not equals", screenName: "Fixture", frame: null, validation: { engine: "regex", expression: "^(?!branch$).+$", errorMessage: "יש לבחור סוג אתר שאינו סניף מכירות", builderType: "not_equals", builderValue: "branch" } },
+    { selector: "#fixture-name", instruction: "Contains", screenName: "Fixture", frame: null, validation: { engine: "regex", expression: ".*TEST.*", errorMessage: "שם האתר חייב להכיל TEST", builderType: "contains", builderValue: "TEST" } },
+    { selector: "#fixture-phone", instruction: "Changed", screenName: "Fixture", frame: null, validation: { engine: "changed", expression: "__changed__", errorMessage: "יש לשנות את מספר הטלפון", builderType: "changed", builderValue: "" } },
+    { selector: "#fixture-phone", instruction: "Changed regex", screenName: "Fixture", frame: null, validation: { engine: "changed_regex", expression: "^03-[0-9]{7}$", errorMessage: "יש להזין מספר טלפון תקין ושונה", builderType: "changed_regex", builderValue: "^03-[0-9]{7}$" } }
+  ]);
+  try {
+    await editor.close();
+    const panel = await openPanel();
+    await login(panel, "sanity.learner");
+    const fixture = await context.newPage();
+    await fixture.goto(`${SITE_URL}/gwtp-test-fixture.html`);
+    await fixture.bringToFront();
+    await panel.locator("#learnerTopicSelect").selectOption(String(setup.topicId));
+    await panel.locator("#learnerGuideSelect").selectOption(String(setup.guideId));
+    await panel.locator("#startLearningButton").click();
+    const overlay = fixture.locator(".gwtp-training-overlay");
+    const name = fixture.locator("#fixture-name");
+    await expect(overlay).toBeVisible({ timeout: 10000 });
+    await name.fill("");
+    await overlay.locator("button").filter({ hasText: /הבא|Next/i }).click();
+    await expect(overlay).toContainText("יש להזין שם אתר לפני המעבר לשלב הבא.");
+    await name.fill("Playwright Validation Site");
+    await overlay.locator("button").filter({ hasText: /הבא|Next/i }).click();
+    await expect(fixture.locator("#fixture-type")).toHaveCSS("outline-width", "3px");
+    await panel.close(); await fixture.close();
+  } finally {
+    const cleanup = await openPanel(); await login(cleanup, "sanity.editor");
+    await deleteTemporaryFixtureGuide(cleanup, setup); await cleanup.close();
+  }
 });
-
 
 test("stage 4 validation - equals, not-equals and contains block then allow Next", async () => {
-  const panel = await openPanel();
-  await login(panel, "sanity.learner");
-
-  const crm = await context.newPage();
-  await crm.goto(`${SITE_URL}/site.html`);
-  await crm.bringToFront();
-
-  const topic = panel.locator("#learnerTopicSelect option").filter({ hasText: "Demo CRM" });
-  await panel.locator("#learnerTopicSelect").selectOption(await topic.getAttribute("value"));
-  const guide = panel.locator("#learnerGuideSelect option").filter({ hasText: "בדיקת כל חוקי הוולידציה" });
-  await panel.locator("#learnerGuideSelect").selectOption(await guide.getAttribute("value"));
-
-  const restart = panel.locator("#restartLearningButton");
-  if (await restart.isVisible()) await restart.click();
-  else await panel.locator("#startLearningButton").click();
-
-  const content = crm.frameLocator('iframe[name="TargetContent"]');
-  const next = () => content.locator(".gwtp-training-overlay button").filter({ hasText: /הבא|Next/i });
-
-  // Step 1 required: satisfy it so this test can focus on the next three rule types.
-  await content.locator("#site-name").fill("Validation Site");
-  await next().click();
-  await expect(content.locator("#site-type")).toHaveCSS("outline-width", "3px");
-
-  // Step 2 equals(branch): a different value must block, branch must advance.
-  await content.locator("#site-type").selectOption("hq");
-  await next().click();
-  await expect(content.locator(".gwtp-training-overlay")).toContainText("יש לבחור סניף מכירות");
-  await content.locator("#site-type").selectOption("branch");
-  await next().click();
-  // Navigation is asynchronous; wait until the next rule itself is rendered before
-  // interacting with its target. The validation error belongs to a failed attempt on
-  // that rule and must not be expected before the learner has attempted to continue.
-  await expect(content.locator(".gwtp-training-overlay")).toContainText("בדיקת שונה מערך");
-
-  // Step 3 not_equals(branch): branch must block, another real option must advance.
-  await content.locator("#site-type").selectOption("branch");
-  await next().click();
-  await expect(content.locator(".gwtp-training-overlay")).toContainText("יש לבחור סוג אתר שאינו סניף מכירות");
-  const alternativeValue = await content.locator("#site-type option").evaluateAll((options) =>
-    options.map((option) => option.value).find((value) => value && value !== "branch")
-  );
-  expect(alternativeValue).toBeTruthy();
-  await content.locator("#site-type").selectOption(alternativeValue);
-  await next().click();
-  await expect(content.locator("#site-name")).toHaveCSS("outline-width", "3px");
-
-  // Step 4 contains(TEST): missing token must block, token present must advance.
-  await content.locator("#site-name").fill("Validation Site");
-  await next().click();
-  await expect(content.locator(".gwtp-training-overlay")).toContainText("שם האתר חייב להכיל TEST");
-  await content.locator("#site-name").fill("Validation TEST Site");
-  await next().click();
-  await expect(content.locator("#site-phone")).toHaveCSS("outline-width", "3px");
-
-  await panel.close();
-  await crm.close();
+  const editor = await openPanel(); await login(editor, "sanity.editor");
+  const setup = await createTemporaryFixtureGuide(editor, `GWTP Validation Rules ${Date.now()}`, [
+    { selector: "#fixture-name", instruction: "Required", screenName: "Fixture", frame: null, validation: { engine: "required", expression: "__required__", errorMessage: "יש להזין שם אתר לפני המעבר לשלב הבא.", builderType: "required", builderValue: "" } },
+    { selector: "#fixture-type", instruction: "Equals", screenName: "Fixture", frame: null, validation: { engine: "regex", expression: "^branch$", errorMessage: "יש לבחור סניף מכירות", builderType: "equals", builderValue: "branch" } },
+    { selector: "#fixture-type", instruction: "Not equals", screenName: "Fixture", frame: null, validation: { engine: "regex", expression: "^(?!branch$).+$", errorMessage: "יש לבחור סוג אתר שאינו סניף מכירות", builderType: "not_equals", builderValue: "branch" } },
+    { selector: "#fixture-name", instruction: "Contains", screenName: "Fixture", frame: null, validation: { engine: "regex", expression: ".*TEST.*", errorMessage: "שם האתר חייב להכיל TEST", builderType: "contains", builderValue: "TEST" } },
+    { selector: "#fixture-phone", instruction: "Changed", screenName: "Fixture", frame: null, validation: { engine: "changed", expression: "__changed__", errorMessage: "יש לשנות את מספר הטלפון", builderType: "changed", builderValue: "" } },
+    { selector: "#fixture-phone", instruction: "Changed regex", screenName: "Fixture", frame: null, validation: { engine: "changed_regex", expression: "^03-[0-9]{7}$", errorMessage: "יש להזין מספר טלפון תקין ושונה", builderType: "changed_regex", builderValue: "^03-[0-9]{7}$" } }
+  ]);
+  try {
+    await editor.close();
+    const panel = await openPanel(); await login(panel, "sanity.learner");
+    const fixture = await context.newPage(); await fixture.goto(`${SITE_URL}/gwtp-test-fixture.html`); await fixture.bringToFront();
+    await panel.locator("#learnerTopicSelect").selectOption(String(setup.topicId));
+    await panel.locator("#learnerGuideSelect").selectOption(String(setup.guideId));
+    await panel.locator("#startLearningButton").click();
+    const next = () => fixture.locator(".gwtp-training-overlay button").filter({ hasText: /הבא|Next/i });
+    await fixture.locator("#fixture-name").fill("Validation Site"); await next().click();
+    await fixture.locator("#fixture-type").selectOption("hq"); await next().click();
+    await expect(fixture.locator(".gwtp-training-overlay")).toContainText("יש לבחור סניף מכירות");
+    await fixture.locator("#fixture-type").selectOption("branch"); await next().click();
+    await fixture.locator("#fixture-type").selectOption("branch"); await next().click();
+    await expect(fixture.locator(".gwtp-training-overlay")).toContainText("יש לבחור סוג אתר שאינו סניף מכירות");
+    await fixture.locator("#fixture-type").selectOption("hq"); await next().click();
+    await fixture.locator("#fixture-name").fill("Validation Site"); await next().click();
+    await expect(fixture.locator(".gwtp-training-overlay")).toContainText("שם האתר חייב להכיל TEST");
+    await fixture.locator("#fixture-name").fill("Validation TEST Site"); await next().click();
+    await expect(fixture.locator("#fixture-phone")).toHaveCSS("outline-width", "3px");
+    await panel.close(); await fixture.close();
+  } finally {
+    const cleanup = await openPanel(); await login(cleanup, "sanity.editor");
+    await deleteTemporaryFixtureGuide(cleanup, setup); await cleanup.close();
+  }
 });
-
 
 test("stage 4 validation - changed and changed-regex block then allow Next", async () => {
-  const panel = await openPanel();
-  await login(panel, "sanity.learner");
-
-  const crm = await context.newPage();
-  await crm.goto(`${SITE_URL}/site.html`);
-  await crm.bringToFront();
-
-  const topic = panel.locator("#learnerTopicSelect option").filter({ hasText: "Demo CRM" });
-  await panel.locator("#learnerTopicSelect").selectOption(await topic.getAttribute("value"));
-  const guideOption = panel.locator("#learnerGuideSelect option").filter({ hasText: "בדיקת כל חוקי הוולידציה" });
-  const guideId = await guideOption.getAttribute("value");
-  await panel.locator("#learnerGuideSelect").selectOption(guideId);
-
-  // QA setup: use the same background progress API to position the dedicated sanity
-  // learner at step 5. This does not bypass validation during the assertions below.
-  const guide = await panel.evaluate(async (id) => {
-    const stored = await chrome.storage.local.get("gwtp.auth.user");
-    const auth = stored["gwtp.auth.user"];
-    const response = await fetch(`${globalThis.appConfig.api.baseUrl}/api/learner/guides/${id}`, {
-      headers: { Authorization: `Bearer ${auth.accessToken}` }
-    });
-    if (!response.ok) throw new Error("Unable to load validation guide.");
-    return response.json();
-  }, guideId);
-
-  await panel.evaluate(async (guideValue) => {
-    const restart = await chrome.runtime.sendMessage({ type: "GWTP_TRAINING_RESTART", guide: guideValue });
-    if (!restart?.success) throw new Error(restart?.message || "Unable to restart validation guide.");
-    for (let index = 0; index < 4; index += 1) {
-      const moved = await chrome.runtime.sendMessage({ type: "GWTP_TRAINING_NEXT" });
-      if (!moved?.success) throw new Error(moved?.message || "Unable to prepare changed validation step.");
-    }
-  }, guide);
-
-  // Continue from saved step 5 instead of navigating from step 1.
-  const start = panel.locator("#startLearningButton");
-  await expect(start).toContainText(/המשך למידה|Continue/i);
-  await crm.bringToFront();
-  await start.click();
-
-  const content = crm.frameLocator('iframe[name="TargetContent"]');
-  const phone = content.locator("#site-phone");
-  const next = () => content.locator(".gwtp-training-overlay button").filter({ hasText: /הבא|Next/i });
-  await expect(phone).toHaveCSS("outline-width", "3px", { timeout: 10000 });
-
-  // Step 5 changed: untouched baseline must block; a changed value must advance.
-  const baseline = await phone.inputValue();
-  await next().click();
-  await expect(content.locator(".gwtp-training-overlay")).toContainText("יש לשנות את מספר הטלפון");
-  const changed = baseline === "03-7654321" ? "03-7654322" : "03-7654321";
-  await phone.fill(changed);
-  await next().click();
-
-  // Step 6 changed_regex: Finish stays clickable, but its click handler must
-  // reject both an unchanged value and a changed value with an invalid format.
-  // Only a new regex-valid phone value may complete the guide.
-  await expect(phone).toHaveCSS("outline-width", "3px");
-  const step6Baseline = await phone.inputValue();
-  const finish = () => content.locator(".gwtp-training-overlay button").filter({ hasText: /סיום|Finish/i });
-
-  await finish().click();
-  await expect(content.locator(".gwtp-training-overlay")).toContainText("יש להזין מספר טלפון חדש ותקין");
-  await expect(content.locator('[role="dialog"][aria-modal="true"]')).toHaveCount(0);
-
-  await phone.fill("invalid-phone");
-  await finish().click();
-  await expect(content.locator(".gwtp-training-overlay")).toContainText("יש להזין מספר טלפון חדש ותקין");
-  await expect(content.locator('[role="dialog"][aria-modal="true"]')).toHaveCount(0);
-
-  const validNewPhone = step6Baseline === "03-7654323" ? "03-7654324" : "03-7654323";
-  await phone.fill(validNewPhone);
-  await finish().click();
-  await expect(content.locator('[role="dialog"][aria-modal="true"]')).toBeVisible({ timeout: 10000 });
-
-  await panel.close();
-  await crm.close();
+  const editor = await openPanel(); await login(editor, "sanity.editor");
+  const setup = await createTemporaryFixtureGuide(editor, `GWTP Validation Changed ${Date.now()}`, [
+    { selector: "#fixture-name", instruction: "Required", screenName: "Fixture", frame: null, validation: { engine: "required", expression: "__required__", errorMessage: "יש להזין שם אתר לפני המעבר לשלב הבא.", builderType: "required", builderValue: "" } },
+    { selector: "#fixture-type", instruction: "Equals", screenName: "Fixture", frame: null, validation: { engine: "regex", expression: "^branch$", errorMessage: "יש לבחור סניף מכירות", builderType: "equals", builderValue: "branch" } },
+    { selector: "#fixture-type", instruction: "Not equals", screenName: "Fixture", frame: null, validation: { engine: "regex", expression: "^(?!branch$).+$", errorMessage: "יש לבחור סוג אתר שאינו סניף מכירות", builderType: "not_equals", builderValue: "branch" } },
+    { selector: "#fixture-name", instruction: "Contains", screenName: "Fixture", frame: null, validation: { engine: "regex", expression: ".*TEST.*", errorMessage: "שם האתר חייב להכיל TEST", builderType: "contains", builderValue: "TEST" } },
+    { selector: "#fixture-phone", instruction: "Changed", screenName: "Fixture", frame: null, validation: { engine: "changed", expression: "__changed__", errorMessage: "יש לשנות את מספר הטלפון", builderType: "changed", builderValue: "" } },
+    { selector: "#fixture-phone", instruction: "Changed regex", screenName: "Fixture", frame: null, validation: { engine: "changed_regex", expression: "^03-[0-9]{7}$", errorMessage: "יש להזין מספר טלפון תקין ושונה", builderType: "changed_regex", builderValue: "^03-[0-9]{7}$" } }
+  ]);
+  try {
+    const guide = await editor.evaluate(async (id) => {
+      const auth = (await chrome.storage.local.get("gwtp.auth.user"))["gwtp.auth.user"];
+      const response = await fetch(`${globalThis.appConfig.api.baseUrl}/api/learner/guides/${id}`, { headers: { Authorization: `Bearer ${auth.accessToken}` } });
+      if (!response.ok) throw new Error("Unable to load temporary validation guide."); return response.json();
+    }, setup.guideId);
+    await editor.close();
+    const panel = await openPanel(); await login(panel, "sanity.learner");
+    const fixture = await context.newPage(); await fixture.goto(`${SITE_URL}/gwtp-test-fixture.html`); await fixture.bringToFront();
+    await panel.locator("#learnerTopicSelect").selectOption(String(setup.topicId)); await panel.locator("#learnerGuideSelect").selectOption(String(setup.guideId));
+    await panel.evaluate(async (guideValue) => {
+      const restart = await chrome.runtime.sendMessage({ type: "GWTP_TRAINING_RESTART", guide: guideValue }); if (!restart?.success) throw new Error(restart?.message || "restart failed");
+      for (let i = 0; i < 4; i += 1) { const moved = await chrome.runtime.sendMessage({ type: "GWTP_TRAINING_NEXT" }); if (!moved?.success) throw new Error(moved?.message || "prepare failed"); }
+    }, guide);
+    await fixture.bringToFront(); await panel.locator("#startLearningButton").click();
+    const phone = fixture.locator("#fixture-phone"); const next = () => fixture.locator(".gwtp-training-overlay button").filter({ hasText: /הבא|Next/i });
+    await expect(phone).toHaveCSS("outline-width", "3px", { timeout: 10000 });
+    const baseline = await phone.inputValue(); await next().click(); await expect(fixture.locator(".gwtp-training-overlay")).toContainText("יש לשנות את מספר הטלפון");
+    const changed = baseline === "03-7654321" ? "03-7654322" : "03-7654321"; await phone.fill(changed); await next().click();
+    const finish = () => fixture.locator(".gwtp-training-overlay button").filter({ hasText: /סיום|Finish/i });
+    await finish().click(); await expect(fixture.locator(".gwtp-training-overlay")).toContainText("יש להזין מספר טלפון תקין ושונה");
+    await phone.fill("invalid"); await finish().click(); await expect(fixture.locator(".gwtp-training-overlay")).toContainText("יש להזין מספר טלפון תקין ושונה");
+    await phone.fill("03-7654323"); await finish().click(); await expect(fixture.locator(".gwtp-training-overlay")).toHaveCount(0);
+    await panel.close(); await fixture.close();
+  } finally {
+    const cleanup = await openPanel(); await login(cleanup, "sanity.editor"); await deleteTemporaryFixtureGuide(cleanup, setup); await cleanup.close();
+  }
 });
-
 
 test("learner continues automatically across the Site to Case page transition", async () => {
   const panel = await openPanel();
