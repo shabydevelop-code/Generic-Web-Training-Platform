@@ -554,7 +554,7 @@ app.MapGet("/api/learner/guides/{id:long}", (long id, HttpContext httpContext) =
 
     using var stepsCommand = connection.CreateCommand();
     stepsCommand.CommandText = """
-        SELECT Id, StepOrder, Selector, Instruction, ScreenName, FrameTarget, ValidationEngine, ValidationExpression, ValidationErrorMessage, ValidationBuilderType, ValidationBuilderValue, InteractionType
+        SELECT Id, StepOrder, Selector, Instruction, ScreenName, FrameTarget, ValidationEngine, ValidationExpression, ValidationErrorMessage, ValidationBuilderType, ValidationBuilderValue
         FROM GuideSteps
         WHERE GuideId = $guideId
         ORDER BY StepOrder;
@@ -578,8 +578,7 @@ app.MapGet("/api/learner/guides/{id:long}", (long id, HttpContext httpContext) =
                 stepsReader.GetString(7),
                 stepsReader.IsDBNull(8) ? "" : stepsReader.GetString(8),
                 stepsReader.IsDBNull(9) ? null : stepsReader.GetString(9),
-                stepsReader.IsDBNull(10) ? null : stepsReader.GetString(10)),
-            stepsReader.IsDBNull(11) ? "auto" : stepsReader.GetString(11)));
+                stepsReader.IsDBNull(10) ? null : stepsReader.GetString(10))));
     }
 
     return Results.Ok(new GuideResponse(guideId, topicId, name, startUrl, isAvailable, steps));
@@ -1076,7 +1075,7 @@ editorGuides.MapGet("/{id:long}", (long id) =>
 
     using var stepsCommand = connection.CreateCommand();
     stepsCommand.CommandText = """
-        SELECT Id, StepOrder, Selector, Instruction, ScreenName, FrameTarget, ValidationEngine, ValidationExpression, ValidationErrorMessage, ValidationBuilderType, ValidationBuilderValue, InteractionType
+        SELECT Id, StepOrder, Selector, Instruction, ScreenName, FrameTarget, ValidationEngine, ValidationExpression, ValidationErrorMessage, ValidationBuilderType, ValidationBuilderValue
         FROM GuideSteps
         WHERE GuideId = $guideId
         ORDER BY StepOrder;
@@ -1100,8 +1099,7 @@ editorGuides.MapGet("/{id:long}", (long id) =>
                 stepsReader.GetString(7),
                 stepsReader.IsDBNull(8) ? "" : stepsReader.GetString(8),
                 stepsReader.IsDBNull(9) ? null : stepsReader.GetString(9),
-                stepsReader.IsDBNull(10) ? null : stepsReader.GetString(10)),
-            stepsReader.IsDBNull(11) ? "auto" : stepsReader.GetString(11)));
+                stepsReader.IsDBNull(10) ? null : stepsReader.GetString(10))));
     }
 
     return Results.Ok(new GuideResponse(guideId, topicId, name, startUrl, isAvailable, steps));
@@ -1337,8 +1335,7 @@ static List<GuideStepResponse> SaveGuideSteps(SqliteConnection connection, Sqlit
                     ValidationExpression = $validationExpression,
                     ValidationErrorMessage = $validationErrorMessage,
                     ValidationBuilderType = $validationBuilderType,
-                    ValidationBuilderValue = $validationBuilderValue,
-                    InteractionType = $interactionType
+                    ValidationBuilderValue = $validationBuilderValue
                 WHERE Id = $stepId AND GuideId = $guideId;
                 """;
             updateCommand.Parameters.AddWithValue("$stepId", stepId);
@@ -1353,7 +1350,6 @@ static List<GuideStepResponse> SaveGuideSteps(SqliteConnection connection, Sqlit
             updateCommand.Parameters.AddWithValue("$validationErrorMessage", (object?)step.Validation?.ErrorMessage ?? DBNull.Value);
             updateCommand.Parameters.AddWithValue("$validationBuilderType", (object?)step.Validation?.BuilderType ?? DBNull.Value);
             updateCommand.Parameters.AddWithValue("$validationBuilderValue", (object?)step.Validation?.BuilderValue ?? DBNull.Value);
-            updateCommand.Parameters.AddWithValue("$interactionType", NormalizeInteractionType(step.InteractionType));
             updateCommand.ExecuteNonQuery();
         }
         else
@@ -1361,8 +1357,8 @@ static List<GuideStepResponse> SaveGuideSteps(SqliteConnection connection, Sqlit
             using var insertCommand = connection.CreateCommand();
             insertCommand.Transaction = transaction;
             insertCommand.CommandText = """
-                INSERT INTO GuideSteps (GuideId, StepOrder, Selector, Instruction, ScreenName, FrameTarget, ValidationEngine, ValidationExpression, ValidationErrorMessage, ValidationBuilderType, ValidationBuilderValue, InteractionType)
-                VALUES ($guideId, $stepOrder, $selector, $instruction, $screenName, $frameTarget, $validationEngine, $validationExpression, $validationErrorMessage, $validationBuilderType, $validationBuilderValue, $interactionType);
+                INSERT INTO GuideSteps (GuideId, StepOrder, Selector, Instruction, ScreenName, FrameTarget, ValidationEngine, ValidationExpression, ValidationErrorMessage, ValidationBuilderType, ValidationBuilderValue)
+                VALUES ($guideId, $stepOrder, $selector, $instruction, $screenName, $frameTarget, $validationEngine, $validationExpression, $validationErrorMessage, $validationBuilderType, $validationBuilderValue);
                 SELECT last_insert_rowid();
                 """;
             insertCommand.Parameters.AddWithValue("$guideId", guideId);
@@ -1376,12 +1372,11 @@ static List<GuideStepResponse> SaveGuideSteps(SqliteConnection connection, Sqlit
             insertCommand.Parameters.AddWithValue("$validationErrorMessage", (object?)step.Validation?.ErrorMessage ?? DBNull.Value);
             insertCommand.Parameters.AddWithValue("$validationBuilderType", (object?)step.Validation?.BuilderType ?? DBNull.Value);
             insertCommand.Parameters.AddWithValue("$validationBuilderValue", (object?)step.Validation?.BuilderValue ?? DBNull.Value);
-            insertCommand.Parameters.AddWithValue("$interactionType", NormalizeInteractionType(step.InteractionType));
             stepId = Convert.ToInt64(insertCommand.ExecuteScalar());
         }
 
         keptIds.Add(stepId);
-        result.Add(new GuideStepResponse(stepId, stepOrder, step.Selector.Trim(), step.Instruction.Trim(), string.IsNullOrWhiteSpace(step.ScreenName) ? null : step.ScreenName.Trim(), step.Frame, step.Validation, NormalizeInteractionType(step.InteractionType)));
+        result.Add(new GuideStepResponse(stepId, stepOrder, step.Selector.Trim(), step.Instruction.Trim(), string.IsNullOrWhiteSpace(step.ScreenName) ? null : step.ScreenName.Trim(), step.Frame, step.Validation));
     }
 
     foreach (var removedId in existingIds.Except(keptIds))
@@ -1398,11 +1393,6 @@ static List<GuideStepResponse> SaveGuideSteps(SqliteConnection connection, Sqlit
 }
 
 app.Run();
-
-static string NormalizeInteractionType(string? interactionType)
-{
-    return string.Equals(interactionType, "manual", StringComparison.OrdinalIgnoreCase) ? "manual" : "auto";
-}
 
 static bool IsValidStepValidation(ValidationRule? validation)
 {
@@ -1598,8 +1588,7 @@ static void ApplyDatabaseMigrations(string databasePath)
         ["ValidationErrorMessage"] = "ALTER TABLE GuideSteps ADD COLUMN ValidationErrorMessage TEXT;",
         ["ValidationBuilderType"] = "ALTER TABLE GuideSteps ADD COLUMN ValidationBuilderType TEXT;",
         ["ValidationBuilderValue"] = "ALTER TABLE GuideSteps ADD COLUMN ValidationBuilderValue TEXT;",
-        ["ScreenName"] = "ALTER TABLE GuideSteps ADD COLUMN ScreenName TEXT;",
-        ["InteractionType"] = "ALTER TABLE GuideSteps ADD COLUMN InteractionType TEXT NOT NULL DEFAULT 'auto';"
+        ["ScreenName"] = "ALTER TABLE GuideSteps ADD COLUMN ScreenName TEXT;"
     };
 
     foreach (var migration in guideStepMigrations)
@@ -2162,8 +2151,7 @@ sealed record CreateGuideStepRequest(
     string Instruction,
     string? ScreenName,
     FrameTarget? Frame,
-    ValidationRule? Validation,
-    string? InteractionType = "auto");
+    ValidationRule? Validation);
 
 sealed record CreateGuideRequest(
     long TopicId,
@@ -2179,8 +2167,7 @@ sealed record GuideStepResponse(
     string Instruction,
     string? ScreenName,
     FrameTarget? Frame,
-    ValidationRule? Validation,
-    string InteractionType);
+    ValidationRule? Validation);
 
 sealed record GuideResponse(
     long Id,
