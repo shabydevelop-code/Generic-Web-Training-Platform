@@ -2795,3 +2795,35 @@ test("stage 6 editor missing selected element - localized error stays with eleme
   await unrelated.close();
   await panel.close();
 });
+
+
+test("stage 6 editor picker - active selection can be cancelled from side panel", async () => {
+  const panel = await openPanel();
+  await login(panel, "sanity.editor");
+
+  const crm = await context.newPage();
+  await crm.goto(`${SITE_URL}/customer360.html`);
+  await crm.bringToFront();
+
+  const guideCard = panel.locator("[data-guide-id]").first();
+  await expect(guideCard).toBeVisible({ timeout: 10000 });
+  await guideCard.click();
+  await panel.locator("#addStepButton").click();
+
+  const pickerButton = panel.locator("#selectButton");
+  await pickerButton.click();
+  await expect(pickerButton).toHaveText("בטל בחירת אלמנט");
+  await expect(panel.locator("#elementPickerStatus")).toContainText("מצב בחירת אלמנט פעיל.");
+
+  await pickerButton.click();
+  await expect(pickerButton).not.toHaveText("בטל בחירת אלמנט");
+  await expect(panel.locator("#elementPickerStatus")).toContainText("בחירת האלמנט בוטלה.");
+
+  const content = crm.frameLocator('iframe[name="TargetContent"]');
+  const target = content.locator("input, button, select").first();
+  await target.hover();
+  await expect(target).not.toHaveAttribute("data-gwtp-picker-hovered", "true");
+
+  await panel.close();
+  await crm.close();
+});
