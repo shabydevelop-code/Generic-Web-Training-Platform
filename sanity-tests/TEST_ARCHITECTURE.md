@@ -70,6 +70,12 @@ Demo CRM is reserved for behaviors that genuinely require server-backed/business
 - Server-rendered/server-sorted Grid behavior
 - Business application interactions whose behavior cannot be represented faithfully by the deterministic fixture
 
+## Deterministic fixtures
+
+- `site/gwtp-test-fixture.html` is the lightweight fixture for generic Extension UI, authoring, validation and learner-runtime scenarios. It intentionally has no CRM API calls, postbacks, frames or business behavior.
+- `site/dynamic-app.html` owns modern-web behavior such as SPA changes, DOM replacement, dynamic frames and real navigation.
+- Demo CRM pages are reserved for business-system integration coverage.
+
 ## Duplication rules
 
 Overlap is justified when different layers are being verified. For example, `POST /api/topics` and creating a Topic through the Editor UI are separate requirements.
@@ -77,6 +83,15 @@ Overlap is justified when different layers are being verified. For example, `POS
 A test should not use Demo CRM merely because a convenient seeded element or guide already exists there. If the assertion is about GWTP UI, accessibility, generic validation, lifecycle, or generic DOM behavior, prefer an extension-only or deterministic on-page fixture.
 
 Long setup flows should not repeatedly re-test earlier capabilities just to reach the assertion under test. Shared fixture/setup helpers may establish prerequisite state directly when that prerequisite already has dedicated coverage.
+
+## Refactor order
+
+1. Keep genuine Demo CRM integration tests unchanged: server save/reload, Site -> Case, postback/frame reload and server-side Grid.
+2. Move generic Guide/Step CRUD, Preview and validation scenarios to `gwtp-test-fixture.html`.
+3. Move generic learner lifecycle/resilience scenarios to the deterministic fixture where they do not depend on CRM behavior.
+4. Keep SPA/DOM/dynamic-frame/native-navigation coverage on `dynamic-app.html`.
+5. Move accessibility and visual assertions away from Demo CRM unless the target-page integration itself is what is being asserted.
+6. Only after migration, remove redundant setup paths and re-evaluate the total test count.
 
 ## Refactor policy
 
