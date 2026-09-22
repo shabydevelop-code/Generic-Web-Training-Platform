@@ -2652,6 +2652,21 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       return;
     }
 
+    if (message?.type === "GWTP_PREVIEW_PEEK_NEXT" || message?.type === "GWTP_PREVIEW_PEEK_PREVIOUS") {
+      const direction = message.type === "GWTP_PREVIEW_PEEK_NEXT" ? 1 : -1;
+      const stepIndex = Math.max(0, Math.min(previewSession.steps.length - 1, previewSession.stepIndex + direction));
+      sendResponse({
+        success: true,
+        current: {
+          step: previewSession.steps[stepIndex],
+          stepIndex,
+          totalSteps: previewSession.steps.length,
+          mode: "preview"
+        }
+      });
+      return;
+    }
+
     if (message?.type === "GWTP_PREVIEW_NEXT" || message?.type === "GWTP_PREVIEW_PREVIOUS") {
       const direction = message.type === "GWTP_PREVIEW_NEXT" ? 1 : -1;
       previewSession.stepIndex = Math.max(0, Math.min(previewSession.steps.length - 1, previewSession.stepIndex + direction));
@@ -2666,6 +2681,21 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
         }
       });
       return;
+    }
+
+    if (message?.type === "GWTP_CHECK_NEXT_STEP_AVAILABLE") {
+      window.guideRunner.canShowStep(message.current)
+        .then((success) => sendResponse({
+          success,
+          message: success
+            ? ""
+            : window.i18nService.translate("stepTargetUnavailable", window.i18nService.getLanguage())
+        }))
+        .catch(() => sendResponse({
+          success: false,
+          message: window.i18nService.translate("stepTargetUnavailable", window.i18nService.getLanguage())
+        }));
+      return true;
     }
 
     if (message?.type === "GWTP_PREVIEW_COMPLETE") {
