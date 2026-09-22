@@ -458,11 +458,15 @@ async function showTrainingStep(step, navigation = {}) {
           return;
         }
 
-        if (action === "GWTP_TRAINING_NEXT" || action === "GWTP_TRAINING_PREVIOUS") {
+        const isForward = action === "GWTP_TRAINING_NEXT" || action === "GWTP_PREVIEW_NEXT";
+        const isBackward = action === "GWTP_TRAINING_PREVIOUS" || action === "GWTP_PREVIEW_PREVIOUS";
+        const isLearnerNavigation = action === "GWTP_TRAINING_NEXT" || action === "GWTP_TRAINING_PREVIOUS";
+
+        if (isLearnerNavigation) {
           pendingNavigationPromise = chrome.runtime.sendMessage({
             type: "GWTP_TRAINING_PENDING_SET",
             pending: {
-              direction: action === "GWTP_TRAINING_NEXT" ? 1 : -1,
+              direction: isForward ? 1 : -1,
               stepIndex: Number.isInteger(navigation.stepIndex) ? navigation.stepIndex : 0
             }
           });
@@ -522,22 +526,16 @@ async function showTrainingStep(step, navigation = {}) {
           button.disabled = false;
         });
 
-        const guardedStepAction =
-          action === "GWTP_TRAINING_NEXT" ||
-          action === "GWTP_TRAINING_PREVIOUS" ||
-          action === "GWTP_PREVIEW_NEXT" ||
-          action === "GWTP_PREVIEW_PREVIOUS";
+        const guardedStepAction = isForward || isBackward;
 
         if (!guardedStepAction) {
           moveStep();
           return;
         }
 
-        const peekType =
-          action === "GWTP_TRAINING_NEXT" ? "GWTP_TRAINING_PEEK_NEXT" :
-          action === "GWTP_TRAINING_PREVIOUS" ? "GWTP_TRAINING_PEEK_PREVIOUS" :
-          action === "GWTP_PREVIEW_NEXT" ? "GWTP_PREVIEW_PEEK_NEXT" :
-          "GWTP_PREVIEW_PEEK_PREVIOUS";
+        const peekType = isPreview
+          ? (isForward ? "GWTP_PREVIEW_PEEK_NEXT" : "GWTP_PREVIEW_PEEK_PREVIOUS")
+          : (isForward ? "GWTP_TRAINING_PEEK_NEXT" : "GWTP_TRAINING_PEEK_PREVIOUS");
 
         chrome.runtime.sendMessage({ type: peekType }).then(async (peekResponse) => {
           if (!peekResponse?.success || !peekResponse.current?.step) {
