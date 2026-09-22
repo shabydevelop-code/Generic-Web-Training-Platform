@@ -2992,3 +2992,16 @@ test("stage 6 learner guidance - step render clears stale guidance in all access
   expect(runnerSource).toContain("const fitsRight =");
   expect(runnerSource).toContain("const fitsLeft =");
 });
+
+
+test("stage 6 learner guidance - redundant restore keeps the rendered step intact", async () => {
+  const guideRunnerSource = await fs.promises.readFile(
+    path.join(extensionPath, "learner", "guide-runner.js"),
+    "utf8"
+  );
+
+  expect(guideRunnerSource).toContain("let renderedStepIdentity = null;");
+  expect(guideRunnerSource).toContain("if (renderedStepIdentity === stepIdentity)");
+  expect(guideRunnerSource).toContain("return { success: true, unchanged: true };");
+  expect(guideRunnerSource).toContain("renderedStepIdentity = stepIdentity;");
+});
