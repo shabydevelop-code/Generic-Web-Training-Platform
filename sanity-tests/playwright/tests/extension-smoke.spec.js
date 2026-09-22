@@ -2982,8 +2982,13 @@ test("stage 6 learner guidance - step render clears stale guidance in all access
   ]);
 
   expect(guideRunnerSource).toContain('sendToAllFrames({ type: "GWTP_CLEAR_TRAINING_STEP" })');
-  expect(guideRunnerSource.indexOf("await clearTrainingAcrossFrames();"))
-    .toBeLessThan(guideRunnerSource.indexOf('type: "GWTP_SHOW_TRAINING_STEP"'));
+  const availabilityIndex = guideRunnerSource.indexOf("const available = await canShowStep({");
+  const clearIndex = guideRunnerSource.indexOf("await clearTrainingAcrossFrames();", availabilityIndex);
+  const showIndex = guideRunnerSource.indexOf('type: "GWTP_SHOW_TRAINING_STEP"', clearIndex);
+  expect(availabilityIndex).toBeGreaterThan(-1);
+  expect(clearIndex).toBeGreaterThan(availabilityIndex);
+  expect(showIndex).toBeGreaterThan(clearIndex);
+  expect(guideRunnerSource).toContain("if (!available) {");
   expect(runnerSource).toContain("const fitsRight =");
   expect(runnerSource).toContain("const fitsLeft =");
 });
