@@ -3034,3 +3034,17 @@ test("stage 6 learner guidance - placement minimizes overlap with target context
   expect(runnerSource).not.toContain("const contextualRects = [];");
   expect(runnerSource).not.toContain("const intersectionArea =");
 });
+
+
+test("stage 6 editor preview - uses learner-equivalent adjacent-step availability guard", async () => {
+  const [runnerSource, sidepanelSource] = await Promise.all([
+    fs.promises.readFile(path.join(extensionPath, "content", "overlay", "training-runner.js"), "utf8"),
+    fs.promises.readFile(path.join(extensionPath, "sidepanel", "sidepanel.js"), "utf8")
+  ]);
+
+  expect(runnerSource).toContain('action === "GWTP_PREVIEW_NEXT"');
+  expect(runnerSource).toContain('"GWTP_PREVIEW_PEEK_NEXT"');
+  expect(runnerSource).toContain('"GWTP_CHECK_NEXT_STEP_AVAILABLE"');
+  expect(sidepanelSource).toContain('message?.type === "GWTP_PREVIEW_PEEK_NEXT"');
+  expect(sidepanelSource).toContain('message?.type === "GWTP_CHECK_NEXT_STEP_AVAILABLE"');
+});
