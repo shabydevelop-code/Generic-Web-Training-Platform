@@ -2973,3 +2973,17 @@ test("stage 6 learner guidance - unavailable message is generic and bubble avoid
   expect(runnerSource).toContain("const fitsAbove =");
   expect(runnerSource).toContain("const rightLeft = rect.right + gap;");
 });
+
+
+test("stage 6 learner guidance - step render clears stale guidance in all accessible frames", async () => {
+  const [guideRunnerSource, runnerSource] = await Promise.all([
+    fs.promises.readFile(path.join(extensionPath, "learner", "guide-runner.js"), "utf8"),
+    fs.promises.readFile(path.join(extensionPath, "content", "overlay", "training-runner.js"), "utf8")
+  ]);
+
+  expect(guideRunnerSource).toContain('sendToAllFrames({ type: "GWTP_CLEAR_TRAINING_STEP" })');
+  expect(guideRunnerSource.indexOf("await clearTrainingAcrossFrames();"))
+    .toBeLessThan(guideRunnerSource.indexOf('type: "GWTP_SHOW_TRAINING_STEP"'));
+  expect(runnerSource).toContain("const fitsRight =");
+  expect(runnerSource).toContain("const fitsLeft =");
+});
