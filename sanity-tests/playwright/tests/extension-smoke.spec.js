@@ -2731,6 +2731,15 @@ test("stage 6 browser-internal page - editor picker fails gracefully without Chr
   await browserPage.goto("chrome://version/");
   await browserPage.bringToFront();
 
+  // Chrome may intentionally omit tab.url for restricted pages. The messaging
+  // layer must not reject a missing URL pre-emptively; it should normalize the
+  // actual restricted-page failure returned by the Chrome API.
+  const activeTabInfo = await panel.evaluate(async () => {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    return { hasId: Boolean(tab?.id), url: tab?.url || null };
+  });
+  expect(activeTabInfo.hasId).toBeTruthy();
+
   const consoleErrors = [];
   panel.on("console", (message) => {
     if (message.type() === "error") consoleErrors.push(message.text());
@@ -2738,7 +2747,10 @@ test("stage 6 browser-internal page - editor picker fails gracefully without Chr
 
   await panel.locator("#selectButton").click();
   await expect(panel.locator("#elementPickerStatus")).toContainText(/browser-internal|דפדפן פנימיים/i);
-  expect(consoleErrors.some((message) => message.includes("Cannot access a chrome:// URL"))).toBeFalsy();
+  expect(consoleErrors.some((message) =>
+    message.includes("Cannot access a chrome:// URL")
+    || message.includes("GWTP cannot access this browser page")
+  )).toBeFalsy();
 
   await browserPage.close();
   await panel.close();
