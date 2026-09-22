@@ -1516,68 +1516,77 @@ test("stage 6 resilience batch - learner survives target-page reload without adv
   await crm.close();
 });
 
-test("stage 6 resilience batch - repeated PAGE_READY signals do not duplicate or advance guidance", async () => {
-  const panel = await openPanel();
-  await login(panel, "sanity.learner");
-  const crm = await context.newPage();
-  await crm.goto(`${SITE_URL}/site.html`);
-  await crm.bringToFront();
+test("stage 6 resilience batch - repeated PAGE_READY signals do not duplicate or advance generic guidance", async () => {
+  const editor = await openPanel();
+  await login(editor, "sanity.editor");
+  const setup = await createTemporaryFixtureGuide(editor, `GWTP PAGE_READY ${Date.now()}`, [
+    { selector: "#fixture-code", instruction: "Fixture code", screenName: "Fixture", frame: null, validation: null }
+  ]);
+  try {
+    await editor.close();
+    const panel = await openPanel();
+    await login(panel, "sanity.learner");
+    const fixture = await context.newPage();
+    await fixture.goto(`${SITE_URL}/gwtp-test-fixture.html`);
+    await fixture.bringToFront();
+    await panel.locator("#learnerTopicSelect").selectOption(String(setup.topicId));
+    await panel.locator("#learnerGuideSelect").selectOption(String(setup.guideId));
+    await panel.locator("#startLearningButton").click();
+    await expect(fixture.locator(".gwtp-training-overlay")).toBeVisible({ timeout: 10000 });
 
-  const topic = panel.locator("#learnerTopicSelect option").filter({ hasText: "Demo CRM" });
-  await panel.locator("#learnerTopicSelect").selectOption(await topic.getAttribute("value"));
-  const guide = panel.locator("#learnerGuideSelect option").filter({ hasText: "תרגול מלא - Demo CRM" });
-  await panel.locator("#learnerGuideSelect").selectOption(await guide.getAttribute("value"));
-  const restart = panel.locator("#restartLearningButton");
-  if (await restart.isVisible()) await restart.click();
-  else await panel.locator("#startLearningButton").click();
+    await panel.evaluate(async () => {
+      await Promise.all([
+        chrome.runtime.sendMessage({ type: "GWTP_PAGE_READY" }),
+        chrome.runtime.sendMessage({ type: "GWTP_PAGE_READY" }),
+        chrome.runtime.sendMessage({ type: "GWTP_PAGE_READY" })
+      ]);
+    });
 
-  const content = crm.frameLocator('iframe[name="TargetContent"]');
-  await expect(content.locator(".gwtp-training-overlay")).toBeVisible({ timeout: 10000 });
-
-  await panel.evaluate(async () => {
-    await Promise.all([
-      chrome.runtime.sendMessage({ type: "GWTP_PAGE_READY" }),
-      chrome.runtime.sendMessage({ type: "GWTP_PAGE_READY" }),
-      chrome.runtime.sendMessage({ type: "GWTP_PAGE_READY" })
-    ]);
-  });
-
-  await expect.poll(async () => panel.evaluate(async () => (await chrome.runtime.sendMessage({ type: "GWTP_TRAINING_GET_CURRENT" }))?.current?.stepIndex ?? null), { timeout: 10000 }).toBe(0);
-  await expect(content.locator(".gwtp-training-overlay")).toHaveCount(1);
-
-  await panel.close();
-  await crm.close();
+    await expect.poll(async () => panel.evaluate(async () => (await chrome.runtime.sendMessage({ type: "GWTP_TRAINING_GET_CURRENT" }))?.current?.stepIndex ?? null), { timeout: 10000 }).toBe(0);
+    await expect(fixture.locator(".gwtp-training-overlay")).toHaveCount(1);
+    await panel.close();
+    await fixture.close();
+  } finally {
+    const cleanup = await openPanel();
+    await login(cleanup, "sanity.editor");
+    await deleteTemporaryFixtureGuide(cleanup, setup);
+    await cleanup.close();
+  }
 });
 
-test("stage 6 resilience batch - rapid duplicate Next does not skip a learner step", async () => {
-  const panel = await openPanel();
-  await login(panel, "sanity.learner");
-  const crm = await context.newPage();
-  await crm.goto(`${SITE_URL}/site.html`);
-  await crm.bringToFront();
+test("stage 6 resilience batch - rapid duplicate Next does not skip a generic learner step", async () => {
+  const editor = await openPanel();
+  await login(editor, "sanity.editor");
+  const setup = await createTemporaryFixtureGuide(editor, `GWTP Duplicate Next ${Date.now()}`, [
+    { selector: "#fixture-code", instruction: "Fixture code", screenName: "Fixture", frame: null, validation: null },
+    { selector: "#fixture-name", instruction: "Fixture name", screenName: "Fixture", frame: null, validation: null },
+    { selector: "#fixture-phone", instruction: "Fixture phone", screenName: "Fixture", frame: null, validation: null }
+  ]);
+  try {
+    await editor.close();
+    const panel = await openPanel();
+    await login(panel, "sanity.learner");
+    const fixture = await context.newPage();
+    await fixture.goto(`${SITE_URL}/gwtp-test-fixture.html`);
+    await fixture.bringToFront();
+    await panel.locator("#learnerTopicSelect").selectOption(String(setup.topicId));
+    await panel.locator("#learnerGuideSelect").selectOption(String(setup.guideId));
+    await panel.locator("#startLearningButton").click();
 
-  const topic = panel.locator("#learnerTopicSelect option").filter({ hasText: "Demo CRM" });
-  await panel.locator("#learnerTopicSelect").selectOption(await topic.getAttribute("value"));
-  const guide = panel.locator("#learnerGuideSelect option").filter({ hasText: "תרגול מלא - Demo CRM" });
-  await panel.locator("#learnerGuideSelect").selectOption(await guide.getAttribute("value"));
-  const restart = panel.locator("#restartLearningButton");
-  if (await restart.isVisible()) await restart.click();
-  else await panel.locator("#startLearningButton").click();
+    const next = fixture.locator(".gwtp-training-overlay button").filter({ hasText: /הבא|Next/i });
+    await expect(next).toBeVisible({ timeout: 10000 });
+    await next.evaluate((button) => { button.click(); button.click(); });
 
-  const content = crm.frameLocator('iframe[name="TargetContent"]');
-  const next = content.locator(".gwtp-training-overlay button").filter({ hasText: /הבא|Next/i });
-  await expect(next).toBeVisible({ timeout: 10000 });
-
-  await next.evaluate((button) => {
-    button.click();
-    button.click();
-  });
-
-  await expect.poll(async () => panel.evaluate(async () => (await chrome.runtime.sendMessage({ type: "GWTP_TRAINING_GET_CURRENT" }))?.current?.stepIndex ?? null), { timeout: 10000 }).toBe(1);
-  await expect(content.locator("#site-name")).toHaveCSS("outline-width", "3px");
-
-  await panel.close();
-  await crm.close();
+    await expect.poll(async () => panel.evaluate(async () => (await chrome.runtime.sendMessage({ type: "GWTP_TRAINING_GET_CURRENT" }))?.current?.stepIndex ?? null), { timeout: 10000 }).toBe(1);
+    await expect(fixture.locator("#fixture-name")).toHaveCSS("outline-width", "3px");
+    await panel.close();
+    await fixture.close();
+  } finally {
+    const cleanup = await openPanel();
+    await login(cleanup, "sanity.editor");
+    await deleteTemporaryFixtureGuide(cleanup, setup);
+    await cleanup.close();
+  }
 });
 
 test("stage 6 resilience batch - leaving the target page preserves progress and returning restores guidance", async () => {
