@@ -2944,3 +2944,16 @@ test("stage 6 element highlight - editor and picker outlines use important prior
 
   await page.close();
 });
+
+
+test("stage 6 learner guidance - host link clicks are not intercepted or replayed", async ({ page }) => {
+  const runnerSource = await fs.promises.readFile(
+    path.join(extensionPath, "content", "overlay", "training-runner.js"),
+    "utf8"
+  );
+
+  expect(runnerSource).not.toContain('target.addEventListener("click", async (event) =>');
+  expect(runnerSource).not.toContain("window.location.assign(href)");
+  expect(runnerSource).not.toContain("window.top.location.assign(href)");
+  expect(runnerSource).not.toContain("window.parent.location.assign(href)");
+});
