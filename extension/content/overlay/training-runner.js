@@ -77,8 +77,17 @@ async function showTrainingStep(step, navigation = {}) {
   // synthesize a click, or navigate on the host application's behalf. If the
   // activation does not navigate, the pending intent is harmless: progress is not
   // mutated until a later PAGE_READY exposes the adjacent authored target.
+  const nativeNavigationAnchor = target?.closest?.("a[href]");
+  const nativeNavigationHref = nativeNavigationAnchor?.getAttribute("href")?.trim() || "";
+  const canDestroyDocumentThroughNativeNavigation =
+    Boolean(nativeNavigationAnchor) &&
+    nativeNavigationHref !== "" &&
+    nativeNavigationHref !== "#" &&
+    !nativeNavigationHref.toLowerCase().startsWith("javascript:") &&
+    (nativeNavigationAnchor.target || "").toLowerCase() !== "_blank";
+
   if (
-    target &&
+    canDestroyDocumentThroughNativeNavigation &&
     navigation.mode !== "preview" &&
     Number.isInteger(navigation.stepIndex)
   ) {
@@ -98,8 +107,8 @@ async function showTrainingStep(step, navigation = {}) {
       });
     };
 
-    target.addEventListener("pointerdown", persistActivationIntent, { once: true });
-    target.addEventListener("keydown", (event) => {
+    nativeNavigationAnchor.addEventListener("pointerdown", persistActivationIntent, { once: true });
+    nativeNavigationAnchor.addEventListener("keydown", (event) => {
       if (event.key === "Enter" || event.key === " ") persistActivationIntent();
     }, { once: true });
   }
