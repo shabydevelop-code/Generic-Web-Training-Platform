@@ -332,9 +332,26 @@ async function showTrainingStep(step, navigation = {}) {
   // This prevents partial/empty bubbles when a page transition interrupts setup.
   overlay.appendChild(instructionHost);
 
+  let targetActivated = false;
+  const markTargetActivated = () => {
+    targetActivated = true;
+  };
+  target.addEventListener("click", markTargetActivated, true);
+
   const validateCurrentStep = async () => {
     const validation = step.validation;
-    if (!validation?.expression) return true;
+
+    // A step without an authored field validation still represents an interaction
+    // with its highlighted target. Merely revealing the next target (for example by
+    // hovering a launcher menu) must not count as completing the current step.
+    if (!validation?.expression) {
+      const isValid = targetActivated;
+      validationError.style.display = isValid ? "none" : "block";
+      validationError.textContent = isValid
+        ? ""
+        : (navigation.labels?.completeCurrentStep || "");
+      return isValid;
+    }
 
     if (usesChangedValidation) {
       const currentValue = getTargetValue();
