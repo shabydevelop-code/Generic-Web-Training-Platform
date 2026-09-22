@@ -68,71 +68,12 @@ async function showTrainingStep(step, navigation = {}) {
     target.scrollIntoView({ behavior: "smooth", block: "center", inline: "center" });
   }
 
-  // A highlighted native link may destroy this document before the learner can press
-  // the overlay's Next button. Persist only the learning intent here; PAGE_READY on
-  // the destination still verifies that the next step actually exists before moving
-  // progress. No business action is replayed by GWTP.
-  if (
-    target instanceof HTMLAnchorElement &&
-    target.href &&
-    navigation.mode !== "preview" &&
-    Number.isInteger(navigation.stepIndex)
-  ) {
-    let nativeLinkPendingPromise = null;
+  // Do not intercept or replay host-page clicks. Some web applications use links
+  // as JavaScript menu triggers (for example, app launchers). Preventing the native
+  // click and navigating to href changes the application's behavior. GWTP observes
+  // page readiness after genuine navigation and keeps business interactions owned
+  // entirely by the host application.
 
-    const persistNativeLinkIntent = () => {
-      if (!nativeLinkPendingPromise) {
-        nativeLinkPendingPromise = chrome.runtime.sendMessage({
-          type: "GWTP_TRAINING_PENDING_SET",
-          pending: {
-            direction: 1,
-            stepIndex: navigation.stepIndex
-          }
-        }).catch(() => null);
-      }
-      return nativeLinkPendingPromise;
-    };
-
-    target.addEventListener("pointerdown", persistNativeLinkIntent, { once: true });
-    target.addEventListener("keydown", (event) => {
-      if (event.key === "Enter") persistNativeLinkIntent();
-    }, { once: true });
-
-    // A fast native navigation can destroy the frame before an asynchronous
-    // runtime message sent from pointerdown reaches chrome.storage.session.
-    // For ordinary unmodified link activation, delay only the browser navigation
-    // until the learning intent is durably stored. The business action itself is
-    // still performed exactly once and is never replayed by GWTP.
-    target.addEventListener("click", async (event) => {
-      if (
-        event.defaultPrevented ||
-        event.button !== 0 ||
-        event.metaKey ||
-        event.ctrlKey ||
-        event.shiftKey ||
-        event.altKey
-      ) {
-        return;
-      }
-
-      event.preventDefault();
-      const pendingResponse = await persistNativeLinkIntent();
-      if (!pendingResponse?.success) return;
-
-      const href = target.href;
-      const linkTarget = (target.getAttribute("target") || "_self").toLowerCase();
-
-      if (linkTarget === "_top") {
-        window.top.location.assign(href);
-      } else if (linkTarget === "_parent") {
-        window.parent.location.assign(href);
-      } else if (linkTarget === "_blank") {
-        window.open(href, "_blank");
-      } else {
-        window.location.assign(href);
-      }
-    }, { once: true });
-  }
 
   if (target && step.selector.startsWith("gwtp-grid:")) {
     gwtpTrainingTargetObserver = new MutationObserver(() => {
