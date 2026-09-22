@@ -3103,7 +3103,8 @@ test("stage 6 training bubble keeps a 20px target-safe gap", async () => {
     "utf8"
   );
 
-  expect(runnerSource).toContain("const gap = 20;");
-  expect(runnerSource).toContain("candidate.top >= rect.bottom + gap");
-  expect(runnerSource).toContain("candidate.left >= rect.right + gap");
+  expect(runnerSource).toContain("const verticalGap = 16;");
+  expect(runnerSource).toContain("const horizontalGap = 28;");
+  expect(runnerSource).toContain("candidate.top >= rect.bottom + verticalGap");
+  expect(runnerSource).toContain("candidate.left >= rect.right + horizontalGap");
 });
