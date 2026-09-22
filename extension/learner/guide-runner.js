@@ -416,7 +416,20 @@
       return false;
     }
 
-    if (!(await canShowStep(peekResponse.current))) return false;
+    // PAGE_READY can arrive before a destination frame has finished exposing
+    // its authored target. Give the target a short bounded window to appear;
+    // progress is not mutated until availability is confirmed.
+    let nextStepAvailable = false;
+    for (let attempt = 0; attempt < 10; attempt += 1) {
+      if (await canShowStep(peekResponse.current)) {
+        nextStepAvailable = true;
+        break;
+      }
+      if (attempt < 9) {
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      }
+    }
+    if (!nextStepAvailable) return false;
 
     const moveResponse = await chrome.runtime.sendMessage({ type: moveType });
     if (!moveResponse?.success || !moveResponse.current?.step) return false;
