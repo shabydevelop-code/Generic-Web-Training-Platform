@@ -778,8 +778,8 @@ async function showTrainingStep(step, navigation = {}) {
     } else {
       // Last resort: clamp inside the viewport, then keep the overlay away from
       // the target whenever one axis still provides enough room.
-      top = Math.max(gap, Math.min(rect.bottom + gap, window.innerHeight - overlayRect.height - gap));
-      left = Math.max(gap, Math.min(centeredLeft, window.innerWidth - overlayRect.width - gap));
+      top = Math.max(viewportGap, Math.min(rect.bottom + verticalGap, window.innerHeight - overlayRect.height - viewportGap));
+      left = Math.max(viewportGap, Math.min(centeredLeft, window.innerWidth - overlayRect.width - viewportGap));
 
       const fallback = { top, left };
       if (!doesNotOverlapTarget(fallback)) {
@@ -790,16 +790,16 @@ async function showTrainingStep(step, navigation = {}) {
         if (aboveTop >= viewportGap) {
           top = aboveTop;
         } else if (rightLeft + overlayRect.width <= window.innerWidth - viewportGap) {
-          top = Math.max(viewportGap, Math.min(centeredTop, window.innerHeight - overlayRect.height - gap));
+          top = Math.max(viewportGap, Math.min(centeredTop, window.innerHeight - overlayRect.height - viewportGap));
           left = rightLeft;
         } else if (leftLeft >= viewportGap) {
-          top = Math.max(viewportGap, Math.min(centeredTop, window.innerHeight - overlayRect.height - gap));
+          top = Math.max(viewportGap, Math.min(centeredTop, window.innerHeight - overlayRect.height - viewportGap));
           left = leftLeft;
         }
       }
     }
 
-    left = Math.max(gap, Math.min(left, window.innerWidth - overlayRect.width - gap));
+    left = Math.max(viewportGap, Math.min(left, window.innerWidth - overlayRect.width - viewportGap));
 
     gwtpTrainingOverlay.style.top = `${top}px`;
     gwtpTrainingOverlay.style.left = `${left}px`;
