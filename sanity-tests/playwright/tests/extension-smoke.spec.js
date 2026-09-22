@@ -3095,3 +3095,15 @@ test("stage 6 same-step idempotence verifies the overlay survived before skippin
   expect(guideRunnerSource).toContain('return { success: true, unchanged: true };');
   expect(guideRunnerSource).toContain('const available = await canShowStep');
 });
+
+
+test("stage 6 training bubble keeps a 20px target-safe gap", async () => {
+  const runnerSource = await fs.promises.readFile(
+    path.join(extensionPath, "content", "overlay", "training-runner.js"),
+    "utf8"
+  );
+
+  expect(runnerSource).toContain("const gap = 20;");
+  expect(runnerSource).toContain("candidate.top >= rect.bottom + gap");
+  expect(runnerSource).toContain("candidate.left >= rect.right + gap");
+});
