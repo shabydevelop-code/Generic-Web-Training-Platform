@@ -3020,3 +3020,16 @@ test("stage 6 learner guidance - placement is target-centered and viewport-aware
   expect(runnerSource).toContain("const candidates = [");
   expect(runnerSource).toContain("const chosen = candidates.find(fitsViewport);");
 });
+
+
+test("stage 6 learner guidance - placement minimizes overlap with target context", async () => {
+  const runnerSource = await fs.promises.readFile(
+    path.join(extensionPath, "content", "overlay", "training-runner.js"),
+    "utf8"
+  );
+
+  expect(runnerSource).toContain("const intersectionArea =");
+  expect(runnerSource).toContain("const contextualRects = [];");
+  expect(runnerSource).toContain("const visibleCandidates = candidates.filter(fitsViewport);");
+  expect(runnerSource).toContain(".sort((a, b) => a.overlap - b.overlap || a.priority - b.priority)");
+});
