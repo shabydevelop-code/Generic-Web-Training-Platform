@@ -18,12 +18,12 @@ if (!source.includes("async function createTemporaryFixtureGuide")) {
 }
 
 const steps = `[
-    { selector: "#fixture-name", instruction: "Required", screenName: "Fixture", frame: null, validation: { type: "required", message: "יש להזין שם אתר לפני המעבר לשלב הבא." } },
-    { selector: "#fixture-type", instruction: "Equals", screenName: "Fixture", frame: null, validation: { type: "equals", value: "branch", message: "יש לבחור סניף מכירות" } },
-    { selector: "#fixture-type", instruction: "Not equals", screenName: "Fixture", frame: null, validation: { type: "not_equals", value: "branch", message: "יש לבחור סוג אתר שאינו סניף מכירות" } },
-    { selector: "#fixture-name", instruction: "Contains", screenName: "Fixture", frame: null, validation: { type: "contains", value: "TEST", message: "שם האתר חייב להכיל TEST" } },
-    { selector: "#fixture-phone", instruction: "Changed", screenName: "Fixture", frame: null, validation: { type: "changed", message: "יש לשנות את מספר הטלפון" } },
-    { selector: "#fixture-phone", instruction: "Changed regex", screenName: "Fixture", frame: null, validation: { type: "changed_regex", value: "^03-[0-9]{7}$", message: "יש להזין מספר טלפון תקין ושונה" } }
+    { selector: "#fixture-name", instruction: "Required", screenName: "Fixture", frame: null, validation: { engine: "required", expression: "__required__", errorMessage: "יש להזין שם אתר לפני המעבר לשלב הבא.", builderType: "required", builderValue: "" } },
+    { selector: "#fixture-type", instruction: "Equals", screenName: "Fixture", frame: null, validation: { engine: "regex", expression: "^branch$", errorMessage: "יש לבחור סניף מכירות", builderType: "equals", builderValue: "branch" } },
+    { selector: "#fixture-type", instruction: "Not equals", screenName: "Fixture", frame: null, validation: { engine: "regex", expression: "^(?!branch$).+$", errorMessage: "יש לבחור סוג אתר שאינו סניף מכירות", builderType: "not_equals", builderValue: "branch" } },
+    { selector: "#fixture-name", instruction: "Contains", screenName: "Fixture", frame: null, validation: { engine: "regex", expression: ".*TEST.*", errorMessage: "שם האתר חייב להכיל TEST", builderType: "contains", builderValue: "TEST" } },
+    { selector: "#fixture-phone", instruction: "Changed", screenName: "Fixture", frame: null, validation: { engine: "changed", expression: "__changed__", errorMessage: "יש לשנות את מספר הטלפון", builderType: "changed", builderValue: "" } },
+    { selector: "#fixture-phone", instruction: "Changed regex", screenName: "Fixture", frame: null, validation: { engine: "changed_regex", expression: "^03-[0-9]{7}$", errorMessage: "יש להזין מספר טלפון תקין ושונה", builderType: "changed_regex", builderValue: "^03-[0-9]{7}$" } }
   ]`;
 
 replaceTest("learner required validation blocks Next until corrected", `test("learner required validation blocks Next until corrected", async () => {
@@ -118,4 +118,4 @@ replaceTest("stage 4 validation - changed and changed-regex block then allow Nex
 });`);
 
 fs.writeFileSync(specPath, source, "utf8");
-console.log("Corrected Batch 4 applied: validation tests now own a temporary fixture guide and no longer depend on Demo CRM validation data.");
+console.log("Corrected Batch 4 applied: validation tests now own a temporary fixture guide and use the backend validation schema.");
