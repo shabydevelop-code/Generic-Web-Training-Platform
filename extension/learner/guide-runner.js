@@ -149,9 +149,21 @@
     const stepIdentity = getStepIdentity(firstStep, stepIndex, mode);
 
     // PAGE_READY/DOM activity can request restoration of the same step repeatedly.
-    // If that exact step is already rendered, leave its bubble/highlight untouched.
+    // Treat it as unchanged only while the overlay still exists in the target
+    // document. A full/partial postback can destroy that document while the
+    // side panel still remembers the same step identity.
     if (renderedStepIdentity === stepIdentity) {
-      return { success: true, unchanged: true };
+      try {
+        const rendered = await sendStepToTargetFrame({
+          type: "GWTP_IS_TRAINING_STEP_RENDERED"
+        }, firstStep);
+        if (rendered?.success === true) {
+          return { success: true, unchanged: true };
+        }
+      } catch {
+        // The old target document/frame may have been replaced. Fall through
+        // to the normal availability check and render the step again.
+      }
     }
 
     // Never remove the currently visible step until the replacement target is
