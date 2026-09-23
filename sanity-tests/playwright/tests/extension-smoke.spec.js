@@ -913,7 +913,6 @@ test("stage 5 management validation - guide identity and availability rules bloc
     await crm.goto(SITE_URL + "/site.html");
     await crm.bringToFront();
     const content = crm.frameLocator('iframe[name="TargetContent"]');
-    await panel.locator("#guideAvailableInput").uncheck();
     await panel.locator("#addStepButton").click();
     await panel.locator("#selectButton").click();
     await content.locator("#site-code").click();
@@ -927,7 +926,9 @@ test("stage 5 management validation - guide identity and availability rules bloc
     await expect(panel.locator("#saveStepButton")).toBeEnabled();
     await panel.locator("#saveStepButton").click();
     await expect(panel.locator("#stepEditor")).toBeHidden();
-    await panel.locator("#guideAvailableInput").check();
+    await expect(panel.locator("#saveGuideStatus")).toHaveText("");
+    await expect(panel.locator("#saveGuideStatus")).not.toHaveAttribute("data-type", "error");
+    await expect(panel.locator("#guideAvailableInput")).toBeChecked();
     await panel.locator("#saveGuideButton").click();
     await expect(panel.locator("[data-guide-id]").filter({ hasText: guideName })).toHaveCount(1);
   } finally {
