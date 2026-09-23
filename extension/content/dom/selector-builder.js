@@ -19,10 +19,12 @@ function createSelector(element) {
     const text = value.trim();
 
     return (
-      text.length > 32 ||
+      text.length > 28 ||
       /^[a-f0-9]{8,}$/i.test(text) ||
       /\d{4,}/.test(text) ||
-      /^[A-Za-z]{0,4}\d[A-Za-z0-9_-]{4,}$/.test(text)
+      /^[A-Za-z]{0,4}\d[A-Za-z0-9_-]{4,}$/.test(text) ||
+      /^_[A-Za-z0-9_-]{16,}$/.test(text) ||
+      /[A-Za-z0-9]{12,}[_-]\d+$/.test(text)
     );
   };
 
@@ -36,18 +38,49 @@ function createSelector(element) {
     "title"
   ];
 
-  for (const attribute of attributeCandidates) {
-    const value = element.getAttribute(attribute);
+  const selectorForStableAttributes = (candidate) => {
+    for (const attribute of attributeCandidates) {
+      const value = candidate.getAttribute(attribute);
 
-    if (!value || looksGenerated(value)) {
-      continue;
+      if (!value || looksGenerated(value)) {
+        continue;
+      }
+
+      const selector = `${candidate.tagName.toLowerCase()}[${attribute}="${CSS.escape(value)}"]`;
+
+      if (isUnique(selector)) {
+        return selector;
+      }
     }
 
-    const selector = `${element.tagName.toLowerCase()}[${attribute}="${CSS.escape(value)}"]`;
+    return "";
+  };
 
-    if (isUnique(selector)) {
-      return selector;
-    }
+  const semanticLinkSelector = (candidate) => {
+    const link = candidate.closest("a[href]");
+    if (!link) return "";
+
+    const rawHref = link.getAttribute("href") || "";
+    if (!rawHref || rawHref.startsWith("javascript:") || rawHref === "#") return "";
+
+    // Prefer the destination URL without its query/hash. Search engines and SPAs
+    // frequently add volatile tracking parameters while the destination remains stable.
+    const stableHref = rawHref.split(/[?#]/, 1)[0];
+
+    if (!stableHref) return "";
+
+    const stablePrefix = `a[href^="${CSS.escape(stableHref)}"]`;
+    if (isUnique(stablePrefix)) return stablePrefix;
+
+    const exact = `a[href="${CSS.escape(rawHref)}"]`;
+    if (isUnique(exact)) return exact;
+
+    return "";
+  };
+
+  const directAttributeSelector = selectorForStableAttributes(element);
+  if (directAttributeSelector) {
+    return directAttributeSelector;
   }
 
   if (element.id && !looksGenerated(element.id)) {
@@ -56,6 +89,11 @@ function createSelector(element) {
     if (isUnique(selector)) {
       return selector;
     }
+  }
+
+  const linkSelector = semanticLinkSelector(element);
+  if (linkSelector) {
+    return linkSelector;
   }
 
   const stableClasses = [...element.classList].filter(
@@ -120,6 +158,12 @@ function createSelector(element) {
   while (current && current.nodeType === Node.ELEMENT_NODE && current !== document.body) {
     let part = current.tagName.toLowerCase();
 
+    const currentAttributeSelector = selectorForStableAttributes(current);
+    if (currentAttributeSelector) {
+      parts.unshift(currentAttributeSelector);
+      return parts.join(" > ");
+    }
+
     const currentId = current.id;
     if (currentId && !looksGenerated(currentId)) {
       const idSelector = `#${CSS.escape(currentId)}`;
@@ -128,6 +172,11 @@ function createSelector(element) {
         parts.unshift(idSelector);
         return parts.join(" > ");
       }
+    }
+
+    const currentLinkSelector = semanticLinkSelector(current);
+    if (currentLinkSelector) {
+      return currentLinkSelector;
     }
 
     const currentStableClass = [...current.classList].find(
