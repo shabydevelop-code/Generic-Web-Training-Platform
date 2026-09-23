@@ -40,12 +40,22 @@
     </div>
 
     <button id="fixture-action" type="button">Fixture action</button>
+
+    <div id="dynamic-search-result">
+      <a href="https://example.com/wiki/nahariya?tracking=first"><span id="_aAq0arv7IvWchbIPqeDzkAc_108">Nahariya</span></a>
+    </div>
+    <button id="rerender-search-result" type="button">Rerender search result</button>
     <p id="fixture-result" hidden>Action completed</p>
   </main>
 
   <script>
     document.querySelector("#fixture-action").addEventListener("click", () => {
       document.querySelector("#fixture-result").hidden = false;
+    });
+
+    document.querySelector("#rerender-search-result").addEventListener("click", () => {
+      document.querySelector("#dynamic-search-result").innerHTML =
+        '<a href="https://example.com/wiki/nahariya?tracking=second"><span id="_nAq0asr8Kp64hbIPj7vFiQM_105">Nahariya</span></a>';
     });
   </script>
 </body>
