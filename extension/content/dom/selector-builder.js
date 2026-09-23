@@ -65,15 +65,7 @@ function createSelector(element) {
 
     // Prefer the destination URL without its query/hash. Search engines and SPAs
     // frequently add volatile tracking parameters while the destination remains stable.
-    let stableHref = rawHref;
-    try {
-      const url = new URL(rawHref, document.baseURI);
-      url.search = "";
-      url.hash = "";
-      stableHref = url.href;
-    } catch {
-      stableHref = rawHref.split(/[?#]/, 1)[0];
-    }
+    const stableHref = rawHref.split(/[?#]/, 1)[0];
 
     if (!stableHref) return "";
 
