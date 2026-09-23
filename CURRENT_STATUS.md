@@ -533,3 +533,5 @@ Later accessibility phases must add their own concrete regression checks to this
 - Element selection now treats long/high-entropy generated IDs as unstable and prefers stable semantic link destinations (with query/hash tracking removed) when available. This keeps authored targets valid across host-page rerenders such as search-result IDs changing between searches. A deterministic regression fixture covers the generated-ID replacement case.
 
 - Learner guidance positioning now stays anchored to the highlighted target during window or nested-container scrolling and viewport resize. Position updates are requestAnimationFrame-throttled and listeners are removed when the step is cleared. Manual learner repositioning via drag/keyboard remains respected for the active step.
+
+- **Full Playwright regression (2026-09-23; verified locally):** complete suite passed **84/84** in 2.5 minutes after the generated-ID selector resilience and scroll-follow guidance positioning changes. This is the current verified Playwright baseline on `main`.
