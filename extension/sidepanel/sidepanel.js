@@ -1400,6 +1400,17 @@ function updateGuideEditorValidity() {
   const hasGuideName = Boolean(guideNameInput.value.trim());
   const hasStartUrl = Boolean(guideStartUrlInput.value.trim());
   const guideIdentityValid = hasTopic && hasGuideName && hasStartUrl;
+  const steps = window.trainingService.getSteps();
+  const language = window.i18nService.getLanguage();
+
+  // Clear the stale availability error once the guide has at least one step.
+  if (
+    steps.length > 0 &&
+    saveGuideStatus.textContent === window.i18nService.translate("availableGuideRequiresStep", language)
+  ) {
+    saveGuideStatus.textContent = "";
+    saveGuideStatus.removeAttribute("data-type");
+  }
 
   addStepButton.disabled = !guideIdentityValid;
 
