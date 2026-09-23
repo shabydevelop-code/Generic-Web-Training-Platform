@@ -6,8 +6,14 @@ let gwtpTrainingTarget = null;
 let gwtpTrainingStepKey = null;
 let gwtpTrainingInitialValue = null;
 let gwtpTrainingTargetObserver = null;
+let gwtpTrainingPositionCleanup = null;
 
 function clearTrainingStep() {
+  if (gwtpTrainingPositionCleanup) {
+    gwtpTrainingPositionCleanup();
+    gwtpTrainingPositionCleanup = null;
+  }
+
   if (gwtpTrainingTargetObserver) {
     gwtpTrainingTargetObserver.disconnect();
     gwtpTrainingTargetObserver = null;
@@ -844,7 +850,44 @@ async function showTrainingStep(step, navigation = {}) {
     gwtpTrainingOverlay.style.left = `${left}px`;
   };
 
-  requestAnimationFrame(positionOverlay);
+  let positionFrame = null;
+  let manuallyPositioned = false;
+
+  const schedulePositionOverlay = () => {
+    if (positionFrame !== null) return;
+    positionFrame = requestAnimationFrame(() => {
+      positionFrame = null;
+      if (!manuallyPositioned && !isDragging) positionOverlay();
+    });
+  };
+
+  const markManualPosition = () => {
+    manuallyPositioned = true;
+  };
+
+  dragHandle.addEventListener("pointerdown", markManualPosition);
+  dragHandle.addEventListener("keydown", (event) => {
+    if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(event.key)) {
+      markManualPosition();
+    }
+  });
+
+  // Scroll events do not bubble, but capture receives scrolling from window and
+  // nested scroll containers. Resize covers viewport changes. Keep one RAF update
+  // per frame and remove both listeners when the step is cleared.
+  window.addEventListener("scroll", schedulePositionOverlay, true);
+  window.addEventListener("resize", schedulePositionOverlay);
+
+  gwtpTrainingPositionCleanup = () => {
+    window.removeEventListener("scroll", schedulePositionOverlay, true);
+    window.removeEventListener("resize", schedulePositionOverlay);
+    if (positionFrame !== null) {
+      cancelAnimationFrame(positionFrame);
+      positionFrame = null;
+    }
+  };
+
+  schedulePositionOverlay();
 
   return { success: true, message: `Step ${step.order || ""} is running.` };
 }
