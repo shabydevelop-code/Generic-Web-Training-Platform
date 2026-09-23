@@ -1,8 +1,8 @@
 const fs = require("fs");
 const path = require("path");
 
-const sidepanelPath = path.resolve(__dirname, "../sidepanel/sidepanel.js");
-const testPath = path.resolve(__dirname, "../../sanity-tests/playwright/tests/extension-smoke.spec.js");
+const sidepanelPath = path.resolve(__dirname, "../extension/sidepanel/sidepanel.js");
+const testPath = path.resolve(__dirname, "../sanity-tests/playwright/tests/extension-smoke.spec.js");
 
 let sidepanel = fs.readFileSync(sidepanelPath, "utf8");
 const oldValidity = `function updateGuideEditorValidity() {
