@@ -75,7 +75,7 @@ function createSelector(element) {
       stableHref = rawHref.split(/[?#]/, 1)[0];
     }
 
-    if (!stableHref || looksGenerated(stableHref)) return "";
+    if (!stableHref) return "";
 
     const exact = `a[href="${CSS.escape(rawHref)}"]`;
     if (isUnique(exact)) return exact;
