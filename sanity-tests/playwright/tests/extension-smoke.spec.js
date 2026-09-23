@@ -120,6 +120,57 @@ test("dynamic fixture behaves like a modern web app without timing assumptions",
 });
 
 
+test("stage 6 guidance positioning - bubble follows target while scrolling", async () => {
+  const editor = await openPanel();
+  await login(editor, "sanity.editor");
+  const setup = await createTemporaryFixtureGuide(editor, `GWTP Scroll Follow ${Date.now()}`, [
+    { selector: "#fixture-action", instruction: "Scroll follow target", screenName: "Fixture", frame: null, validation: null }
+  ]);
+
+  try {
+    await editor.close();
+    const panel = await openPanel();
+    await login(panel, "sanity.learner");
+    const fixture = await context.newPage();
+    await fixture.goto(`${SITE_URL}/gwtp-test-fixture.html`);
+    await fixture.evaluate(() => {
+      document.body.style.minHeight = "2200px";
+      document.querySelector("#fixture-action").style.marginTop = "900px";
+    });
+    await fixture.bringToFront();
+
+    await panel.locator("#learnerTopicSelect").selectOption(String(setup.topicId));
+    await panel.locator("#learnerGuideSelect").selectOption(String(setup.guideId));
+    await panel.locator("#startLearningButton").click();
+
+    const target = fixture.locator("#fixture-action");
+    const bubble = fixture.locator(".gwtp-training-overlay");
+    await expect(bubble).toBeVisible({ timeout: 10000 });
+
+    const before = await fixture.evaluate(() => ({
+      targetTop: document.querySelector("#fixture-action").getBoundingClientRect().top,
+      bubbleTop: document.querySelector(".gwtp-training-overlay").getBoundingClientRect().top
+    }));
+
+    await fixture.evaluate(() => window.scrollBy(0, 180));
+
+    await expect.poll(async () => fixture.evaluate(() => {
+      const targetRect = document.querySelector("#fixture-action").getBoundingClientRect();
+      const bubbleRect = document.querySelector(".gwtp-training-overlay").getBoundingClientRect();
+      return Math.round((bubbleRect.top - targetRect.top) * 10) / 10;
+    })).toBe(Math.round((before.bubbleTop - before.targetTop) * 10) / 10);
+
+    await panel.close();
+    await fixture.close();
+  } finally {
+    const cleanup = await openPanel();
+    await login(cleanup, "sanity.editor");
+    await deleteTemporaryFixtureGuide(cleanup, setup);
+    await cleanup.close();
+  }
+});
+
+
 test("stage 6 selector resilience - generated ids do not bind authored steps", async () => {
   const panel = await openPanel();
   await login(panel, "sanity.editor");
