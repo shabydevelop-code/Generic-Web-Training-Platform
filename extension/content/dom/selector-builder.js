@@ -77,11 +77,11 @@ function createSelector(element) {
 
     if (!stableHref) return "";
 
-    const exact = `a[href="${CSS.escape(rawHref)}"]`;
-    if (isUnique(exact)) return exact;
-
     const stablePrefix = `a[href^="${CSS.escape(stableHref)}"]`;
     if (isUnique(stablePrefix)) return stablePrefix;
+
+    const exact = `a[href="${CSS.escape(rawHref)}"]`;
+    if (isUnique(exact)) return exact;
 
     return "";
   };
