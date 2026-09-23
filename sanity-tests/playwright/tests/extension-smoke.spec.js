@@ -120,6 +120,37 @@ test("dynamic fixture behaves like a modern web app without timing assumptions",
 });
 
 
+test("stage 6 selector resilience - generated ids do not bind authored steps", async () => {
+  const panel = await openPanel();
+  await login(panel, "sanity.editor");
+
+  const fixture = await context.newPage();
+  await fixture.goto(`${SITE_URL}/gwtp-test-fixture.html`);
+  await fixture.bringToFront();
+
+  await panel.locator("#openNewGuideButton").click();
+  const demoTopic = panel.locator("#topicSelect option").filter({ hasText: "Demo CRM" });
+  await panel.locator("#topicSelect").selectOption(await demoTopic.getAttribute("value"));
+  await panel.locator("#guideNameInput").fill(`Dynamic selector ${Date.now()}`);
+  await panel.locator("#guideStartUrlInput").fill(`${SITE_URL}/gwtp-test-fixture.html`);
+  await panel.locator("#addStepButton").click();
+  await panel.locator("#selectButton").click();
+
+  await fixture.locator("#_aAq0arv7IvWchbIPqeDzkAc_108").click();
+  const selector = await panel.locator("#selectorInput").inputValue();
+
+  expect(selector).toContain("nahariya");
+  expect(selector).not.toContain("_aAq0arv7IvWchbIPqeDzkAc_108");
+
+  await fixture.locator("#rerender-search-result").click();
+  await expect(fixture.locator("#_nAq0asr8Kp64hbIPj7vFiQM_105")).toBeVisible();
+  expect(await fixture.evaluate((value) => Boolean(document.querySelector(value)), selector)).toBeTruthy();
+
+  await panel.close();
+  await fixture.close();
+});
+
+
 test("stage 6 dynamic web app - GWTP follows SPA, DOM replacement, dynamic frame and real navigation", async () => {
   const editor = await openPanel();
   await login(editor, "sanity.editor");
