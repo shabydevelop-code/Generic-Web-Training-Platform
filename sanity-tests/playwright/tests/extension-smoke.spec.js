@@ -3133,7 +3133,7 @@ test("stage 6 editor highlight - falls back when persisted frame metadata is sta
 });
 
 
-test("stage 6 editor picker - keyboard command is declared for focus-preserving selection", async () => {
+test("architecture guard - editor picker keyboard command is declared", async () => {
   const manifest = JSON.parse(await fs.promises.readFile(path.join(EXTENSION_PATH, "manifest.json"), "utf8"));
   expect(manifest.commands?.["start-element-picker"]?.suggested_key?.default).toBe("Ctrl+Shift+E");
   expect(manifest.commands?.["start-element-picker"]?.suggested_key?.mac).toBe("Command+Shift+E");
@@ -3185,7 +3185,7 @@ test("stage 6 element highlight - editor and picker outlines use important prior
 });
 
 
-test("stage 6 learner guidance - host link clicks are not intercepted or replayed", async ({ page }) => {
+test("architecture guard - learner does not intercept or replay host link navigation", async ({ page }) => {
   const runnerSource = await fs.promises.readFile(
     path.join(EXTENSION_PATH, "content", "overlay", "training-runner.js"),
     "utf8"
@@ -3198,7 +3198,7 @@ test("stage 6 learner guidance - host link clicks are not intercepted or replaye
 });
 
 
-test("stage 6 learner guidance - unavailable message is generic and bubble avoids target overlap", async () => {
+test("architecture guard - learner unavailable copy and placement constants remain generic", async () => {
   const [panelSource, i18nSource, runnerSource] = await Promise.all([
     fs.promises.readFile(path.join(EXTENSION_PATH, "sidepanel", "sidepanel.js"), "utf8"),
     fs.promises.readFile(path.join(EXTENSION_PATH, "services", "i18nService.js"), "utf8"),
@@ -3217,7 +3217,7 @@ test("stage 6 learner guidance - unavailable message is generic and bubble avoid
 });
 
 
-test("stage 6 learner guidance - step render clears stale guidance in all accessible frames", async () => {
+test("architecture guard - learner render clears stale guidance across accessible frames", async () => {
   const [guideRunnerSource, runnerSource] = await Promise.all([
     fs.promises.readFile(path.join(EXTENSION_PATH, "learner", "guide-runner.js"), "utf8"),
     fs.promises.readFile(path.join(EXTENSION_PATH, "content", "overlay", "training-runner.js"), "utf8")
@@ -3236,7 +3236,7 @@ test("stage 6 learner guidance - step render clears stale guidance in all access
 });
 
 
-test("stage 6 learner guidance - redundant restore keeps the rendered step intact", async () => {
+test("architecture guard - redundant learner restore preserves rendered step identity", async () => {
   const guideRunnerSource = await fs.promises.readFile(
     path.join(EXTENSION_PATH, "learner", "guide-runner.js"),
     "utf8"
@@ -3251,7 +3251,7 @@ test("stage 6 learner guidance - redundant restore keeps the rendered step intac
 
 
 
-test("stage 6 learner guidance - placement is target-centered and viewport-aware", async () => {
+test("architecture guard - guidance placement algorithm remains target-centered and viewport-aware", async () => {
   const runnerSource = await fs.promises.readFile(
     path.join(EXTENSION_PATH, "content", "overlay", "training-runner.js"),
     "utf8"
@@ -3265,7 +3265,7 @@ test("stage 6 learner guidance - placement is target-centered and viewport-aware
 });
 
 
-test("stage 6 learner guidance - placement minimizes overlap with target context", async () => {
+test("architecture guard - guidance placement algorithm rejects target overlap", async () => {
   const runnerSource = await fs.promises.readFile(
     path.join(EXTENSION_PATH, "content", "overlay", "training-runner.js"),
     "utf8"
@@ -3280,7 +3280,7 @@ test("stage 6 learner guidance - placement minimizes overlap with target context
 });
 
 
-test("stage 6 editor preview - uses learner-equivalent adjacent-step availability guard", async () => {
+test("architecture guard - preview uses learner-equivalent availability messages", async () => {
   const [runnerSource, sidepanelSource] = await Promise.all([
     fs.promises.readFile(path.join(EXTENSION_PATH, "content", "overlay", "training-runner.js"), "utf8"),
     fs.promises.readFile(path.join(EXTENSION_PATH, "sidepanel", "sidepanel.js"), "utf8")
@@ -3294,7 +3294,7 @@ test("stage 6 editor preview - uses learner-equivalent adjacent-step availabilit
 });
 
 
-test("stage 6 editor preview - shares learner navigation decision helpers", async () => {
+test("architecture guard - preview and learner share navigation decision helpers", async () => {
   const [runnerSource, sidepanelSource] = await Promise.all([
     fs.promises.readFile(path.join(EXTENSION_PATH, "content", "overlay", "training-runner.js"), "utf8"),
     fs.promises.readFile(path.join(EXTENSION_PATH, "sidepanel", "sidepanel.js"), "utf8")
@@ -3308,7 +3308,7 @@ test("stage 6 editor preview - shares learner navigation decision helpers", asyn
 });
 
 
-test("stage 6 editor preview - pending move resumes when PAGE_READY exposes target", async () => {
+test("architecture guard - preview pending move is PAGE_READY driven", async () => {
   const sidepanelSource = await fs.promises.readFile(
     path.join(EXTENSION_PATH, "sidepanel", "sidepanel.js"),
     "utf8"
@@ -3322,7 +3322,7 @@ test("stage 6 editor preview - pending move resumes when PAGE_READY exposes targ
 });
 
 
-test("stage 6 learner activation stores pending intent without intercepting host actions", async () => {
+test("architecture guard - learner activation intent does not intercept host actions", async () => {
   const runnerSource = await fs.promises.readFile(
     path.join(EXTENSION_PATH, "content", "overlay", "training-runner.js"),
     "utf8"
@@ -3343,7 +3343,7 @@ test("stage 6 learner activation stores pending intent without intercepting host
 });
 
 
-test("stage 6 pending learner navigation drains PAGE_READY events without timer polling", async () => {
+test("architecture guard - pending learner navigation is event-driven without timer polling", async () => {
   const guideRunnerSource = await fs.promises.readFile(
     path.join(EXTENSION_PATH, "learner", "guide-runner.js"),
     "utf8"
@@ -3356,7 +3356,7 @@ test("stage 6 pending learner navigation drains PAGE_READY events without timer 
 });
 
 
-test("stage 6 same-step idempotence verifies the overlay survived before skipping restore", async () => {
+test("architecture guard - same-step idempotence verifies overlay presence", async () => {
   const guideRunnerSource = await fs.promises.readFile(
     path.join(EXTENSION_PATH, "learner", "guide-runner.js"),
     "utf8"
@@ -3375,7 +3375,7 @@ test("stage 6 same-step idempotence verifies the overlay survived before skippin
 });
 
 
-test("stage 6 training bubble keeps a 20px target-safe gap", async () => {
+test("architecture guard - training bubble keeps target-safe placement constants", async () => {
   const runnerSource = await fs.promises.readFile(
     path.join(EXTENSION_PATH, "content", "overlay", "training-runner.js"),
     "utf8"
@@ -3388,7 +3388,7 @@ test("stage 6 training bubble keeps a 20px target-safe gap", async () => {
 });
 
 
-test("stage 6 bubble fallback has no stale gap identifier", async () => {
+test("architecture guard - bubble fallback has no stale gap identifier", async () => {
   const runnerSource = await fs.promises.readFile(
     path.join(EXTENSION_PATH, "content", "overlay", "training-runner.js"),
     "utf8"
