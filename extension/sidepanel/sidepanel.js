@@ -1165,8 +1165,12 @@ async function handleSaveUser() {
   }
 }
 
+let adminUsersLoadGeneration = 0;
+
 async function loadAdminUsers() {
   if (window.authService.getCurrentRole() !== "admin") return;
+
+  const loadGeneration = ++adminUsersLoadGeneration;
 
   const language = window.i18nService.getLanguage();
   usersStatus.textContent = window.i18nService.translate("loadingUsers", language);
@@ -1176,6 +1180,14 @@ async function loadAdminUsers() {
 
   try {
     const users = await window.apiService.request("/api/users");
+
+    // A role-filter change can start another load while the initial login load
+    // is still awaiting the API. Only the newest request may render results.
+    if (loadGeneration !== adminUsersLoadGeneration) return;
+
+    usersList.replaceChildren();
+    adminUsersList.replaceChildren();
+
     const selectedRole = userRoleFilter.value || "all";
     const adminUsers = users.filter((user) => Array.isArray(user.roles) && user.roles.includes("admin"));
     const regularUsers = users.filter((user) => {
