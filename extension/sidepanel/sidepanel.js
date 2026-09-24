@@ -2030,9 +2030,10 @@ async function persistExistingGuide() {
       steps: steps.map((step) => ({
         id: step.persistedId || null,
         selector: step.selector,
+        targetType: step.targetType || "element",
         instruction: step.instruction,
-        frame: step.element?.frame || null,
-        validation: step.validation || null
+        frame: step.targetType === "none" ? null : (step.element?.frame || null),
+        validation: step.targetType === "none" ? null : (step.validation || null)
       }))
     })
   });
@@ -2293,10 +2294,11 @@ saveGuideButton.addEventListener("click", async () => {
         steps: steps.map((step) => ({
           id: step.persistedId || null,
           selector: step.selector,
+          targetType: step.targetType || "element",
           instruction: step.instruction,
           screenName: step.screenName || null,
-          frame: step.element?.frame || null,
-          validation: step.validation || null
+          frame: step.targetType === "none" ? null : (step.element?.frame || null),
+          validation: step.targetType === "none" ? null : (step.validation || null)
         }))
       })
     });
