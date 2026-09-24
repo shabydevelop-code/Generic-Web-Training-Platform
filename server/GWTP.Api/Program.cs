@@ -554,7 +554,7 @@ app.MapGet("/api/learner/guides/{id:long}", (long id, HttpContext httpContext) =
 
     using var stepsCommand = connection.CreateCommand();
     stepsCommand.CommandText = """
-        SELECT Id, StepOrder, Selector, Instruction, ScreenName, FrameTarget, ValidationEngine, ValidationExpression, ValidationErrorMessage, ValidationBuilderType, ValidationBuilderValue
+        SELECT Id, StepOrder, Selector, Instruction, ScreenName, FrameTarget, ValidationEngine, ValidationExpression, ValidationErrorMessage, ValidationBuilderType, ValidationBuilderValue, TargetType
         FROM GuideSteps
         WHERE GuideId = $guideId
         ORDER BY StepOrder;
@@ -570,6 +570,7 @@ app.MapGet("/api/learner/guides/{id:long}", (long id, HttpContext httpContext) =
             stepsReader.GetInt64(0),
             stepsReader.GetInt32(1),
             stepsReader.GetString(2),
+            stepsReader.IsDBNull(11) ? "element" : stepsReader.GetString(11),
             stepsReader.GetString(3),
             stepsReader.IsDBNull(4) ? null : stepsReader.GetString(4),
             stepsReader.IsDBNull(5) ? null : JsonSerializer.Deserialize<FrameTarget>(stepsReader.GetString(5)),
@@ -1075,7 +1076,7 @@ editorGuides.MapGet("/{id:long}", (long id) =>
 
     using var stepsCommand = connection.CreateCommand();
     stepsCommand.CommandText = """
-        SELECT Id, StepOrder, Selector, Instruction, ScreenName, FrameTarget, ValidationEngine, ValidationExpression, ValidationErrorMessage, ValidationBuilderType, ValidationBuilderValue
+        SELECT Id, StepOrder, Selector, Instruction, ScreenName, FrameTarget, ValidationEngine, ValidationExpression, ValidationErrorMessage, ValidationBuilderType, ValidationBuilderValue, TargetType
         FROM GuideSteps
         WHERE GuideId = $guideId
         ORDER BY StepOrder;
@@ -1091,6 +1092,7 @@ editorGuides.MapGet("/{id:long}", (long id) =>
             stepsReader.GetInt64(0),
             stepsReader.GetInt32(1),
             stepsReader.GetString(2),
+            stepsReader.IsDBNull(11) ? "element" : stepsReader.GetString(11),
             stepsReader.GetString(3),
             stepsReader.IsDBNull(4) ? null : stepsReader.GetString(4),
             stepsReader.IsDBNull(5) ? null : JsonSerializer.Deserialize<FrameTarget>(stepsReader.GetString(5)),
@@ -1115,8 +1117,11 @@ editorGuides.MapPut("/{id:long}", (long id, CreateGuideRequest request) =>
     if (request.IsAvailable && request.Steps.Count == 0)
         return Results.BadRequest(new { message = "An available guide must contain at least one step." });
 
-    if (request.Steps.Any(step => string.IsNullOrWhiteSpace(step.Selector) || string.IsNullOrWhiteSpace(step.Instruction)))
-        return Results.BadRequest(new { message = "Every step requires a selector and instruction." });
+    if (request.Steps.Any(step => string.IsNullOrWhiteSpace(step.Instruction) || (!string.Equals(step.TargetType, "none", StringComparison.OrdinalIgnoreCase) && string.IsNullOrWhiteSpace(step.Selector))))
+        return Results.BadRequest(new { message = "Every step requires an instruction; element steps also require a selector." });
+
+    if (request.Steps.Any(step => string.Equals(step.TargetType, "none", StringComparison.OrdinalIgnoreCase) && step.Validation is not null))
+        return Results.BadRequest(new { message = "Instruction-only steps cannot contain element validation." });
 
     if (request.Steps.Any(step => !IsValidStepValidation(step.Validation)))
         return Results.BadRequest(new { message = "One or more step validations are invalid." });
@@ -1172,8 +1177,11 @@ editorGuides.MapPut("/{id:long}/steps", (long id, List<CreateGuideStepRequest> s
     if (steps is null)
         return Results.BadRequest(new { message = "Steps are required." });
 
-    if (steps.Any(step => string.IsNullOrWhiteSpace(step.Selector) || string.IsNullOrWhiteSpace(step.Instruction)))
-        return Results.BadRequest(new { message = "Every step requires a selector and instruction." });
+    if (steps.Any(step => string.IsNullOrWhiteSpace(step.Instruction) || (!string.Equals(step.TargetType, "none", StringComparison.OrdinalIgnoreCase) && string.IsNullOrWhiteSpace(step.Selector))))
+        return Results.BadRequest(new { message = "Every step requires an instruction; element steps also require a selector." });
+
+    if (steps.Any(step => string.Equals(step.TargetType, "none", StringComparison.OrdinalIgnoreCase) && step.Validation is not null))
+        return Results.BadRequest(new { message = "Instruction-only steps cannot contain element validation." });
 
     if (steps.Any(step => !IsValidStepValidation(step.Validation)))
         return Results.BadRequest(new { message = "One or more step validations are invalid." });
@@ -1232,10 +1240,15 @@ editorGuides.MapPost("", (CreateGuideRequest request) =>
     }
 
     if (request.Steps.Any(step =>
-        string.IsNullOrWhiteSpace(step.Selector) ||
-        string.IsNullOrWhiteSpace(step.Instruction)))
+        string.IsNullOrWhiteSpace(step.Instruction) ||
+        (!string.Equals(step.TargetType, "none", StringComparison.OrdinalIgnoreCase) && string.IsNullOrWhiteSpace(step.Selector))))
     {
-        return Results.BadRequest(new { message = "Every step requires a selector and instruction." });
+        return Results.BadRequest(new { message = "Every step requires an instruction; element steps also require a selector." });
+    }
+
+    if (request.Steps.Any(step => string.Equals(step.TargetType, "none", StringComparison.OrdinalIgnoreCase) && step.Validation is not null))
+    {
+        return Results.BadRequest(new { message = "Instruction-only steps cannot contain element validation." });
     }
 
     if (request.Steps.Any(step => !IsValidStepValidation(step.Validation)))
@@ -1328,6 +1341,7 @@ static List<GuideStepResponse> SaveGuideSteps(SqliteConnection connection, Sqlit
                 UPDATE GuideSteps
                 SET StepOrder = $stepOrder,
                     Selector = $selector,
+                    TargetType = $targetType,
                     Instruction = $instruction,
                     ScreenName = $screenName,
                     FrameTarget = $frameTarget,
@@ -1341,7 +1355,8 @@ static List<GuideStepResponse> SaveGuideSteps(SqliteConnection connection, Sqlit
             updateCommand.Parameters.AddWithValue("$stepId", stepId);
             updateCommand.Parameters.AddWithValue("$guideId", guideId);
             updateCommand.Parameters.AddWithValue("$stepOrder", stepOrder);
-            updateCommand.Parameters.AddWithValue("$selector", step.Selector.Trim());
+            updateCommand.Parameters.AddWithValue("$selector", string.Equals(step.TargetType, "none", StringComparison.OrdinalIgnoreCase) ? "" : step.Selector.Trim());
+            updateCommand.Parameters.AddWithValue("$targetType", string.Equals(step.TargetType, "none", StringComparison.OrdinalIgnoreCase) ? "none" : "element");
             updateCommand.Parameters.AddWithValue("$instruction", step.Instruction.Trim());
             updateCommand.Parameters.AddWithValue("$screenName", string.IsNullOrWhiteSpace(step.ScreenName) ? DBNull.Value : step.ScreenName.Trim());
             updateCommand.Parameters.AddWithValue("$frameTarget", step.Frame is null ? DBNull.Value : JsonSerializer.Serialize(step.Frame));
@@ -1357,13 +1372,14 @@ static List<GuideStepResponse> SaveGuideSteps(SqliteConnection connection, Sqlit
             using var insertCommand = connection.CreateCommand();
             insertCommand.Transaction = transaction;
             insertCommand.CommandText = """
-                INSERT INTO GuideSteps (GuideId, StepOrder, Selector, Instruction, ScreenName, FrameTarget, ValidationEngine, ValidationExpression, ValidationErrorMessage, ValidationBuilderType, ValidationBuilderValue)
-                VALUES ($guideId, $stepOrder, $selector, $instruction, $screenName, $frameTarget, $validationEngine, $validationExpression, $validationErrorMessage, $validationBuilderType, $validationBuilderValue);
+                INSERT INTO GuideSteps (GuideId, StepOrder, Selector, TargetType, Instruction, ScreenName, FrameTarget, ValidationEngine, ValidationExpression, ValidationErrorMessage, ValidationBuilderType, ValidationBuilderValue)
+                VALUES ($guideId, $stepOrder, $selector, $targetType, $instruction, $screenName, $frameTarget, $validationEngine, $validationExpression, $validationErrorMessage, $validationBuilderType, $validationBuilderValue);
                 SELECT last_insert_rowid();
                 """;
             insertCommand.Parameters.AddWithValue("$guideId", guideId);
             insertCommand.Parameters.AddWithValue("$stepOrder", stepOrder);
-            insertCommand.Parameters.AddWithValue("$selector", step.Selector.Trim());
+            insertCommand.Parameters.AddWithValue("$selector", string.Equals(step.TargetType, "none", StringComparison.OrdinalIgnoreCase) ? "" : step.Selector.Trim());
+            insertCommand.Parameters.AddWithValue("$targetType", string.Equals(step.TargetType, "none", StringComparison.OrdinalIgnoreCase) ? "none" : "element");
             insertCommand.Parameters.AddWithValue("$instruction", step.Instruction.Trim());
             insertCommand.Parameters.AddWithValue("$screenName", string.IsNullOrWhiteSpace(step.ScreenName) ? DBNull.Value : step.ScreenName.Trim());
             insertCommand.Parameters.AddWithValue("$frameTarget", step.Frame is null ? DBNull.Value : JsonSerializer.Serialize(step.Frame));
@@ -1376,7 +1392,7 @@ static List<GuideStepResponse> SaveGuideSteps(SqliteConnection connection, Sqlit
         }
 
         keptIds.Add(stepId);
-        result.Add(new GuideStepResponse(stepId, stepOrder, step.Selector.Trim(), step.Instruction.Trim(), string.IsNullOrWhiteSpace(step.ScreenName) ? null : step.ScreenName.Trim(), step.Frame, step.Validation));
+        result.Add(new GuideStepResponse(stepId, stepOrder, string.Equals(step.TargetType, "none", StringComparison.OrdinalIgnoreCase) ? "" : step.Selector.Trim(), string.Equals(step.TargetType, "none", StringComparison.OrdinalIgnoreCase) ? "none" : "element", step.Instruction.Trim(), string.IsNullOrWhiteSpace(step.ScreenName) ? null : step.ScreenName.Trim(), step.Frame, step.Validation));
     }
 
     foreach (var removedId in existingIds.Except(keptIds))
@@ -1588,7 +1604,8 @@ static void ApplyDatabaseMigrations(string databasePath)
         ["ValidationErrorMessage"] = "ALTER TABLE GuideSteps ADD COLUMN ValidationErrorMessage TEXT;",
         ["ValidationBuilderType"] = "ALTER TABLE GuideSteps ADD COLUMN ValidationBuilderType TEXT;",
         ["ValidationBuilderValue"] = "ALTER TABLE GuideSteps ADD COLUMN ValidationBuilderValue TEXT;",
-        ["ScreenName"] = "ALTER TABLE GuideSteps ADD COLUMN ScreenName TEXT;"
+        ["ScreenName"] = "ALTER TABLE GuideSteps ADD COLUMN ScreenName TEXT;",
+        ["TargetType"] = "ALTER TABLE GuideSteps ADD COLUMN TargetType TEXT NOT NULL DEFAULT 'element';"
     };
 
     foreach (var migration in guideStepMigrations)
@@ -2148,6 +2165,7 @@ sealed record ValidationRule(
 sealed record CreateGuideStepRequest(
     long? Id,
     string Selector,
+    string? TargetType,
     string Instruction,
     string? ScreenName,
     FrameTarget? Frame,
@@ -2164,6 +2182,7 @@ sealed record GuideStepResponse(
     long Id,
     int StepOrder,
     string Selector,
+    string TargetType,
     string Instruction,
     string? ScreenName,
     FrameTarget? Frame,
