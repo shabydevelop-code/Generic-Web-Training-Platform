@@ -12,6 +12,14 @@
 - Testing priority: user-visible behavior must be verified primarily through GUI/browser E2E using the same public UI path as the user. Direct API/backend tests are appropriate when the behavior under test is specifically a backend responsibility (for example HTTP authentication/authorization, API contracts, migrations/schema, database constraints, or behavior with no UI surface). Source-level assertions may protect architectural invariants, but they must not be treated as proof that a user-visible feature works end to end. Test fixture setup may use APIs only when the setup itself is not the behavior being tested.
 - Work incrementally and avoid partial-code patches when a complete coherent change is required.
 
+### Async UI / E2E race prevention
+- Treat failures that appear only in the full Playwright suite but pass in isolation as a signal to investigate asynchronous state leakage, overlapping requests, lifecycle events, shared browser/extension state, or stale DOM renders before changing assertions or increasing timeouts.
+- Do not use arbitrary sleeps or larger timeouts to hide races. Synchronize tests with observable GUI state (for example visible + enabled controls, target availability, page/frame readiness) and fix product-side races when stale asynchronous work can mutate the UI.
+- Any async UI loader that can be triggered again before a previous invocation finishes (filters, login initialization, reloads, navigation/lifecycle events) must prevent an older response from overwriting or appending to newer state. Use an explicit latest-request/generation guard, cancellation mechanism, or equivalent ownership rule.
+- Clear/render timing matters: clearing a list before an awaited request does not prevent duplicates when two loads overlap; both can later append. The request that is still current should own the final clear/render operation after the await.
+- Regression lesson (2026-09-24): Admin login started `loadAdminUsers()`, while an immediate role-filter change started a second load. Both calls cleared the list before awaiting `/api/users`, then both appended results when their responses returned, so Playwright observed two `GWTP Sanity Editor` cards although SQLite contained one user. The fix added a monotonically increasing load generation and discards stale responses before rendering. A separate dynamic-iframe regression showed the same general principle on lifecycle state: wait for the post-`PAGE_READY` overlay to be stable and Next to be enabled rather than racing a transient disabled/detached control.
+
+
 ## Product
 Generic Web Training Platform is a Chrome/Edge side-panel extension for authoring and running guided training over live web applications.
 
