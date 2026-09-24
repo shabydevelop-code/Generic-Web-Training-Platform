@@ -3401,19 +3401,98 @@ test("stage 6 bubble fallback has no stale gap identifier", async () => {
 });
 
 
-test("stage 6 instruction-only steps have explicit model and target-free runtime", async () => {
-  const [serviceSource, panelSource, contentSource, runnerSource, apiSource] = await Promise.all([
-    fs.promises.readFile(path.join(EXTENSION_PATH, "services", "trainingService.js"), "utf8"),
-    fs.promises.readFile(path.join(EXTENSION_PATH, "sidepanel", "sidepanel.js"), "utf8"),
-    fs.promises.readFile(path.join(EXTENSION_PATH, "content", "content-script.js"), "utf8"),
-    fs.promises.readFile(path.join(EXTENSION_PATH, "content", "overlay", "training-runner.js"), "utf8"),
-    fs.promises.readFile(path.resolve(__dirname, "..", "..", "..", "server", "GWTP.Api", "Program.cs"), "utf8")
-  ]);
+test("stage 6 instruction-only step - editor UI persists, reopens and previews target-free guidance", async () => {
+  test.setTimeout(60000);
+  const suffix = Date.now();
+  const topicName = `Instruction Only Topic ${suffix}`;
+  const guideName = `Instruction Only Guide ${suffix}`;
+  const instruction = `Instruction only guidance ${suffix}`;
+  const panel = await openPanel();
+  let fixture = null;
 
-  expect(serviceSource).toContain('targetType = "element"');
-  expect(panelSource).toContain('instructionOnlyInput.checked');
-  expect(panelSource).toContain('targetType: instructionOnly ? "none" : "element"');
-  expect(contentSource).toContain('message.step?.targetType === "none"');
-  expect(runnerSource).toContain('const instructionOnly = step?.targetType === "none"');
-  expect(apiSource).toContain('["TargetType"] = "ALTER TABLE GuideSteps ADD COLUMN TargetType TEXT NOT NULL DEFAULT \'element\';"');
+  const findGuide = () => panel.locator("#guidesList [data-guide-id]").filter({ hasText: guideName }).first();
+
+  try {
+    await login(panel, "sanity.editor");
+
+    // Author the complete fixture through the same GUI an editor uses.
+    await panel.locator("#openTopicsButton").click();
+    await panel.locator("#openCreateTopicButton").click();
+    await panel.locator("#newTopicInput").fill(topicName);
+    await panel.locator("#createTopicButton").click();
+    await expect(panel.locator("#topicsList [data-topic-id]").filter({ hasText: topicName }).first()).toBeVisible();
+    await panel.locator("#backFromTopicsButton").click();
+
+    fixture = await context.newPage();
+    await fixture.goto(`${SITE_URL}/gwtp-test-fixture.html`);
+    await fixture.bringToFront();
+
+    await panel.locator("#openNewGuideButton").click();
+    const topicOption = panel.locator("#topicSelect option").filter({ hasText: topicName });
+    await panel.locator("#topicSelect").selectOption(await topicOption.getAttribute("value"));
+    await panel.locator("#guideNameInput").fill(guideName);
+    await panel.locator("#guideStartUrlInput").fill(`${SITE_URL}/gwtp-test-fixture.html`);
+    await panel.locator("#guideAvailableInput").check();
+
+    await panel.locator("#addStepButton").click();
+    await panel.locator("#instructionOnlyInput").check();
+    await expect(panel.locator("#selectButton")).toBeDisabled();
+    await panel.locator("#instructionInput").fill(instruction);
+    await panel.locator("#saveStepButton").click();
+    await expect(panel.locator("#stepsList .step-item")).toHaveCount(1);
+    await expect(panel.locator("#stepsList .step-item").first()).toContainText(instruction);
+
+    // Saving the guide crosses the real UI -> extension service -> API -> DB path.
+    await panel.locator("#saveGuideButton").click();
+    await expect(findGuide()).toBeVisible();
+
+    // Reopen from persisted backend data rather than trusting the in-memory draft.
+    await findGuide().click();
+    await expect(panel.locator("#stepsList .step-item")).toHaveCount(1);
+    await panel.locator("#stepsList .step-item").first().click();
+    await expect(panel.locator("#instructionOnlyInput")).toBeChecked();
+    await expect(panel.locator("#instructionInput")).toContainText(instruction);
+    await expect(panel.locator("#selectorInput")).toHaveValue("");
+
+    // Preview must render guidance without any selected/highlighted target.
+    await fixture.bringToFront();
+    await panel.locator("#previewGuideButton").click();
+    const overlay = fixture.locator(".gwtp-training-overlay");
+    await expect(overlay).toBeVisible({ timeout: 10000 });
+    await expect(overlay).toContainText(instruction);
+    await expect(fixture.locator("[data-gwtp-highlighted='true']")).toHaveCount(0);
+    await expect(fixture.locator("[data-gwtp-training-target='true']")).toHaveCount(0);
+
+    await fixture.bringToFront();
+    await panel.locator("#exitPreviewButton").evaluate((button) => button.click());
+    await expect(overlay).toHaveCount(0);
+  } finally {
+    // Cleanup through the public Editor UI so this E2E remains rerunnable.
+    try {
+      if (await panel.locator("#appView").isVisible().catch(() => false)) {
+        if (await panel.locator("#guideEditorView").isVisible().catch(() => false)) {
+          await panel.locator("#backToGuidesButton").click().catch(() => {});
+        }
+        const guide = findGuide();
+        if (await guide.count()) {
+          await guide.click().catch(() => {});
+          await panel.locator("#deleteEditedGuideButton").click().catch(() => {});
+          if (await panel.locator("#deleteConfirmOverlay").isVisible().catch(() => false)) {
+            await panel.locator("#confirmDeleteButton").click().catch(() => {});
+          }
+        }
+        await panel.locator("#openTopicsButton").click().catch(() => {});
+        const topic = panel.locator("#topicsList [data-topic-id]").filter({ hasText: topicName }).first();
+        if (await topic.count()) {
+          await topic.click().catch(() => {});
+          await panel.locator("#deleteEditedTopicButton").click().catch(() => {});
+          if (await panel.locator("#deleteConfirmOverlay").isVisible().catch(() => false)) {
+            await panel.locator("#confirmDeleteButton").click().catch(() => {});
+          }
+        }
+      }
+    } catch {}
+    await panel.close().catch(() => {});
+    if (fixture) await fixture.close().catch(() => {});
+  }
 });
