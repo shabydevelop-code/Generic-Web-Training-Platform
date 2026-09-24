@@ -17,6 +17,7 @@ const saveGuideButton = document.getElementById("saveGuideButton");
 const saveGuideStatus = document.getElementById("saveGuideStatus");
 const statusElement = document.getElementById("status");
 const selectedElement = document.getElementById("selectedElement");
+const instructionOnlyInput = document.getElementById("instructionOnlyInput");
 const selectedTag = document.getElementById("selectedTag");
 const selectedSelector = document.getElementById("selectedSelector");
 const selectedFrame = document.getElementById("selectedFrame");
@@ -1498,11 +1499,11 @@ function updateStepSaveValidity() {
     validationType === "none" ||
     (Boolean(validationErrorInput.value.trim()) && (!validationNeedsValue || Boolean(validationValueInput.value)));
 
+  const instructionOnly = instructionOnlyInput.checked;
   saveStepButton.disabled =
-    !currentSelectedElement ||
-    !selectorInput.value.trim() ||
+    (!instructionOnly && (!currentSelectedElement || !selectorInput.value.trim())) ||
     !hasInstructionContent() ||
-    !validationComplete;
+    (!instructionOnly && !validationComplete);
 }
 
 async function validateSelectedStepElement() {
@@ -1604,6 +1605,7 @@ function closeStepCreator() {
   editStepDeleteSection.hidden = true;
   currentSelectedElement = null;
   selectorInput.value = "";
+  instructionOnlyInput.checked = false;
   screenNameInput.value = "";
   clearInstructionInput();
   resetValidationBuilder();
@@ -1626,6 +1628,9 @@ function openStepCreator() {
   editStepDeleteSection.hidden = true;
   currentSelectedElement = null;
   selectorInput.value = "";
+  instructionOnlyInput.checked = false;
+  selectButton.disabled = false;
+  validationTypeSelect.disabled = false;
   const existingSteps = window.trainingService.getSteps();
   screenNameInput.value = existingSteps.length
     ? (existingSteps[existingSteps.length - 1].screenName || "")
@@ -1654,18 +1659,22 @@ function openStepEditor(step) {
   renderSteps();
   saveStepButton.textContent = window.i18nService.translate("updateStepButton", window.i18nService.getLanguage());
   editStepDeleteSection.hidden = false;
-  currentSelectedElement = step.element || {
+  const instructionOnly = step.targetType === "none";
+  instructionOnlyInput.checked = instructionOnly;
+  currentSelectedElement = instructionOnly ? null : (step.element || {
     tagName: "",
     text: ""
-  };
-  selectorInput.value = step.selector;
+  });
+  selectorInput.value = instructionOnly ? "" : step.selector;
+  selectButton.disabled = instructionOnly;
+  validationTypeSelect.disabled = instructionOnly;
   screenNameInput.value = step.screenName || "";
   setInstructionHtml(step.instruction);
   loadValidationBuilder(step.validation);
   selectedTag.textContent = step.element?.tagName ? `<${step.element.tagName}>${step.element.text ? ` — ${step.element.text}` : ""}` : "";
   selectedSelector.textContent = step.selector;
-  renderSelectedFrame(currentSelectedElement);
-  selectedElement.hidden = false;
+  if (!instructionOnly) renderSelectedFrame(currentSelectedElement);
+  selectedElement.hidden = instructionOnly;
   stepEditor.hidden = false;
   selectButton.hidden = false;
   addStepButton.hidden = true;
@@ -1720,10 +1729,11 @@ async function persistStepChanges() {
         steps.map((step) => ({
           id: step.persistedId || null,
           selector: step.selector,
+          targetType: step.targetType || "element",
           instruction: step.instruction,
           screenName: step.screenName || null,
-          frame: step.element?.frame || null,
-          validation: step.validation || null
+          frame: step.targetType === "none" ? null : (step.element?.frame || null),
+          validation: step.targetType === "none" ? null : (step.validation || null)
         }))
       )
     });
@@ -1881,7 +1891,9 @@ function renderSteps() {
     instruction.innerHTML = sanitizeInstructionHtml(step.instruction || "");
 
     const selector = document.createElement("code");
-    selector.textContent = step.selector;
+    selector.textContent = step.targetType === "none"
+      ? window.i18nService.translate("instructionOnlyStepLabel", language)
+      : step.selector;
 
     item.append(header, screen, instruction, selector);
 
@@ -2045,10 +2057,11 @@ saveStepButton.addEventListener("click", async () => {
   }
 
   const instruction = getInstructionHtml();
-  const selector = selectorInput.value.trim();
+  const instructionOnly = instructionOnlyInput.checked;
+  const selector = instructionOnly ? "" : selectorInput.value.trim();
   const screenName = screenNameInput.value.trim();
 
-  if (!currentSelectedElement) {
+  if (!instructionOnly && !currentSelectedElement) {
     setStatus(window.i18nService.translate("stepElementRequired", language), "error");
     return;
   }
@@ -2067,18 +2080,20 @@ saveStepButton.addEventListener("click", async () => {
   const originalSelector = editingStepSnapshot?.selector || "";
   const originalFrame = editingStepSnapshot?.element?.frame || editingStepSnapshot?.frame || null;
   const selectedFrameValue = currentSelectedElement?.frame || null;
+  const originalTargetType = editingStepSnapshot?.targetType || "element";
   const targetChanged = !editingStepId
+    || (instructionOnly ? "none" : "element") !== originalTargetType
     || selector !== originalSelector
     || JSON.stringify(selectedFrameValue) !== JSON.stringify(originalFrame);
 
-  if (targetChanged && !(await validateSelectedStepElement())) {
+  if (!instructionOnly && targetChanged && !(await validateSelectedStepElement())) {
     setStatus(window.i18nService.translate("stepElementInvalid", language), "error");
     return;
   }
 
   let validation;
   try {
-    validation = buildStepValidation();
+    validation = instructionOnly ? null : buildStepValidation();
   } catch (error) {
     const validationType = validationTypeSelect.value;
     const needsValue = ["equals", "not_equals", "contains", "changed_regex"].includes(validationType);
@@ -2092,16 +2107,18 @@ saveStepButton.addEventListener("click", async () => {
     const step = editingStepId
       ? window.trainingService.updateStep(editingStepId, {
           selector,
+          targetType: instructionOnly ? "none" : "element",
           instruction,
           screenName,
-          element: currentSelectedElement,
+          element: instructionOnly ? null : currentSelectedElement,
           validation
         })
       : window.trainingService.createStep({
           selector,
+          targetType: instructionOnly ? "none" : "element",
           instruction,
           screenName,
-          element: currentSelectedElement,
+          element: instructionOnly ? null : currentSelectedElement,
           validation
         });
 
@@ -2180,6 +2197,19 @@ function applyListFormat(tagName) {
 }
 
 instructionInput.addEventListener("input", updateStepSaveValidity);
+instructionOnlyInput.addEventListener("change", () => {
+  const instructionOnly = instructionOnlyInput.checked;
+  if (instructionOnly && elementPickerActive) cancelElementPicker(false);
+  selectButton.disabled = instructionOnly;
+  validationTypeSelect.disabled = instructionOnly;
+  if (instructionOnly) {
+    currentSelectedElement = null;
+    selectorInput.value = "";
+    selectedElement.hidden = true;
+    resetValidationBuilder();
+  }
+  updateStepSaveValidity();
+});
 validationTypeSelect.addEventListener("change", () => { updateValidationBuilder(); updateStepSaveValidity(); });
 validationValueInput.addEventListener("input", updateStepSaveValidity);
 validationErrorInput.addEventListener("input", updateStepSaveValidity);
