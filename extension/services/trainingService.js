@@ -111,15 +111,16 @@
         id: step.id ?? crypto.randomUUID(),
         persistedId: step.id ?? null,
         order: index + 1,
-        selector: step.selector.trim(),
+        selector: (step.selector || "").trim(),
+        targetType: step.targetType === "none" ? "none" : "element",
         instruction: step.instruction.trim(),
         screenName: (step.screenName || "").trim(),
-        element: {
+        element: step.targetType === "none" ? null : {
           tagName: "",
           text: "",
           frame: step.frame ? { ...step.frame } : null
         },
-        validation: step.validation ? { ...step.validation } : null
+        validation: step.targetType === "none" ? null : (step.validation ? { ...step.validation } : null)
       });
     });
 
