@@ -9,6 +9,7 @@
 - One-time database content changes should use versioned migrations recorded in `SchemaMigrations`; do not keep permanent startup seed logic that repeatedly checks whether test/demo content exists.
 - Inspect current repository files before changing code.
 - When changing Editor/Admin management UI or behavior in the extension (Topics, Guides, Steps, Users, filters, validation, authoring, publish/availability, Preview, or related management flows), review the relevant Playwright E2E coverage in the same change set. Update or add tests when the behavior/DOM contract changes, run the targeted affected test group first, then run the full regression before considering the change verified. A UI change is not complete if its existing management tests are knowingly stale or broken.
+- Testing priority: user-visible behavior must be verified primarily through GUI/browser E2E using the same public UI path as the user. Direct API/backend tests are appropriate when the behavior under test is specifically a backend responsibility (for example HTTP authentication/authorization, API contracts, migrations/schema, database constraints, or behavior with no UI surface). Source-level assertions may protect architectural invariants, but they must not be treated as proof that a user-visible feature works end to end. Test fixture setup may use APIs only when the setup itself is not the behavior being tested.
 - Work incrementally and avoid partial-code patches when a complete coherent change is required.
 
 ## Product
