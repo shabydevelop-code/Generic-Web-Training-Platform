@@ -3049,11 +3049,11 @@ test("stage 6 editor picker - active selection can be cancelled from side panel"
 
   const pickerButton = panel.locator("#selectButton");
   await pickerButton.click();
-  await expect(pickerButton).toHaveText("בטל בחירת אלמנט");
+  await expect(pickerButton).toHaveText("בטל בחירת אלמנט · Esc");
   await expect(panel.locator("#elementPickerStatus")).toContainText("מצב בחירת אלמנט פעיל.");
 
   await pickerButton.click();
-  await expect(pickerButton).not.toHaveText("בטל בחירת אלמנט");
+  await expect(pickerButton).not.toHaveText("בטל בחירת אלמנט · Esc");
   await expect(panel.locator("#elementPickerStatus")).toContainText("בחירת האלמנט בוטלה.");
 
   const content = crm.frameLocator('iframe[name="TargetContent"]');
@@ -3081,14 +3081,14 @@ test("stage 6 editor picker - Escape in side panel cancels active selection", as
 
   const pickerButton = panel.locator("#selectButton");
   await pickerButton.click();
-  await expect(pickerButton).toHaveText("בטל בחירת אלמנט");
+  await expect(pickerButton).toHaveText("בטל בחירת אלמנט · Esc");
 
   // Keep keyboard focus inside the Side Panel: Escape must cancel here too,
   // not only when the target web page owns keyboard focus.
   await pickerButton.focus();
   await panel.keyboard.press("Escape");
 
-  await expect(pickerButton).not.toHaveText("בטל בחירת אלמנט");
+  await expect(pickerButton).not.toHaveText("בטל בחירת אלמנט · Esc");
   await expect(panel.locator("#elementPickerStatus")).toContainText("בחירת האלמנט בוטלה.");
 
   const content = crm.frameLocator('iframe[name="TargetContent"]');
