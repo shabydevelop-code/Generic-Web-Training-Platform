@@ -3,7 +3,7 @@
     en: Object.freeze({
       elementSelectionTitle: "Element Selection",
       selectionModeActive: "Selection mode active.",
-      cancelElementSelectionButton: "Cancel element selection",
+      cancelElementSelectionButton: "Cancel element selection · Esc",
       selectionModeStartError: "Could not start element selection on this page. Reload the page and try again.",
       pageControlUnavailable: "This action is not available on browser-internal pages. Open a regular web page and try again.",
       selectedElementNotFound: "Could not find the selected element on the current page.",
@@ -70,7 +70,6 @@
       guideAvailableLabel: "Available to learners",
       elementSelectionDescription: "Select an element directly from the current web page or test a CSS selector manually.",
       selectElementButton: "Select element from page · Ctrl+Shift+E",
-      cancelElementSelectionButton: "Cancel element selection · Esc",
       instructionOnlyLabel: "Instruction only — no page element",
       instructionOnlyStepLabel: "Instruction only",
       selectedElementLabel: "Selected element",
@@ -246,7 +245,7 @@
     he: Object.freeze({
       elementSelectionTitle: "בחירת אלמנט",
       selectionModeActive: "מצב בחירת אלמנט פעיל.",
-      cancelElementSelectionButton: "בטל בחירת אלמנט",
+      cancelElementSelectionButton: "בטל בחירת אלמנט · Esc",
       selectionModeStartError: "לא ניתן להתחיל בחירת אלמנט בעמוד זה. רענן את העמוד ונסה שוב.",
       pageControlUnavailable: "לא ניתן להתחיל בחירת אלמנט בעמוד זה. רענן את העמוד ונסה שוב. עמודים פנימיים של הדפדפן אינם נתמכים.",
       selectedElementNotFound: "לא ניתן למצוא את האלמנט שנבחר בעמוד הנוכחי.",
@@ -313,7 +312,6 @@
       guideAvailableLabel: "זמין ללומדים",
       elementSelectionDescription: "בחר אלמנט ישירות מהעמוד הנוכחי או בדוק בורר CSS באופן ידני.",
       selectElementButton: "בחר אלמנט מהעמוד · Ctrl+Shift+E",
-      cancelElementSelectionButton: "בטל בחירת אלמנט · Esc",
       instructionOnlyLabel: "הנחיה בלבד — ללא אלמנט בעמוד",
       instructionOnlyStepLabel: "הנחיה בלבד",
       selectedElementLabel: "אלמנט שנבחר",
