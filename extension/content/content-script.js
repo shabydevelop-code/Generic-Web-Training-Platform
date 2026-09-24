@@ -43,6 +43,10 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   }
 
   if (message?.type === "GWTP_CAN_SHOW_TRAINING_STEP") {
+    if (message.step?.targetType === "none") {
+      sendResponse({ success: true });
+      return;
+    }
     const result = message.step?.selector ? findElement(message.step.selector) : { element: null };
     sendResponse({ success: Boolean(result?.element) && !result?.error });
     return;
