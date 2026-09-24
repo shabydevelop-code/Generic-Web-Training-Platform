@@ -34,6 +34,7 @@ Database:
 - Admin user management includes a role filter for All / Editors / Learners; administrators remain in their dedicated section.
 - Editor guide library includes client-side filters for Topic and learner Availability over the existing guides API result.
 - Editor guide steps include a Screen filter populated from explicit `ScreenName` values. This filter changes list visibility only; it must not change `StepOrder` or persisted guide data.
+- Guide steps may explicitly use `TargetType=none` for instruction-only guidance. These steps require an instruction but no selector/frame, cannot carry element validation, and render guidance without highlighting a page element.
 
 ## Learner navigation architecture
 - During an active guide, the learner moves only with Previous/Next; there is no arbitrary step jumping.
