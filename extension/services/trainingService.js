@@ -1,9 +1,10 @@
 (() => {
   const steps = [];
 
-  function createStep({ selector, instruction, screenName = "", element, validation = null }) {
-    if (!selector || !selector.trim()) {
-      throw new Error("A selector is required to create a step.");
+  function createStep({ selector = "", instruction, screenName = "", element, validation = null, targetType = "element" }) {
+    const normalizedTargetType = targetType === "none" ? "none" : "element";
+    if (normalizedTargetType === "element" && (!selector || !selector.trim())) {
+      throw new Error("A selector is required to create an element step.");
     }
 
     if (!instruction || !instruction.trim()) {
@@ -13,7 +14,8 @@
     const step = {
       id: crypto.randomUUID(),
       order: steps.length + 1,
-      selector: selector.trim(),
+      selector: normalizedTargetType === "none" ? "" : selector.trim(),
+      targetType: normalizedTargetType,
       instruction: instruction.trim(),
       screenName: screenName.trim(),
       element: element
@@ -30,21 +32,25 @@
     return { ...step };
   }
 
-  function updateStep(id, { selector, instruction, screenName = "", element, validation = null }) {
+  function updateStep(id, { selector = "", instruction, screenName = "", element, validation = null, targetType = "element" }) {
     const index = steps.findIndex((step) => step.id === id);
     if (index < 0) throw new Error("Step not found.");
-    if (!selector || !selector.trim()) throw new Error("A selector is required to update a step.");
+    const normalizedTargetType = targetType === "none" ? "none" : "element";
+    if (normalizedTargetType === "element" && (!selector || !selector.trim())) throw new Error("A selector is required to update an element step.");
     if (!instruction || !instruction.trim()) throw new Error("An instruction is required to update a step.");
 
     steps[index] = {
       ...steps[index],
-      selector: selector.trim(),
+      selector: normalizedTargetType === "none" ? "" : selector.trim(),
+      targetType: normalizedTargetType,
       instruction: instruction.trim(),
       screenName: screenName.trim(),
-      element: element
-        ? { tagName: element.tagName || "", text: element.text || "", frame: element.frame ? { ...element.frame } : null }
-        : steps[index].element,
-      validation: validation ? { ...validation } : null
+      element: normalizedTargetType === "none"
+        ? null
+        : (element
+          ? { tagName: element.tagName || "", text: element.text || "", frame: element.frame ? { ...element.frame } : null }
+          : steps[index].element),
+      validation: normalizedTargetType === "none" ? null : (validation ? { ...validation } : null)
     };
     return { ...steps[index] };
   }
