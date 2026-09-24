@@ -42,11 +42,12 @@ async function showTrainingStep(step, navigation = {}) {
   clearTrainingStep();
   clearHighlight();
 
-  if (!step?.selector) {
+  const instructionOnly = step?.targetType === "none";
+  if (!instructionOnly && !step?.selector) {
     return { success: false, message: "Step selector is missing." };
   }
 
-  const targetResult = findElement(step.selector);
+  const targetResult = instructionOnly ? { element: null } : findElement(step.selector);
 
   if (targetResult.error) {
     return { success: false, message: targetResult.error };
@@ -54,7 +55,7 @@ async function showTrainingStep(step, navigation = {}) {
 
   const target = targetResult.element;
 
-  if (!target && !navigation.allowDetached) {
+  if (!instructionOnly && !target && !navigation.allowDetached) {
     return { success: false, message: "Step element was not found on this page." };
   }
 
@@ -334,7 +335,8 @@ async function showTrainingStep(step, navigation = {}) {
     validationContext.guideId,
     navigation.mode || validationContext.mode || "learner",
     Number.isInteger(navigation.stepIndex) ? navigation.stepIndex : 0,
-    step.selector
+    step.targetType || "element",
+    step.selector || ""
   ].join(":");
 
   let validationState = null;
@@ -770,8 +772,13 @@ async function showTrainingStep(step, navigation = {}) {
     if (!gwtpTrainingTarget) {
       const overlayRect = gwtpTrainingOverlay.getBoundingClientRect();
       const gap = 14;
-      gwtpTrainingOverlay.style.top = `${gap}px`;
-      gwtpTrainingOverlay.style.left = `${Math.max(gap, window.innerWidth - overlayRect.width - gap)}px`;
+      if (instructionOnly) {
+        gwtpTrainingOverlay.style.top = `${Math.max(gap, (window.innerHeight - overlayRect.height) / 2)}px`;
+        gwtpTrainingOverlay.style.left = `${Math.max(gap, (window.innerWidth - overlayRect.width) / 2)}px`;
+      } else {
+        gwtpTrainingOverlay.style.top = `${gap}px`;
+        gwtpTrainingOverlay.style.left = `${Math.max(gap, window.innerWidth - overlayRect.width - gap)}px`;
+      }
       return;
     }
 
