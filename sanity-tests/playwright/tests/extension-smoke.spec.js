@@ -301,7 +301,14 @@ test("stage 6 dynamic web app - GWTP follows SPA, DOM replacement, dynamic frame
   await app.locator("#replace-frame").click();
   const frame = app.frameLocator('iframe[name="DynamicContent"]');
   await expect(frame.locator("#frame-target")).toBeVisible();
-  await app.locator(".gwtp-training-overlay button").filter({ hasText: /הבא|Next/i }).click();
+
+  // Creating/replacing the iframe can emit PAGE_READY while the previous step is
+  // being restored. Wait for GWTP to finish that lifecycle and expose an enabled
+  // Next control instead of racing a transient disabled/detached overlay.
+  const nextFromFrameCreation = app.locator(".gwtp-training-overlay button").filter({ hasText: /הבא|Next/i });
+  await expect(nextFromFrameCreation).toBeVisible();
+  await expect(nextFromFrameCreation).toBeEnabled();
+  await nextFromFrameCreation.click();
   await expect(frame.locator("#frame-target")).toHaveCSS("outline-width", "3px");
 
   // Move to the real navigation link and let the host page navigate normally.
