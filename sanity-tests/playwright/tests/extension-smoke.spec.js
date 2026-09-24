@@ -3399,3 +3399,21 @@ test("stage 6 bubble fallback has no stale gap identifier", async () => {
   expect(targetPositioningSource).toContain("verticalGap");
   expect(targetPositioningSource).toContain("horizontalGap");
 });
+
+
+test("stage 6 instruction-only steps have explicit model and target-free runtime", async () => {
+  const [serviceSource, panelSource, contentSource, runnerSource, apiSource] = await Promise.all([
+    fs.promises.readFile(path.join(EXTENSION_PATH, "services", "trainingService.js"), "utf8"),
+    fs.promises.readFile(path.join(EXTENSION_PATH, "sidepanel", "sidepanel.js"), "utf8"),
+    fs.promises.readFile(path.join(EXTENSION_PATH, "content", "content-script.js"), "utf8"),
+    fs.promises.readFile(path.join(EXTENSION_PATH, "content", "overlay", "training-runner.js"), "utf8"),
+    fs.promises.readFile(path.resolve(__dirname, "..", "..", "..", "server", "GWTP.Api", "Program.cs"), "utf8")
+  ]);
+
+  expect(serviceSource).toContain('targetType = "element"');
+  expect(panelSource).toContain('instructionOnlyInput.checked');
+  expect(panelSource).toContain('targetType: instructionOnly ? "none" : "element"');
+  expect(contentSource).toContain('message.step?.targetType === "none"');
+  expect(runnerSource).toContain('const instructionOnly = step?.targetType === "none"');
+  expect(apiSource).toContain('["TargetType"] = "ALTER TABLE GuideSteps ADD COLUMN TargetType TEXT NOT NULL DEFAULT \'element\';"');
+});
