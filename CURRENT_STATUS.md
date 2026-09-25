@@ -22,7 +22,7 @@ Last updated: 2026-09-22
 ## Product naming — 2026-09-25
 - GWTP now expands to **Generic Workplace Training Platform**, replacing the former **Generic Web Training Platform** name.
 - The rename reflects the current Web + Windows architecture; Web is a supported runtime rather than the boundary of the product.
-- The browser extension display name is **GWTP - Workplace Training Platform**; the word `Generic` remains part of the formal product expansion but is intentionally omitted from the extension's user-facing name. Its action title remains **Open GWTP**.
+- The browser extension display name is **Workplace Training Platform**; both the `GWTP -` prefix and the word `Generic` are intentionally omitted from the extension's user-facing title. The formal product acronym remains GWTP = Generic Workplace Training Platform. Its action title remains **Open GWTP**.
 - Existing technical identifiers based on the `GWTP` acronym remain unchanged to avoid unnecessary compatibility risk.
 
 ## Repository rule
