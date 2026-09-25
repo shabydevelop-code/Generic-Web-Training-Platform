@@ -21,7 +21,12 @@
 
 
 ## Product
-Generic Web Training Platform is a Chrome/Edge side-panel extension for authoring and running guided training over live web applications.
+### Product naming
+- GWTP = **Generic Workplace Training Platform**.
+- The former expansion **Generic Web Training Platform** is retired because Web is now one supported runtime rather than the scope of the whole product.
+- Existing technical identifiers that already use the `GWTP` acronym remain unchanged.
+
+GWTP stands for Generic Workplace Training Platform. It is a generic workplace-training platform whose learner controller is the Chrome/Edge side-panel extension and whose runtimes can guide both live Web applications and Windows desktop applications.
 
 Main capabilities include element selection/highlighting, guide steps, Write/Click/None actions, validation, Previous/Next navigation, learner/editor/admin roles, learner preview, Topics, Guides and Users.
 
