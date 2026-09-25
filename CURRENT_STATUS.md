@@ -19,6 +19,12 @@ Last updated: 2026-09-22
 - Anonymous or invalid session tokens continue to return HTTP 401.
 - Stage 1/2 sanity was re-run after deployment and verified successfully: all 10 checks PASS, including the admin/editor role-separation check returning HTTP 403. Stage 2 is complete; Stage 3 visual E2E is next.
 
+## Product naming — 2026-09-25
+- GWTP now expands to **Generic Workplace Training Platform**, replacing the former **Generic Web Training Platform** name.
+- The rename reflects the current Web + Windows architecture; Web is a supported runtime rather than the boundary of the product.
+- The browser extension display name is now **GWTP - Generic Workplace Training Platform** and its action title is **Open GWTP**.
+- Existing technical identifiers based on the `GWTP` acronym remain unchanged to avoid unnecessary compatibility risk.
+
 ## Repository rule
 Every functional or architectural code change must update this file in the same change set. Completed work must not remain documented as pending.
 
