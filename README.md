@@ -1,6 +1,6 @@
-# Generic Web Training Platform
+# Generic Workplace Training Platform
 
-A generic browser-based training platform for guiding users through web applications using a Chrome/Edge extension and Side Panel.
+A generic workplace-training platform for guided learning across Web and Windows applications. The Chrome/Edge extension and Side Panel remain the learner controller, while runtime-specific components provide guidance for each supported application platform.
 
 ## Current milestone
 
