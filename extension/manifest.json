@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "GWTP - Workplace Training Platform",
+  "name": "Workplace Training Platform",
   "version": "0.1.0",
   "description": "Generic workplace training for web and Windows applications.",
   "icons": {
