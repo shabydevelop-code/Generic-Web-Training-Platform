@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "Web Training Platform",
+  "name": "GWTP - Generic Workplace Training Platform",
   "version": "0.1.0",
-  "description": "Generic in-browser guidance for web applications.",
+  "description": "Generic workplace training for web and Windows applications.",
   "icons": {
     "16": "icons/icon16.png",
     "48": "icons/icon48.png",
@@ -19,7 +19,7 @@
     "https://*/*"
   ],
   "action": {
-    "default_title": "Open Web Training Platform",
+    "default_title": "Open GWTP",
     "default_icon": {
       "16": "icons/icon16.png",
       "48": "icons/icon48.png",
