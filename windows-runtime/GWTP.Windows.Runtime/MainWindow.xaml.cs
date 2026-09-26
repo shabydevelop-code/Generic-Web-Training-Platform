@@ -15,6 +15,7 @@ public partial class MainWindow : Window
     private readonly DispatcherTimer _selectionTimer;
     private bool _isSelecting;
     private bool _mouseWasDown;
+    private bool _selectionArmed;
     private IntPtr _windowHandle;
     private ElementIdentity? _selectedIdentity;
     private readonly List<ElementIdentity> _testSteps = new();
@@ -54,6 +55,7 @@ public partial class MainWindow : Window
         _hoveredElement = null;
         _isSelecting = true;
         _mouseWasDown = IsLeftMouseButtonDown();
+        _selectionArmed = false;
         SelectElementButton.Content = "Cancel";
         FindElementButton.IsEnabled = false;
         StatusText.Text = "Move to the target application and left-click the control.";
@@ -401,6 +403,16 @@ public partial class MainWindow : Window
         if (!_isSelecting) return;
 
         var isMouseDown = IsLeftMouseButtonDown();
+
+        // Native authoring starts from a click inside Chrome. Do not allow that
+        // initiating click (or its release) to become the Windows target. Arm
+        // capture only after the picker has observed a fully released mouse.
+        if (!_selectionArmed && !isMouseDown)
+        {
+            _selectionArmed = true;
+            _mouseWasDown = false;
+        }
+
         var cursorPosition = Forms.Cursor.Position;
         var windowAtPoint = WindowFromPoint(cursorPosition);
         if (isMouseDown != _mouseWasDown)
@@ -416,7 +428,7 @@ public partial class MainWindow : Window
         {
             UpdateHoverHighlight(cursorPosition);
 
-            if (isMouseDown && !_mouseWasDown)
+            if (_selectionArmed && isMouseDown && !_mouseWasDown)
             {
                 CaptureElement(cursorPosition);
             }
@@ -947,6 +959,7 @@ public partial class MainWindow : Window
         _selectionTimer.Stop();
         _isSelecting = false;
         _mouseWasDown = false;
+        _selectionArmed = false;
         _hoveredElement = null;
         if (_highlightWindow is not null)
         {
