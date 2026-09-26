@@ -36,6 +36,33 @@ internal sealed class ElementTrackingService : IDisposable
 
     }
 
+    public bool IsTemporarilyHidden()
+    {
+        if (_hostWindow == IntPtr.Zero)
+        {
+            CaptureWindowChain(_element);
+        }
+
+        if (_hostWindow != IntPtr.Zero &&
+            (!IsWindow(_hostWindow) || IsIconic(_hostWindow) || !IsWindowVisible(_hostWindow)))
+        {
+            return true;
+        }
+
+        try
+        {
+            var bounds = _element.Current.BoundingRectangle;
+            return _element.Current.IsOffscreen ||
+                   bounds.IsEmpty ||
+                   bounds.Width <= 0 ||
+                   bounds.Height <= 0;
+        }
+        catch (ElementNotAvailableException)
+        {
+            return true;
+        }
+    }
+
     public void Start()
     {
         RequestBoundsRefresh();
