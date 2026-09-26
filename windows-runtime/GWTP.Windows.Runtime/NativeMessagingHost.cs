@@ -123,7 +123,17 @@ internal sealed class NativeMessagingHost : IDisposable
         if (!await ReadExactlyOrEofAsync(_input, lengthBytes, cancellationToken)) return null;
 
         var length = BinaryPrimitives.ReadInt32LittleEndian(lengthBytes);
-        if (length <= 0 || length > 1024 * 1024)
+
+        // Chromium closes a native-messaging port by closing its pipe. On the
+        // inherited Windows pipe this can surface as a zero length prefix before
+        // the final EOF. Treat it as a clean disconnect rather than a bad frame.
+        if (length == 0)
+        {
+            DiagnosticLog.Write("NativeMessaging.ZeroLengthDisconnect");
+            return null;
+        }
+
+        if (length < 0 || length > 1024 * 1024)
         {
             DiagnosticLog.Write($"NativeMessaging.InvalidFrame prefix={Convert.ToHexString(lengthBytes)} length={length}");
             throw new InvalidDataException("Invalid native messaging message length.");
