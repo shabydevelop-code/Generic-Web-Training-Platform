@@ -1189,8 +1189,8 @@ editorGuides.MapPut("/{id:long}/steps", (long id, List<CreateGuideStepRequest> s
     if (steps is null)
         return Results.BadRequest(new { message = "Steps are required." });
 
-    if (steps.Any(step => string.IsNullOrWhiteSpace(step.Instruction) || (!string.Equals(step.TargetType, "none", StringComparison.OrdinalIgnoreCase) && string.IsNullOrWhiteSpace(step.Selector))))
-        return Results.BadRequest(new { message = "Every step requires an instruction; element steps also require a selector." });
+    if (steps.Any(step => !IsValidStepTarget(step)))
+        return Results.BadRequest(new { message = "Every step requires a valid runtime-specific target; instruction-only steps require no element target." });
 
     if (steps.Any(step => string.Equals(step.TargetType, "none", StringComparison.OrdinalIgnoreCase) && step.Validation is not null))
         return Results.BadRequest(new { message = "Instruction-only steps cannot contain element validation." });
