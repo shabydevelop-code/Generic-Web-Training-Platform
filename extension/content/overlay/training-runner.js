@@ -7,8 +7,14 @@ let gwtpTrainingStepKey = null;
 let gwtpTrainingInitialValue = null;
 let gwtpTrainingTargetObserver = null;
 let gwtpTrainingPositionCleanup = null;
+let gwtpTrainingNavigationCleanup = null;
 
 function clearTrainingStep() {
+  if (gwtpTrainingNavigationCleanup) {
+    gwtpTrainingNavigationCleanup();
+    gwtpTrainingNavigationCleanup = null;
+  }
+
   if (gwtpTrainingPositionCleanup) {
     gwtpTrainingPositionCleanup();
     gwtpTrainingPositionCleanup = null;
@@ -121,10 +127,21 @@ async function showTrainingStep(step, navigation = {}) {
       });
     };
 
-    nativeNavigationAnchor.addEventListener("pointerdown", persistActivationIntent, { once: true });
-    nativeNavigationAnchor.addEventListener("keydown", (event) => {
+    const handleNavigationKeydown = (event) => {
       if (event.key === "Enter" || event.key === " ") persistActivationIntent();
-    }, { once: true });
+    };
+
+    nativeNavigationAnchor.addEventListener("pointerdown", persistActivationIntent);
+    nativeNavigationAnchor.addEventListener("keydown", handleNavigationKeydown);
+
+    // The link belongs to this authored step only. When Next/Previous replaces
+    // the step (including with an instruction-only bubble), remove the host-page
+    // activation listeners so a later click on the old link cannot advance the
+    // new current step.
+    gwtpTrainingNavigationCleanup = () => {
+      nativeNavigationAnchor.removeEventListener("pointerdown", persistActivationIntent);
+      nativeNavigationAnchor.removeEventListener("keydown", handleNavigationKeydown);
+    };
   }
 
 
