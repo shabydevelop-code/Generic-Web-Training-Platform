@@ -104,7 +104,7 @@ public partial class MainWindow : Window
         {
             var projectPath = Path.Combine(
                 AppContext.BaseDirectory,
-                "..", "..", "..", "AmbiguityTestHost", "AmbiguityTestHost.csproj");
+                "..", "..", "..", "..", "GWTP.Windows.TestHost", "GWTP.Windows.TestHost.csproj");
 
             projectPath = Path.GetFullPath(projectPath);
 
