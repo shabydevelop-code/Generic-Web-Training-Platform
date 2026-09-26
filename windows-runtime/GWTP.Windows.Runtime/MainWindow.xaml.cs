@@ -448,8 +448,19 @@ public partial class MainWindow : Window
             var element = ResolveSelectableElement(AutomationElement.FromPoint(
                 new System.Windows.Point(cursorPosition.X, cursorPosition.Y)));
 
-            if (element is null || (_authoringSelection && IsBrowserElement(element)))
+            if (element is null)
             {
+                DiagnosticLog.Write($"Picker.HoverRejected reason=null cursor={cursorPosition.X},{cursorPosition.Y}");
+                ClearHoverHighlight();
+                return;
+            }
+
+            if (_authoringSelection && IsBrowserElement(element))
+            {
+                if (_hoveredElement is not null)
+                {
+                    DiagnosticLog.Write("Picker.HoverRejected reason=browser");
+                }
                 ClearHoverHighlight();
                 return;
             }
@@ -460,8 +471,16 @@ public partial class MainWindow : Window
             }
 
             var bounds = element.Current.BoundingRectangle;
+            var processId = element.Current.ProcessId;
+            DiagnosticLog.Write(
+                $"Picker.HoverCandidate process='{GetProcessName(processId)}' processId={processId} " +
+                $"name='{element.Current.Name}' automationId='{element.Current.AutomationId}' " +
+                $"controlType='{element.Current.ControlType?.ProgrammaticName}' " +
+                $"bounds={bounds.Left:F0},{bounds.Top:F0},{bounds.Width:F0},{bounds.Height:F0}");
+
             if (bounds.IsEmpty || bounds.Width <= 0 || bounds.Height <= 0)
             {
+                DiagnosticLog.Write("Picker.HoverRejected reason=bounds");
                 ClearHoverHighlight();
                 return;
             }
@@ -469,13 +488,16 @@ public partial class MainWindow : Window
             _hoveredElement = element;
             _highlightWindow ??= new HighlightWindow();
             _highlightWindow.ShowAt(bounds);
+            DiagnosticLog.Write("Picker.HoverHighlighted");
         }
-        catch (ElementNotAvailableException)
+        catch (ElementNotAvailableException ex)
         {
+            DiagnosticLog.Write("Picker.HoverRejected reason=element-unavailable", ex);
             ClearHoverHighlight();
         }
-        catch
+        catch (Exception ex)
         {
+            DiagnosticLog.Write("Picker.HoverRejected reason=exception", ex);
             ClearHoverHighlight();
         }
     }
