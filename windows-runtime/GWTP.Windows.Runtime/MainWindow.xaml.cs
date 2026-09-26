@@ -29,6 +29,9 @@ public partial class MainWindow : Window
     private ElementIdentity? _pendingTargetIdentity;
     private bool _authoringSelection;
     private bool _authoredStepActive;
+    private string? _authoredInstruction;
+    private bool _authoredCanPrevious;
+    private bool _authoredCanNext;
 
     public event Action<WindowsTargetDescriptor>? AuthoringTargetSelected;
     public event Action<int>? AuthoredNavigationRequested;
@@ -95,6 +98,9 @@ public partial class MainWindow : Window
         }
 
         _authoredStepActive = true;
+        _authoredInstruction = instruction;
+        _authoredCanPrevious = canPrevious;
+        _authoredCanNext = canNext;
         StartElementTracking(element);
 
         _guidanceWindow!.SetInstruction(instruction);
@@ -121,6 +127,9 @@ public partial class MainWindow : Window
     public void ClearAuthoredStep()
     {
         _authoredStepActive = false;
+        _authoredInstruction = null;
+        _authoredCanPrevious = false;
+        _authoredCanNext = false;
         CloseTrainingOverlay();
         DiagnosticLog.Write("AuthoredStep.Cleared");
     }
@@ -249,7 +258,15 @@ public partial class MainWindow : Window
         _guidanceWindow = new GuidanceWindow();
         _guidanceWindow.PreviousRequested += OnPreviousRequested;
         _guidanceWindow.NextRequested += OnNextRequested;
-        UpdateGuidanceNavigationState();
+        if (_authoredStepActive)
+        {
+            _guidanceWindow.SetInstruction(_authoredInstruction);
+            _guidanceWindow.SetNavigationState(_authoredCanPrevious, _authoredCanNext);
+        }
+        else
+        {
+            UpdateGuidanceNavigationState();
+        }
     }
 
     private void OnPreviousRequested()
