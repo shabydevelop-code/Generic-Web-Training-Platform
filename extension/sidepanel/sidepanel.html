@@ -229,11 +229,23 @@
         </div>
 
         <div id="guideEditorView" hidden>
-        <header class="panel__header">
-          <h1 id="guideEditorTitle" data-i18n="guideEditorTitle">Edit Guide</h1>
-          <p id="guideEditorDescription" class="description" data-i18n="guideEditorDescription">
-            Edit the guide details and its steps.
-          </p>
+        <header class="panel__header guide-editor-header">
+          <div class="guide-editor-header__copy">
+            <div class="guide-editor-header__title-row">
+              <h1 id="guideEditorTitle" data-i18n="guideEditorTitle">Edit Guide</h1>
+              <span id="previewModeBadge" class="guide-preview-badge" data-i18n="previewModeBadge" hidden>Preview mode</span>
+            </div>
+            <p id="guideEditorDescription" class="description" data-i18n="guideEditorDescription">
+              Edit the guide details and its steps.
+            </p>
+          </div>
+          <div id="previewGuideSection" class="guide-preview-section">
+            <button id="previewGuideButton" class="button guide-preview-button" type="button" data-i18n="previewGuideButton">Preview</button>
+            <div id="previewActiveControls" class="guide-preview-active" hidden>
+              <span id="previewProgress" class="guide-preview-active__status"></span>
+              <button id="exitPreviewButton" class="button guide-preview-exit-button" type="button" data-i18n="exitPreviewButton">Exit preview</button>
+            </div>
+          </div>
         </header>
 
         <section class="card guide-details-card">
@@ -264,14 +276,6 @@
             <button id="saveGuideButton" class="button button--primary guide-save-button" type="button" data-i18n="saveGuideButton">Save Guide</button>
             <button id="backToGuidesButton" class="button" type="button" data-i18n="cancelButton">Close</button>
           </div>
-          <div id="previewGuideSection" class="guide-preview-section">
-            <button id="previewGuideButton" class="button button--primary button--full" type="button" data-i18n="previewGuideButton">Preview</button>
-            <div id="previewActiveControls" class="guide-preview-active" hidden>
-              <span id="previewProgress" class="guide-preview-active__status"></span>
-              <button id="exitPreviewButton" class="button button--full" type="button" data-i18n="exitPreviewButton">Exit preview</button>
-            </div>
-          </div>
-
           <div id="editGuideDeleteSection" class="entity-edit-delete-section" hidden>
             <button id="deleteEditedGuideButton" class="button button--danger button--full" type="button" data-i18n="deleteStepButton">Delete</button>
           </div>
