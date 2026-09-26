@@ -18,6 +18,7 @@ const saveGuideStatus = document.getElementById("saveGuideStatus");
 const statusElement = document.getElementById("status");
 const selectedElement = document.getElementById("selectedElement");
 const instructionOnlyInput = document.getElementById("instructionOnlyInput");
+const stepRuntimeSelect = document.getElementById("stepRuntimeSelect");
 const selectedTag = document.getElementById("selectedTag");
 const selectedSelector = document.getElementById("selectedSelector");
 const selectedFrame = document.getElementById("selectedFrame");
@@ -216,6 +217,7 @@ let pendingDeleteAction = null;
 let deleteConfirmationReturnFocus = null;
 
 let currentSelectedElement = null;
+let currentWindowsTarget = null;
 let activeStepId = null;
 let adminModeActive = false;
 let editingUserId = null;
@@ -1570,13 +1572,20 @@ function updateStepSaveValidity() {
     (Boolean(validationErrorInput.value.trim()) && (!validationNeedsValue || Boolean(validationValueInput.value)));
 
   const instructionOnly = instructionOnlyInput.checked;
+  const runtime = stepRuntimeSelect.value === "windows" ? "windows" : "web";
+  const targetMissing = !instructionOnly && (
+    runtime === "windows"
+      ? !currentWindowsTarget
+      : (!currentSelectedElement || !selectorInput.value.trim())
+  );
   saveStepButton.disabled =
-    (!instructionOnly && (!currentSelectedElement || !selectorInput.value.trim())) ||
+    targetMissing ||
     !hasInstructionContent() ||
     (!instructionOnly && !validationComplete);
 }
 
 async function validateSelectedStepElement() {
+  if (stepRuntimeSelect.value === "windows") return Boolean(currentWindowsTarget);
   if (!currentSelectedElement || !selectorInput.value.trim()) return false;
 
   const message = {
@@ -1682,7 +1691,9 @@ function closeStepCreator() {
   saveStepButton.textContent = window.i18nService.translate("saveStepButton", window.i18nService.getLanguage());
   editStepDeleteSection.hidden = true;
   currentSelectedElement = null;
+  currentWindowsTarget = null;
   selectorInput.value = "";
+  stepRuntimeSelect.value = "web";
   instructionOnlyInput.checked = false;
   screenNameInput.value = "";
   clearInstructionInput();
@@ -1705,7 +1716,9 @@ function openStepCreator() {
   saveStepButton.textContent = window.i18nService.translate("saveStepButton", window.i18nService.getLanguage());
   editStepDeleteSection.hidden = true;
   currentSelectedElement = null;
+  currentWindowsTarget = null;
   selectorInput.value = "";
+  stepRuntimeSelect.value = "web";
   instructionOnlyInput.checked = false;
   selectButton.disabled = false;
   validationTypeSelect.disabled = false;
@@ -1738,21 +1751,30 @@ function openStepEditor(step) {
   saveStepButton.textContent = window.i18nService.translate("updateStepButton", window.i18nService.getLanguage());
   editStepDeleteSection.hidden = false;
   const instructionOnly = step.targetType === "none";
+  const runtime = step.runtime === "windows" ? "windows" : "web";
+  stepRuntimeSelect.value = runtime;
   instructionOnlyInput.checked = instructionOnly;
-  currentSelectedElement = instructionOnly ? null : (step.element || {
+  currentWindowsTarget = instructionOnly || runtime !== "windows" ? null : (step.windowsTarget || null);
+  currentSelectedElement = instructionOnly || runtime === "windows" ? null : (step.element || {
     tagName: "",
     text: ""
   });
-  selectorInput.value = instructionOnly ? "" : step.selector;
+  selectorInput.value = instructionOnly || runtime === "windows" ? "" : step.selector;
   selectButton.disabled = instructionOnly;
   selectButton.hidden = instructionOnly;
   validationTypeSelect.disabled = instructionOnly;
   screenNameInput.value = step.screenName || "";
   setInstructionHtml(step.instruction);
   loadValidationBuilder(step.validation);
-  selectedTag.textContent = step.element?.tagName ? `<${step.element.tagName}>${step.element.text ? ` — ${step.element.text}` : ""}` : "";
-  selectedSelector.textContent = step.selector;
-  if (!instructionOnly) renderSelectedFrame(currentSelectedElement);
+  if (runtime === "windows" && currentWindowsTarget) {
+    selectedTag.textContent = currentWindowsTarget.element?.name || currentWindowsTarget.element?.automationId || currentWindowsTarget.element?.controlType || "";
+    selectedSelector.textContent = `${currentWindowsTarget.processName} · ${currentWindowsTarget.element?.controlType || ""}`;
+    selectedFrame.textContent = currentWindowsTarget.window?.name || currentWindowsTarget.window?.automationId || "";
+  } else {
+    selectedTag.textContent = step.element?.tagName ? `<${step.element.tagName}>${step.element.text ? ` — ${step.element.text}` : ""}` : "";
+    selectedSelector.textContent = step.selector;
+    if (!instructionOnly) renderSelectedFrame(currentSelectedElement);
+  }
   selectedElement.hidden = instructionOnly;
   stepEditor.hidden = false;
   addStepButton.hidden = true;
@@ -2139,10 +2161,11 @@ saveStepButton.addEventListener("click", async () => {
 
   const instruction = getInstructionHtml();
   const instructionOnly = instructionOnlyInput.checked;
-  const selector = instructionOnly ? "" : selectorInput.value.trim();
+  const runtime = stepRuntimeSelect.value === "windows" ? "windows" : "web";
+  const selector = instructionOnly || runtime === "windows" ? "" : selectorInput.value.trim();
   const screenName = screenNameInput.value.trim();
 
-  if (!instructionOnly && !currentSelectedElement) {
+  if (!instructionOnly && runtime === "web" && !currentSelectedElement) {
     setStatus(window.i18nService.translate("stepElementRequired", language), "error");
     return;
   }
@@ -2165,7 +2188,9 @@ saveStepButton.addEventListener("click", async () => {
   const targetChanged = !editingStepId
     || (instructionOnly ? "none" : "element") !== originalTargetType
     || selector !== originalSelector
-    || JSON.stringify(selectedFrameValue) !== JSON.stringify(originalFrame);
+    || runtime !== (editingStepSnapshot?.runtime === "windows" ? "windows" : "web")
+    || JSON.stringify(selectedFrameValue) !== JSON.stringify(originalFrame)
+    || JSON.stringify(currentWindowsTarget) !== JSON.stringify(editingStepSnapshot?.windowsTarget || null);
 
   if (!instructionOnly && targetChanged && !(await validateSelectedStepElement())) {
     setStatus(window.i18nService.translate("stepElementInvalid", language), "error");
@@ -2189,6 +2214,8 @@ saveStepButton.addEventListener("click", async () => {
       ? window.trainingService.updateStep(editingStepId, {
           selector,
           targetType: instructionOnly ? "none" : "element",
+          runtime,
+          windowsTarget: instructionOnly || runtime !== "windows" ? null : currentWindowsTarget,
           instruction,
           screenName,
           element: instructionOnly ? null : currentSelectedElement,
@@ -2197,6 +2224,8 @@ saveStepButton.addEventListener("click", async () => {
       : window.trainingService.createStep({
           selector,
           targetType: instructionOnly ? "none" : "element",
+          runtime,
+          windowsTarget: instructionOnly || runtime !== "windows" ? null : currentWindowsTarget,
           instruction,
           screenName,
           element: instructionOnly ? null : currentSelectedElement,
