@@ -90,6 +90,13 @@ public partial class MainWindow : Window
             return false;
         }
 
+        // Entering a Windows step is an explicit cross-runtime handoff. If the
+        // uniquely resolved target application is already running, surface its
+        // top-level window once before rendering guidance. After this handoff the
+        // tracker remains passive: a later user minimize/foreground change is
+        // respected and will only hide/re-attach guidance.
+        ActivateAuthoredTargetWindow(element);
+
         var bounds = element.Current.BoundingRectangle;
         if (bounds.IsEmpty || bounds.Width <= 0 || bounds.Height <= 0)
         {
@@ -122,6 +129,51 @@ public partial class MainWindow : Window
             DiagnosticLog.Write("AuthoredStep.Shown");
         }
         return true;
+    }
+
+    private static void ActivateAuthoredTargetWindow(AutomationElement element)
+    {
+        try
+        {
+            var walker = TreeWalker.ControlViewWalker;
+            var current = element;
+            AutomationElement? topLevelWindow = null;
+
+            for (var depth = 0; current is not null && depth < 64; depth++)
+            {
+                if (current.Current.ControlType == ControlType.Window)
+                    topLevelWindow = current;
+
+                AutomationElement? parent;
+                try { parent = walker.GetParent(current); }
+                catch (ElementNotAvailableException) { break; }
+                if (parent is null || parent == AutomationElement.RootElement) break;
+                current = parent;
+            }
+
+            topLevelWindow ??= element;
+            var handle = new IntPtr(topLevelWindow.Current.NativeWindowHandle);
+            if (handle == IntPtr.Zero) return;
+
+            if (IsIconic(handle))
+            {
+                ShowWindow(handle, SwRestore);
+                DiagnosticLog.Write("AuthoredStep.TargetWindowRestored");
+            }
+
+            if (GetForegroundWindow() != handle && SetForegroundWindow(handle))
+                DiagnosticLog.Write("AuthoredStep.TargetWindowActivated");
+        }
+        catch (ElementNotAvailableException)
+        {
+            DiagnosticLog.Write("AuthoredStep.TargetWindowActivationSkippedUnavailable");
+        }
+        catch (Exception ex)
+        {
+            // Activation is UX assistance, not target identity. A foreground
+            // restriction must not invalidate an otherwise resolvable step.
+            DiagnosticLog.Write($"AuthoredStep.TargetWindowActivationSkipped:{ex.GetType().Name}");
+        }
     }
 
     public void ClearAuthoredStep()
@@ -1118,6 +1170,20 @@ public partial class MainWindow : Window
 
     private static string DisplayValue(string? value)
         => string.IsNullOrWhiteSpace(value) ? "—" : value;
+
+    private const int SwRestore = 9;
+
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool IsIconic(IntPtr windowHandle);
+
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool ShowWindow(IntPtr windowHandle, int command);
+
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool SetForegroundWindow(IntPtr windowHandle);
 
     [DllImport("user32.dll")]
     private static extern short GetAsyncKeyState(int virtualKey);
