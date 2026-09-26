@@ -149,6 +149,8 @@ test("stage 6 guidance positioning - bubble follows target while scrolling", asy
     await panel.locator("#learnerTopicSelect").selectOption(String(setup.topicId));
     await panel.locator("#learnerGuideSelect").selectOption(String(setup.guideId));
     await panel.locator("#startLearningButton").click();
+    await expect(panel.locator("#learnerStartInstructionPanel")).toBeVisible();
+    await expect(panel.locator("#learnerStartInstructionText")).toHaveText("Open the relevant system and navigate to the starting screen.");
     await confirmGuideStartInstruction(panel);
 
     const target = fixture.locator("#fixture-action");
