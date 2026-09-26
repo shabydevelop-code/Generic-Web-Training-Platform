@@ -1005,7 +1005,7 @@ function openNewGuide() {
   topicsView.hidden = true;
   topicSelect.value = "";
   guideNameInput.value = "";
-  guideStartInstructionInput.value = "";
+  guideStartInstructionInput.value = window.i18nService.translate("guideStartInstructionDefault", language);
   window.trainingService.clearSteps();
   activeStepId = null;
   editingStepId = null;
