@@ -44,7 +44,8 @@
                 </UniformGrid>
             </Grid>
 
-            <TextBlock FontSize="14"
+            <TextBlock x:Name="InstructionText"
+                       FontSize="14"
                        FontWeight="Medium"
                        LineHeight="22"
                        TextWrapping="Wrap"
