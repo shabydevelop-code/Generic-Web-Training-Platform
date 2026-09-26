@@ -725,6 +725,8 @@ test("stage 5 editor preview - navigation, validation and exit cleanup work thro
 
     await fixture.bringToFront();
     await panel.locator("#previewGuideButton").click();
+    await expect(panel.locator("#learnerStartInstructionText")).toHaveText("Open the relevant system and navigate to the starting screen.");
+    await confirmGuideStartInstruction(panel);
     let overlay = content.locator(".gwtp-training-overlay");
     await expect(overlay).toHaveCount(1);
     await expect(overlay).toContainText("Preview required step");
@@ -1886,6 +1888,7 @@ test("stage 6 full authoring lifecycle - new topic guide reopen edit steps previ
     // Preview must consume the reopened, updated persisted Step order/content.
     await crm.bringToFront();
     await panel.locator("#previewGuideButton").click();
+    await confirmGuideStartInstruction(panel);
     const overlay = content.locator(".gwtp-training-overlay");
     await expect(overlay).toContainText(updatedFirstInstruction);
     await overlay.locator("button").filter({ hasText: /הבא|Next/i }).click();
@@ -2637,6 +2640,7 @@ test("stage 4 lifecycle - editor authors, previews and publishes a guide that le
   // Preview must work while the guide is still unpublished.
   await crm.bringToFront();
   await editor.locator("#previewGuideButton").click();
+  await confirmGuideStartInstruction(editor);
   await expect(content.locator("#site-code")).toHaveCSS("outline-width", "3px", { timeout: 10000 });
   await expect(content.locator(".gwtp-training-overlay")).toHaveCount(1);
   await expect(content.locator(".gwtp-training-overlay")).toBeVisible();
@@ -3501,6 +3505,7 @@ test("stage 6 instruction-only step - editor UI persists, reopens and previews t
     // Preview must render guidance without any selected/highlighted target.
     await fixture.bringToFront();
     await panel.locator("#previewGuideButton").click();
+    await confirmGuideStartInstruction(panel);
     const overlay = fixture.locator(".gwtp-training-overlay");
     await expect(overlay).toBeVisible({ timeout: 10000 });
     await expect(overlay).toContainText(instruction);
