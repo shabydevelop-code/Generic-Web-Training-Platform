@@ -123,3 +123,12 @@ Database:
 - Instruction-only steps (`TargetType=none`) require no element target. Their runtime still matters because it determines which runtime presents the guidance during a mixed guide.
 - Do not add a database migration merely to introduce a runtime field while the Windows target DTO is unresolved. Define the typed target contract first, then migrate DB/API/Editor/runtime coherently in one production-compatible slice.
 - Existing Web guides must migrate compatibly to runtime `web`; no editor-authored manual Guide.Platform field is planned.
+
+## Production Windows Target Descriptor frozen (2026-09-26)
+
+- The first production Windows target contract is now defined in `WINDOWS_TARGET_DESCRIPTOR.md` and supersedes the earlier "descriptor unresolved" state.
+- Persisted Windows identity is: ProcessName + separate top-level Window descriptor + Element descriptor + an ordered nearest-to-farthest meaningful ancestor path.
+- Element ControlType is required. AutomationId is the preferred stable discriminator; Name is a strict fallback only when that descriptor has no authored AutomationId. When AutomationId exists, Name is diagnostic metadata and a runtime Name change must not invalidate the target.
+- Do not persist PID, HWND, SessionId, bounds, RuntimeId or other transient process/window state. Current Windows SessionId remains runtime scoping only.
+- Resolution must be deterministic and fail safe: zero matches => unavailable/pending; multiple indistinguishable matches => ambiguous/pending; never select an arbitrary target.
+- The next implementation slice is now DB/API/Editor/runtime integration of the frozen shared GuideStep runtime + typed target contract, with compatible migration of existing Web steps to runtime `web`.
