@@ -281,6 +281,14 @@
         <section id="stepEditor" class="card" hidden>
           <h2 data-i18n="stepEditorTitle">Create Step</h2>
 
+          <div class="form-field">
+            <label for="stepRuntimeSelect" data-i18n="stepRuntimeLabel">Runtime</label>
+            <select id="stepRuntimeSelect">
+              <option value="web" data-i18n="stepRuntimeWeb">Web</option>
+              <option value="windows" data-i18n="stepRuntimeWindows">Windows</option>
+            </select>
+          </div>
+
           <label class="checkbox-row step-target-mode">
             <input id="instructionOnlyInput" type="checkbox" />
             <span data-i18n="instructionOnlyLabel">Instruction only — no page element</span>
@@ -482,6 +490,7 @@
     <script src="../services/trainingService.js"></script>
     <script src="../services/permissionService.js"></script>
     <script src="../services/messagingService.js"></script>
+    <script src="../services/windowsBridgeService.js"></script>
     <script src="../learner/guide-runner.js"></script>
     <script src="sidepanel.js"></script>
   </body>
