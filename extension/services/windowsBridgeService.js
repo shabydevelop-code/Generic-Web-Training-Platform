@@ -59,6 +59,13 @@
   function ensurePreviewPort() {
     if (previewPort) return previewPort;
     previewPort = chrome.runtime.connectNative(HOST_NAME);
+    previewPort.onMessage.addListener((message) => {
+      if (message?.type === "navigationRequested") {
+        window.dispatchEvent(new CustomEvent("gwtp-windows-preview-navigation", {
+          detail: { direction: message.direction }
+        }));
+      }
+    });
     previewPort.onDisconnect.addListener(() => { previewPort = null; });
     return previewPort;
   }
@@ -87,7 +94,9 @@
     const response = await requestPreview({
       type: "showStep",
       target: step?.windowsTarget,
-      instruction: step?.instruction || ""
+      instruction: step?.instruction || "",
+      canPrevious: Boolean(step?.navigation?.canPrevious),
+      canNext: Boolean(step?.navigation?.canNext)
     }, "stepShown");
     return response;
   }
