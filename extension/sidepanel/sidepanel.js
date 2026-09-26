@@ -566,7 +566,11 @@ async function handleRestartLearning() {
 
   try {
     const guide = await window.apiService.request(`/api/learner/guides/${guideId}`);
-    if (!(await showStartInstruction(guide))) return;
+    if (!(await showStartInstruction(guide))) {
+      learnerStatus.textContent = "";
+      learnerStatus.removeAttribute("data-type");
+      return;
+    }
     await window.guideRunner.restart(guide);
     learnerSessionActive = true;
 
@@ -617,10 +621,18 @@ async function handleStartLearning() {
         throw new Error("Could not resume the saved guide step.");
       }
     } else if (isCompleted) {
-      if (!(await showStartInstruction(guide))) return;
+      if (!(await showStartInstruction(guide))) {
+      learnerStatus.textContent = "";
+      learnerStatus.removeAttribute("data-type");
+      return;
+    }
       await window.guideRunner.restart(guide);
     } else {
-      if (!(await showStartInstruction(guide))) return;
+      if (!(await showStartInstruction(guide))) {
+      learnerStatus.textContent = "";
+      learnerStatus.removeAttribute("data-type");
+      return;
+    }
       await window.guideRunner.start(guide);
     }
     learnerSessionActive = true;
