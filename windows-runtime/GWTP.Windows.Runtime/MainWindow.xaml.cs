@@ -28,8 +28,10 @@ public partial class MainWindow : Window
     private PendingWindowTargetWatcher? _pendingTargetWatcher;
     private ElementIdentity? _pendingTargetIdentity;
     private bool _authoringSelection;
+    private bool _authoredStepActive;
 
     public event Action<WindowsTargetDescriptor>? AuthoringTargetSelected;
+    public event Action<int>? AuthoredNavigationRequested;
     public event Action? AuthoringSelectionCancelled;
 
     public MainWindow()
@@ -70,7 +72,7 @@ public partial class MainWindow : Window
         AuthoringSelectionCancelled?.Invoke();
     }
 
-    public bool ShowAuthoredStep(WindowsTargetDescriptor target, string? instruction)
+    public bool ShowAuthoredStep(WindowsTargetDescriptor target, string? instruction, bool canPrevious, bool canNext)
     {
         CloseTrainingOverlay();
         var element = WindowsTargetResolver.Resolve(target);
@@ -94,7 +96,8 @@ public partial class MainWindow : Window
         EnsureGuidanceWindow();
         _guidanceWindow!.SetInstruction(instruction);
         _guidanceWindow.SetValidationMessage(null);
-        _guidanceWindow.SetNavigationState(false, false);
+        _authoredStepActive = true;
+        _guidanceWindow.SetNavigationState(canPrevious, canNext);
         _guidanceWindow.ResetManualPosition();
         _guidanceWindow.ShowNear(bounds);
         StartElementTracking(element);
@@ -104,6 +107,7 @@ public partial class MainWindow : Window
 
     public void ClearAuthoredStep()
     {
+        _authoredStepActive = false;
         CloseTrainingOverlay();
         DiagnosticLog.Write("AuthoredStep.Cleared");
     }
@@ -237,6 +241,11 @@ public partial class MainWindow : Window
 
     private void OnPreviousRequested()
     {
+        if (_authoredStepActive)
+        {
+            AuthoredNavigationRequested?.Invoke(-1);
+            return;
+        }
         if (_currentTestStepIndex <= 0) return;
         _currentTestStepIndex--;
         ShowCurrentTestStep();
@@ -244,6 +253,11 @@ public partial class MainWindow : Window
 
     private void OnNextRequested()
     {
+        if (_authoredStepActive)
+        {
+            AuthoredNavigationRequested?.Invoke(1);
+            return;
+        }
         if (_currentTestStepIndex < 0 || _currentTestStepIndex >= _testSteps.Count - 1) return;
 
         // The pending-target navigation harness intentionally advances without
