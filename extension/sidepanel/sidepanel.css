@@ -1169,20 +1169,76 @@ body {
   bottom: -6px;
 }
 
+.guide-editor-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.guide-editor-header__copy {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.guide-editor-header__title-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.guide-editor-header__title-row h1 {
+  margin: 0;
+}
+
 .guide-preview-section {
-  margin-top: 16px;
+  flex: 0 0 auto;
+}
+
+.guide-preview-button,
+.guide-preview-exit-button {
+  min-height: 34px;
+  padding-inline: 12px;
+  font-weight: 600;
+}
+
+.guide-preview-button {
+  border-color: #98a2b3;
+  background: #ffffff;
+}
+
+.guide-preview-exit-button {
+  border-color: #344054;
+  background: #344054;
+  color: #ffffff;
 }
 
 .guide-preview-active {
   display: grid;
-  gap: 10px;
+  justify-items: end;
+  gap: 6px;
 }
 
 .guide-preview-active__status {
   display: block;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 600;
-  text-align: center;
+  white-space: nowrap;
+}
+
+.guide-preview-badge {
+  padding: 3px 8px;
+  border: 1px solid #98a2b3;
+  border-radius: 999px;
+  background: #f2f4f7;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.guide-preview-badge[hidden] {
+  display: none;
 }
 
 
