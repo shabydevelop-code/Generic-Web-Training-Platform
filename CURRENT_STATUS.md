@@ -571,3 +571,5 @@ Later accessibility phases must add their own concrete regression checks to this
 - HE/EN interface labels and placeholders continue to come from the existing i18n service; authored StartInstruction remains guide data rather than localized UI text.
 
 - Follow-up: the neutral default is now “פתח את המערכת והגע לנקודה שממנה מתחיל המדריך.” / “Open the system and navigate to the point where the guide begins.” New guides are prefilled from the existing HE/EN i18n language, while the one-time migration replaces blank and temporary fallback values without assuming a specific start screen. Editors can override the text per guide.
+
+- Editor Preview now mirrors a fresh learner start: it shows the guide StartInstruction and waits for confirmation before rendering step 1. Cancelling leaves Preview inactive, and Preview still does not create or mutate LearnerProgress. Playwright Preview flows were updated to cover this contract.
