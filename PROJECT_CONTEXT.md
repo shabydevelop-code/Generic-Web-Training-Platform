@@ -151,3 +151,13 @@ Database:
 - After pulling Backend/API changes, deploy them with `deploy-gwtp-service.bat`; the deployed service is the API instance used by sanity and Playwright tests.
 - `start-server.bat` is reserved for intentional standalone/local API debugging when the Windows Service is stopped/not being used.
 - Normal Backend verification flow: `git pull` -> `deploy-gwtp-service.bat` -> sanity tests -> relevant/full Playwright regression.
+
+
+## Windows runtime bridge (2026-09-26)
+
+- Browser-to-Windows communication uses Chrome/Edge Native Messaging, not the central API service and not a local polling endpoint.
+- The Native Messaging host runs in the same interactive Windows user/session as the browser, preserving the UIA/RDS session boundary. The API Windows Service remains responsible for data/auth/progress and must not perform desktop UI Automation.
+- Native host name: `com.gwtp.windows`. Registration is per user and must allow the explicit installed/unpacked extension ID; do not use wildcard origins.
+- Editor Windows target selection is descriptor-only. It captures/stores the frozen `WindowsTargetDescriptor`; it must not create learner progress or show GuidanceWindow as a side effect.
+- Web picker and Windows picker are isolated paths behind the same step-level Runtime model. Web continues to use selector/frame identity; Windows uses WindowsTarget only.
+- Runtime synchronization remains event-driven. Native Messaging is request/event based; do not add HTTP polling or timer-based bridge discovery.
