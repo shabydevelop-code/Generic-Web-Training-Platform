@@ -1291,3 +1291,13 @@ select[aria-invalid="true"],
   border-color: #b42318;
   box-shadow: 0 0 0 2px rgba(180, 35, 24, 0.12);
 }
+
+.start-instruction-dialog__message {
+  margin: 12px 0 0;
+  line-height: 1.55;
+  white-space: pre-wrap;
+}
+
+.start-instruction-dialog .actions {
+  margin-top: 18px;
+}
