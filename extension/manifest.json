@@ -12,7 +12,8 @@
     "activeTab",
     "sidePanel",
     "scripting",
-    "storage"
+    "storage",
+    "nativeMessaging"
   ],
   "host_permissions": [
     "http://*/*",
