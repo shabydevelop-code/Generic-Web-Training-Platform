@@ -91,3 +91,12 @@ Database:
 - Business validation belongs to the live business application. GWTP must not duplicate, infer, or replace business rules enforced by systems such as PeopleSoft.
 - If blur, change, click, or another learner action triggers business validation, a postback, frame reload, or DOM replacement, GWTP must allow the business application to perform that validation and preserve the learning/navigation state across the transition.
 - GWTP should react to the resulting page/DOM state through the existing page-ready, target-availability, and pending-navigation architecture rather than deciding whether the business validation itself succeeded.
+
+
+## Cross-runtime guide start and step ownership
+
+- Guides do not own or launch a start URL/application. StartUrl is retired.
+- Every guide has a required StartInstruction shown before a new Start or Start Again. It prepares the learner to open/navigate to the relevant work environment.
+- The start instruction is guide metadata, not a progress step: it has no target/validation and Resume does not replay it.
+- Runtime ownership belongs to the guide step through RuntimePlatform (web or windows), allowing Web-only, Windows-only, and mixed Web/Windows guides without a separate guide-type switch.
+- Runtime transitions are environment-driven. A Web business action may launch a Windows application (or vice versa); GWTP waits for the next step's runtime/target instead of launching or replaying the business action itself.
