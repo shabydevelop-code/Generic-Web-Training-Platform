@@ -100,3 +100,10 @@ Database:
 - The start instruction is guide metadata, not a progress step: it has no target/validation and Resume does not replay it.
 - Web-only, Windows-only, and mixed Web/Windows guides remain a target architecture requirement. Step-level runtime/Windows target identity will be introduced together so the model does not encode a partial Windows step.
 - Runtime transitions are environment-driven. A Web business action may launch a Windows application (or vice versa); GWTP waits for the next step's runtime/target instead of launching or replaying the business action itself.
+
+### Shared guide-start execution contract
+- StartInstruction belongs to guide execution, not to the Learner view or Editor view.
+- Fresh Learner Start, Learner Start Again, and Editor Preview must use the same modal presentation and the same explicit confirmation/cancel interaction before step 1.
+- The execution modes diverge only after confirmation: Learner execution may create/update LearnerProgress, while Editor Preview remains local and must not create or mutate LearnerProgress.
+- Resume from InProgress restores the saved step directly and does not replay StartInstruction.
+- Keep this start contract shared across future Web, Windows, and mixed-runtime execution rather than creating runtime- or role-specific start UX.
