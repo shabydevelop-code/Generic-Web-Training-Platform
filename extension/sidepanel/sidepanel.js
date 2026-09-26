@@ -1633,7 +1633,7 @@ async function highlightEditorStep(step) {
   // Card selection is editor state and does not depend on whether the target element exists on the current URL.
   markActiveStep(step.id);
 
-  if (step.targetType === "none") {
+  if (step.targetType === "none" || step.runtime === "windows") {
     await window.messagingService.sendToAllFrames({ type: "GWTP_CLEAR_HIGHLIGHT" }).catch(() => {});
     elementPickerStatus.textContent = "";
     delete elementPickerStatus.dataset.type;
@@ -1995,7 +1995,9 @@ function renderSteps() {
     const selector = document.createElement("code");
     selector.textContent = step.targetType === "none"
       ? window.i18nService.translate("instructionOnlyStepLabel", language)
-      : step.selector;
+      : step.runtime === "windows"
+        ? `${window.i18nService.translate("windowsTargetLabel", language)}: ${step.windowsTarget?.processName || ""} · ${step.windowsTarget?.element?.controlType || ""}`
+        : step.selector;
 
     item.append(header, screen, instruction, selector);
 
@@ -2054,15 +2056,21 @@ function renderSteps() {
 
 function setElementPickerActive(active) {
   elementPickerActive = active;
+  const language = window.i18nService.getLanguage();
+  const inactiveKey = stepRuntimeSelect.value === "windows" ? "selectWindowsElementButton" : "selectElementButton";
   selectButton.textContent = window.i18nService.translate(
-    active ? "cancelElementSelectionButton" : "selectElementButton",
-    window.i18nService.getLanguage()
+    active ? "cancelElementSelectionButton" : inactiveKey,
+    language
   );
   selectButton.classList.toggle("button--primary", !active);
 }
 
 async function cancelElementPicker(showStatus = true) {
-  await window.messagingService.sendToAllFrames({ type: "GWTP_CANCEL_ELEMENT_PICKER" }).catch(() => {});
+  if (stepRuntimeSelect.value === "windows") {
+    window.windowsBridgeService.cancelPick();
+  } else {
+    await window.messagingService.sendToAllFrames({ type: "GWTP_CANCEL_ELEMENT_PICKER" }).catch(() => {});
+  }
   setElementPickerActive(false);
   if (showStatus) {
     elementPickerStatus.textContent = window.i18nService.translate("elementSelectionCancelled", window.i18nService.getLanguage());
@@ -2096,15 +2104,40 @@ selectButton.addEventListener("click", async () => {
     await window.messagingService.sendToAllFrames({ type: "GWTP_CLEAR_HIGHLIGHT" }).catch(() => {});
     activeStepId = null;
     markActiveStep(null);
+
+    if (stepRuntimeSelect.value === "windows") {
+      setElementPickerActive(true);
+      setElementPickerStatus("windowsSelectionModeActive", "info");
+      const target = await window.windowsBridgeService.pickTarget();
+      setElementPickerActive(false);
+      if (!target) {
+        setElementPickerStatus("elementSelectionCancelled", "info");
+        return;
+      }
+
+      currentSelectedElement = null;
+      currentWindowsTarget = target;
+      selectorInput.value = "";
+      selectedTag.textContent = target.element?.name || target.element?.automationId || target.element?.controlType || "";
+      selectedSelector.textContent = `${target.processName} · ${target.element?.controlType || ""}`;
+      selectedFrame.textContent = target.window?.name || target.window?.automationId || "";
+      selectedElement.hidden = false;
+      updateStepSaveValidity();
+      setElementPickerStatus("windowsElementSelectedSuccess", "success");
+      return;
+    }
+
     const responses = await window.messagingService.sendToAllFrames({ type: "GWTP_START_ELEMENT_PICKER" });
     const started = responses.some((item) => item.response?.success);
     setElementPickerActive(started);
     setElementPickerStatus(started ? "selectionModeActive" : "selectionModeStartError", started ? "info" : "error");
   } catch (error) {
     setElementPickerActive(false);
-    setElementPickerStatus("pageControlUnavailable", "error");
-    if (!window.messagingService.isUnsupportedPageError(error)) {
-      console.error(error);
+    if (stepRuntimeSelect.value === "windows") {
+      setElementPickerStatus("windowsRuntimeUnavailable", "error");
+    } else {
+      setElementPickerStatus("pageControlUnavailable", "error");
+      if (!window.messagingService.isUnsupportedPageError(error)) console.error(error);
     }
   }
 });
@@ -2133,8 +2166,10 @@ async function persistExistingGuide() {
         id: step.persistedId || null,
         selector: step.selector,
         targetType: step.targetType || "element",
+        runtime: step.runtime || "web",
+        windowsTarget: step.runtime === "windows" ? (step.windowsTarget || null) : null,
         instruction: step.instruction,
-        frame: step.targetType === "none" ? null : (step.element?.frame || null),
+        frame: step.targetType === "none" || step.runtime === "windows" ? null : (step.element?.frame || null),
         validation: step.targetType === "none" ? null : (step.validation || null)
       }))
     })
@@ -2315,6 +2350,7 @@ instructionOnlyInput.addEventListener("change", () => {
   validationTypeSelect.disabled = instructionOnly;
   if (instructionOnly) {
     currentSelectedElement = null;
+    currentWindowsTarget = null;
     selectorInput.value = "";
     selectedElement.hidden = true;
     elementPickerStatus.textContent = "";
@@ -2326,12 +2362,29 @@ instructionOnlyInput.addEventListener("change", () => {
   }
   updateStepSaveValidity();
 });
+stepRuntimeSelect.addEventListener("change", async () => {
+  if (elementPickerActive) await cancelElementPicker(false);
+  currentSelectedElement = null;
+  currentWindowsTarget = null;
+  selectorInput.value = "";
+  selectedTag.textContent = "";
+  selectedSelector.textContent = "";
+  selectedFrame.textContent = "";
+  selectedElement.hidden = true;
+  elementPickerStatus.textContent = "";
+  delete elementPickerStatus.dataset.type;
+  setElementPickerActive(false);
+  clearPageTrainingVisuals();
+  updateStepSaveValidity();
+});
+
 validationTypeSelect.addEventListener("change", () => { updateValidationBuilder(); updateStepSaveValidity(); });
 validationValueInput.addEventListener("input", updateStepSaveValidity);
 validationErrorInput.addEventListener("input", updateStepSaveValidity);
 
 removeSelectedElementButton.addEventListener("click", () => {
   currentSelectedElement = null;
+  currentWindowsTarget = null;
   selectorInput.value = "";
   selectedTag.textContent = "";
   selectedSelector.textContent = "";
