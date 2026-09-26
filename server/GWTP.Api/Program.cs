@@ -1583,7 +1583,7 @@ static void ApplyDatabaseMigrations(string databasePath)
     if (!hasStartInstruction)
     {
         using var migrationCommand = connection.CreateCommand();
-        migrationCommand.CommandText = "ALTER TABLE Guides ADD COLUMN StartInstruction TEXT;";
+        migrationCommand.CommandText = "ALTER TABLE Guides ADD COLUMN StartInstruction TEXT NOT NULL DEFAULT '';";
         migrationCommand.ExecuteNonQuery();
     }
 
