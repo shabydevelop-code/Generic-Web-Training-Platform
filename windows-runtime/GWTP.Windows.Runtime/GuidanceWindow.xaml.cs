@@ -73,6 +73,13 @@ public partial class GuidanceWindow : Window
             SwpNoActivate | SwpShowWindow);
     }
 
+    public void SetInstruction(string? instruction)
+    {
+        InstructionText.Text = string.IsNullOrWhiteSpace(instruction)
+            ? "Follow the highlighted step."
+            : instruction;
+    }
+
     public void SetValidationMessage(string? message)
     {
         ValidationMessage.Text = message ?? string.Empty;
