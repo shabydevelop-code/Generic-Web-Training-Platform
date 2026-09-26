@@ -590,6 +590,7 @@ test("stage 5 management CRUD - editor creates, edits and deletes a guide and it
     const demoTopic = panel.locator("#topicSelect option").filter({ hasText: "Demo CRM" });
     await panel.locator("#topicSelect").selectOption(await demoTopic.getAttribute("value"));
     await panel.locator("#guideNameInput").fill(guideName);
+    await expect(panel.locator("#guideStartInstructionInput")).toHaveValue("פתח את המערכת והגע לנקודה שממנה מתחיל המדריך.");
     await panel.locator("#guideStartInstructionInput").fill("Open the relevant system and navigate to the starting screen.");
     await panel.locator("#addStepButton").click();
     await panel.locator("#selectButton").click();
