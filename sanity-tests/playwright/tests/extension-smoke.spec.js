@@ -10,6 +10,13 @@ const PASSWORD = "Sanity2026!";
 let context;
 let extensionId;
 
+async function confirmGuideStartInstruction(panel) {
+  const prompt = panel.locator("#learnerStartInstructionPanel");
+  if (await prompt.isVisible()) {
+    await panel.locator("#confirmStartInstructionButton").click();
+  }
+}
+
 async function requireHealthyStack(request) {
   const api = await request.get(`${API_URL}/api/health`);
   expect(api.ok(), "GWTP API must be running before Stage 3").toBeTruthy();
@@ -142,6 +149,7 @@ test("stage 6 guidance positioning - bubble follows target while scrolling", asy
     await panel.locator("#learnerTopicSelect").selectOption(String(setup.topicId));
     await panel.locator("#learnerGuideSelect").selectOption(String(setup.guideId));
     await panel.locator("#startLearningButton").click();
+    await confirmGuideStartInstruction(panel);
 
     const target = fixture.locator("#fixture-action");
     const bubble = fixture.locator(".gwtp-training-overlay");
@@ -273,6 +281,7 @@ test("stage 6 dynamic web app - GWTP follows SPA, DOM replacement, dynamic frame
   await panel.locator("#learnerTopicSelect").selectOption(String(setup.topicId));
   await panel.locator("#learnerGuideSelect").selectOption(String(setup.guide.id));
   await panel.locator("#startLearningButton").click();
+  await confirmGuideStartInstruction(panel);
   await expect(app.locator("#js-launcher")).toHaveCSS("outline-width", "3px", { timeout: 10000 });
 
   // JavaScript anchor opens UI but does not navigate. Pending intent must not
@@ -1050,6 +1059,7 @@ test("learner can start a generic guide and receives visible guidance", async ()
     await learner.locator("#learnerTopicSelect").selectOption(String(setup.topicId));
     await learner.locator("#learnerGuideSelect").selectOption(String(setup.guideId));
     await learner.locator("#startLearningButton").click();
+    await confirmGuideStartInstruction(learner);
 
     const overlay = fixture.locator(".gwtp-training-overlay");
     await expect(overlay).toBeVisible({ timeout: 10000 });
@@ -1086,6 +1096,7 @@ test("learner Next and Previous move between generic fixture steps", async () =>
     await learner.locator("#learnerTopicSelect").selectOption(String(setup.topicId));
     await learner.locator("#learnerGuideSelect").selectOption(String(setup.guideId));
     await learner.locator("#startLearningButton").click();
+    await confirmGuideStartInstruction(learner);
 
     const overlay = fixture.locator(".gwtp-training-overlay");
     await expect(fixture.locator("#fixture-code")).toHaveCSS("outline-width", "3px", { timeout: 10000 });
@@ -1127,6 +1138,7 @@ test("learner required validation blocks Next until corrected", async () => {
     await panel.locator("#learnerTopicSelect").selectOption(String(setup.topicId));
     await panel.locator("#learnerGuideSelect").selectOption(String(setup.guideId));
     await panel.locator("#startLearningButton").click();
+    await confirmGuideStartInstruction(panel);
     const overlay = fixture.locator(".gwtp-training-overlay");
     const name = fixture.locator("#fixture-name");
     await expect(overlay).toBeVisible({ timeout: 10000 });
@@ -1160,6 +1172,7 @@ test("stage 4 validation - equals, not-equals and contains block then allow Next
     await panel.locator("#learnerTopicSelect").selectOption(String(setup.topicId));
     await panel.locator("#learnerGuideSelect").selectOption(String(setup.guideId));
     await panel.locator("#startLearningButton").click();
+    await confirmGuideStartInstruction(panel);
     const next = () => fixture.locator(".gwtp-training-overlay button").filter({ hasText: /הבא|Next/i });
     await fixture.locator("#fixture-name").fill("Validation Site"); await next().click();
     await fixture.locator("#fixture-type").selectOption("hq"); await next().click();
@@ -1204,6 +1217,7 @@ test("stage 4 validation - changed and changed-regex block then allow Next", asy
       for (let i = 0; i < 4; i += 1) { const moved = await chrome.runtime.sendMessage({ type: "GWTP_TRAINING_NEXT" }); if (!moved?.success) throw new Error(moved?.message || "prepare failed"); }
     }, guide);
     await fixture.bringToFront(); await panel.locator("#startLearningButton").click();
+    await confirmGuideStartInstruction(panel);
     const phone = fixture.locator("#fixture-phone"); const next = () => fixture.locator(".gwtp-training-overlay button").filter({ hasText: /הבא|Next/i });
     await expect(phone).toHaveCSS("outline-width", "3px", { timeout: 10000 });
     const baseline = await phone.inputValue(); await next().click(); await expect(fixture.locator(".gwtp-training-overlay")).toContainText("יש לשנות את מספר הטלפון");
@@ -1234,6 +1248,7 @@ test("learner continues automatically across the Site to Case page transition", 
   const restart = panel.locator("#restartLearningButton");
   if (await restart.isVisible()) await restart.click();
   else await panel.locator("#startLearningButton").click();
+  await confirmGuideStartInstruction(panel);
 
   const content = crm.frameLocator('iframe[name="TargetContent"]');
   let overlay = content.locator(".gwtp-training-overlay");
@@ -1328,6 +1343,7 @@ test("learner survives a real Site server save and reload", async () => {
   const restart = panel.locator("#restartLearningButton");
   if (await restart.isVisible()) await restart.click();
   else await panel.locator("#startLearningButton").click();
+  await confirmGuideStartInstruction(panel);
 
   const content = crm.frameLocator('iframe[name="TargetContent"]');
   await expect(content.locator(".gwtp-training-overlay")).toBeVisible({ timeout: 10000 });
@@ -1416,6 +1432,7 @@ test("learner can reopen the extension and resume saved progress", async () => {
   const restart = panel.locator("#restartLearningButton");
   if (await restart.isVisible()) await restart.click();
   else await panel.locator("#startLearningButton").click();
+  await confirmGuideStartInstruction(panel);
 
   const content = crm.frameLocator('iframe[name="TargetContent"]');
   await expect(content.locator(".gwtp-training-overlay")).toBeVisible({ timeout: 10000 });
@@ -1487,6 +1504,7 @@ test("completed guide is stored as Completed and starts over on the next run", a
   const restart = panel.locator("#restartLearningButton");
   if (await restart.isVisible()) await restart.click();
   else await panel.locator("#startLearningButton").click();
+  await confirmGuideStartInstruction(panel);
 
   const content = crm.frameLocator('iframe[name="TargetContent"]');
   await expect(content.locator(".gwtp-training-overlay")).toBeVisible({ timeout: 10000 });
@@ -1592,6 +1610,7 @@ test("stage 6 resilience batch - learner survives target-page reload without adv
   const restart = panel.locator("#restartLearningButton");
   if (await restart.isVisible()) await restart.click();
   else await panel.locator("#startLearningButton").click();
+  await confirmGuideStartInstruction(panel);
 
   const content = crm.frameLocator('iframe[name="TargetContent"]');
   await expect(content.locator(".gwtp-training-overlay")).toBeVisible({ timeout: 10000 });
@@ -1622,6 +1641,7 @@ test("stage 6 resilience batch - repeated PAGE_READY signals do not duplicate or
     await panel.locator("#learnerTopicSelect").selectOption(String(setup.topicId));
     await panel.locator("#learnerGuideSelect").selectOption(String(setup.guideId));
     await panel.locator("#startLearningButton").click();
+    await confirmGuideStartInstruction(panel);
     await expect(fixture.locator(".gwtp-training-overlay")).toBeVisible({ timeout: 10000 });
 
     await panel.evaluate(async () => {
@@ -1662,6 +1682,7 @@ test("stage 6 resilience batch - rapid duplicate Next does not skip a generic le
     await panel.locator("#learnerTopicSelect").selectOption(String(setup.topicId));
     await panel.locator("#learnerGuideSelect").selectOption(String(setup.guideId));
     await panel.locator("#startLearningButton").click();
+    await confirmGuideStartInstruction(panel);
 
     const next = fixture.locator(".gwtp-training-overlay button").filter({ hasText: /הבא|Next/i });
     await expect(next).toBeVisible({ timeout: 10000 });
@@ -1693,6 +1714,7 @@ test("stage 6 resilience batch - leaving the target page preserves progress and 
   const restart = panel.locator("#restartLearningButton");
   if (await restart.isVisible()) await restart.click();
   else await panel.locator("#startLearningButton").click();
+  await confirmGuideStartInstruction(panel);
 
   const content = crm.frameLocator('iframe[name="TargetContent"]');
   await expect(content.locator(".gwtp-training-overlay")).toBeVisible({ timeout: 10000 });
@@ -1725,6 +1747,7 @@ test("stage 6 resilience batch - logout during learning clears UI session withou
   const restart = panel.locator("#restartLearningButton");
   if (await restart.isVisible()) await restart.click();
   else await panel.locator("#startLearningButton").click();
+  await confirmGuideStartInstruction(panel);
 
   const content = crm.frameLocator('iframe[name="TargetContent"]');
   await expect(content.locator(".gwtp-training-overlay")).toBeVisible({ timeout: 10000 });
@@ -1883,6 +1906,7 @@ test("stage 6 full authoring lifecycle - new topic guide reopen edit steps previ
     await panel.locator("#learnerGuideSelect").selectOption(await learnerGuideOption.getAttribute("value"));
     await crm.bringToFront();
     await panel.locator("#startLearningButton").click();
+    await confirmGuideStartInstruction(panel);
     await expect(overlay).toContainText(updatedFirstInstruction);
     await overlay.locator("button").filter({ hasText: /הבא|Next/i }).click();
     await expect(overlay).toContainText(thirdInstruction);
@@ -2377,6 +2401,7 @@ test("visual layout - learner guidance stays inside a narrow target viewport", a
   const restart = panel.locator("#restartLearningButton");
   if (await restart.isVisible()) await restart.click();
   else await panel.locator("#startLearningButton").click();
+  await confirmGuideStartInstruction(panel);
 
   const content = crm.frameLocator('iframe[name="TargetContent"]');
   const overlay = content.locator(".gwtp-training-overlay");
@@ -2406,6 +2431,7 @@ test("visual layout - guidance controls remain usable with enlarged text", async
   const restart = panel.locator("#restartLearningButton");
   if (await restart.isVisible()) await restart.click();
   else await panel.locator("#startLearningButton").click();
+  await confirmGuideStartInstruction(panel);
 
   const content = crm.frameLocator('iframe[name="TargetContent"]');
   const overlay = content.locator(".gwtp-training-overlay");
@@ -2441,6 +2467,7 @@ test("visual layout - Hebrew learner guidance uses RTL direction", async () => {
   const restart = panel.locator("#restartLearningButton");
   if (await restart.isVisible()) await restart.click();
   else await panel.locator("#startLearningButton").click();
+  await confirmGuideStartInstruction(panel);
 
   const overlay = crm.frameLocator('iframe[name="TargetContent"]').locator(".gwtp-training-overlay");
   await expect(overlay).toBeVisible({ timeout: 10000 });
@@ -2501,6 +2528,7 @@ test("accessibility resilience - completion dialog traps focus and closes with E
   const restart = panel.locator("#restartLearningButton");
   if (await restart.isVisible()) await restart.click();
   else await panel.locator("#startLearningButton").click();
+  await confirmGuideStartInstruction(panel);
 
   const content = crm.frameLocator('iframe[name="TargetContent"]');
   const next = content.locator(".gwtp-training-overlay button").filter({ hasText: /הבא|Next/i });
@@ -2551,6 +2579,7 @@ test("accessibility resilience - learner recovery actions remain available after
   const restart = panel.locator("#restartLearningButton");
   if (await restart.isVisible()) await restart.click();
   else await panel.locator("#startLearningButton").click();
+  await confirmGuideStartInstruction(panel);
   await expect(crm.frameLocator('iframe[name="TargetContent"]').locator(".gwtp-training-overlay")).toBeVisible({ timeout: 10000 });
 
   await crm.goto(`${SITE_URL}/leads.html`);
@@ -2643,6 +2672,7 @@ test("stage 4 lifecycle - editor authors, previews and publishes a guide that le
 
   await crm.bringToFront();
   await learner.locator("#startLearningButton").click();
+  await confirmGuideStartInstruction(learner);
   await expect(content.locator("#site-code")).toHaveCSS("outline-width", "3px", { timeout: 10000 });
   await expect(content.locator(".gwtp-training-overlay")).toBeVisible();
 
@@ -2794,6 +2824,7 @@ test("stage 4 learner - active guidance restores after a full page reload", asyn
 
   await panel.locator("#learnerGuideSelect").selectOption(String(guideId));
   await panel.locator("#startLearningButton").click();
+  await confirmGuideStartInstruction(panel);
 
   await expect(crm.locator(".gwtp-training-overlay")).toBeVisible({ timeout: 10000 });
   const before = await panel.evaluate(async () =>
