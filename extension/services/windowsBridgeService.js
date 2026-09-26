@@ -110,9 +110,12 @@
     return response;
   }
 
-  async function clearStep() {
+  async function clearStep(options = {}) {
     if (!previewPort) return { success: true };
-    const response = await requestPreview({ type: "clearStep" }, "stepCleared");
+    const response = await requestPreview({
+      type: "clearStep",
+      restorePreviousForeground: options.restorePreviousForeground === true
+    }, "stepCleared");
     try { previewPort.disconnect(); } catch {}
     previewPort = null;
     return response;
