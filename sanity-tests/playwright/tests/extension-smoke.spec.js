@@ -536,7 +536,7 @@ test("stage 4 filters - step screen filter changes visibility without changing s
   const siteOption = screenFilter.locator("option").filter({ hasText: /^אתר$/ });
   await expect(siteOption).toHaveCount(1);
 
-  const stepItems = editor.locator("#stepsList .step-item");
+  const stepItems = panel.locator("#stepsList .step-item");
   const allStepIds = await stepItems.evaluateAll((items) => items.map((item) => item.dataset.stepId));
   expect(allStepIds.length).toBeGreaterThan(6);
 
@@ -758,19 +758,19 @@ test("stage 5 editor preview - navigation, validation and exit cleanup work thro
 
     // Step 1: required validation on a real input.
     await panel.locator("#addStepButton").click();
-    await editor.locator("#selectButton").click();
+    await panel.locator("#selectButton").click();
     await content.locator("#fixture-code").click();
-    await editor.locator("#instructionInput").fill("Preview required step");
+    await panel.locator("#instructionInput").fill("Preview required step");
     await panel.locator("#validationTypeSelect").selectOption("required");
     await panel.locator("#validationErrorInput").fill("Preview required error");
-    await editor.locator("#saveStepButton").click();
+    await panel.locator("#saveStepButton").click();
 
     // Step 2: a second real target so Preview Previous/Next can be exercised.
     await panel.locator("#addStepButton").click();
-    await editor.locator("#selectButton").click();
+    await panel.locator("#selectButton").click();
     await content.locator("#fixture-name").click();
-    await editor.locator("#instructionInput").fill("Preview second step");
-    await editor.locator("#saveStepButton").click();
+    await panel.locator("#instructionInput").fill("Preview second step");
+    await panel.locator("#saveStepButton").click();
 
     await fixture.bringToFront();
 
@@ -853,10 +853,10 @@ test("stage 5 editor management - persisted step reorder survives reopening the 
 
     for (const [selector, instruction] of [["#fixture-code", "Reorder first"], ["#fixture-name", "Reorder second"]]) {
       await panel.locator("#addStepButton").click();
-      await editor.locator("#selectButton").click();
+      await panel.locator("#selectButton").click();
       await content.locator(selector).click();
-      await editor.locator("#instructionInput").fill(instruction);
-      await editor.locator("#saveStepButton").click();
+      await panel.locator("#instructionInput").fill(instruction);
+      await panel.locator("#saveStepButton").click();
     }
 
     await panel.locator("#saveGuideButton").click();
@@ -865,7 +865,7 @@ test("stage 5 editor management - persisted step reorder survives reopening the 
     const before = await panel.locator("#stepsList .step-item .step-item__instruction").allTextContents();
     expect(before.map((x) => x.trim())).toEqual(["Reorder first", "Reorder second"]);
 
-    const secondHandle = editor.locator("#stepsList .step-item").nth(1).locator(".step-item__drag-handle");
+    const secondHandle = panel.locator("#stepsList .step-item").nth(1).locator(".step-item__drag-handle");
 
     // Playwright hosts the Side Panel as a normal extension tab. Keyboard events sent
     // with locator.press() depend on that tab being active, unlike the real Chrome
@@ -2168,7 +2168,7 @@ test("stage 6 GUI forms batch - step required state is preventive, local, semant
   });
   expect(placement).toBeTruthy();
 
-  // Verify stale feedback cannot leak into a newly opened Step editor.
+  // Verify stale feedback cannot leak into a newly opened Step panel.
   await panel.evaluate(() => {
     const status = document.querySelector("#status");
     status.textContent = "Temporary validation feedback";
@@ -2284,7 +2284,7 @@ test("stage 6 accessibility - editor reflows at 200 percent zoom", async () => {
   await expect(guideCard).toBeVisible();
   await guideCard.click();
 
-  const firstStep = editor.locator("#stepsList .step-item").first();
+  const firstStep = panel.locator("#stepsList .step-item").first();
   await expect(firstStep).toBeVisible();
   await firstStep.click();
   await expect(panel.locator("#stepEditor")).toBeVisible();
@@ -2358,7 +2358,7 @@ test("stage 6 accessibility batch - rendered sidepanel contrast and status seman
 
   const guideCard = panel.locator("[data-guide-id]").filter({ hasText: "תרגול מלא - Demo CRM" }).first();
   await guideCard.click();
-  await editor.locator("#stepsList .step-item").first().click();
+  await panel.locator("#stepsList .step-item").first().click();
 
   for (const statusSelector of ["#elementPickerStatus", "#status", "#stepsSaveStatus"]) {
     const status = panel.locator(statusSelector);
@@ -2404,7 +2404,7 @@ test("stage 6 accessibility batch - editor primary authoring controls are keyboa
   await expect(guideCard).toBeFocused();
   await guideCard.press("Enter");
 
-  const firstStep = editor.locator("#stepsList .step-item").first();
+  const firstStep = panel.locator("#stepsList .step-item").first();
   await firstStep.focus();
   await expect(firstStep).toBeFocused();
   await firstStep.press("Enter");
@@ -3024,7 +3024,7 @@ test("stage 4 grid editor - picker-authored grid selector survives row reorder",
   await expect(targetCell).toBeVisible();
 
   // The real content-script picker intercepts this click and sends
-  // GWTP_ELEMENT_SELECTED back to the editor.
+  // GWTP_ELEMENT_SELECTED back to the panel.
   await targetCell.click();
 
   const selector = panel.locator("#selectedSelector");
