@@ -24,6 +24,7 @@ internal sealed class NativeMessagingHost : IDisposable
         _output = OpenStandardHandle(STD_OUTPUT_HANDLE, FileAccess.Write);
         _pickerWindow.AuthoringTargetSelected += OnAuthoringTargetSelected;
         _pickerWindow.AuthoringSelectionCancelled += OnAuthoringSelectionCancelled;
+        _pickerWindow.AuthoredNavigationRequested += OnAuthoredNavigationRequested;
     }
 
     private const int STD_INPUT_HANDLE = -10;
@@ -106,8 +107,13 @@ internal sealed class NativeMessagingHost : IDisposable
                     continue;
                 }
 
+                var canPrevious = message.RootElement.TryGetProperty("canPrevious", out var previousElement) &&
+                    previousElement.ValueKind == JsonValueKind.True;
+                var canNext = message.RootElement.TryGetProperty("canNext", out var nextElement) &&
+                    nextElement.ValueKind == JsonValueKind.True;
+
                 var shown = await _pickerWindow.Dispatcher.InvokeAsync(
-                    () => _pickerWindow.ShowAuthoredStep(target, instruction));
+                    () => _pickerWindow.ShowAuthoredStep(target, instruction, canPrevious, canNext));
                 await WriteMessageAsync(new
                 {
                     type = "stepShown",
@@ -123,6 +129,22 @@ internal sealed class NativeMessagingHost : IDisposable
                 await _pickerWindow.Dispatcher.InvokeAsync(() => _pickerWindow.ClearAuthoredStep());
                 await WriteMessageAsync(new { type = "stepCleared", requestId, success = true });
             }
+        }
+    }
+
+    private async void OnAuthoredNavigationRequested(int direction)
+    {
+        try
+        {
+            await WriteMessageAsync(new
+            {
+                type = "navigationRequested",
+                direction = direction > 0 ? "next" : "previous"
+            });
+        }
+        catch (Exception ex)
+        {
+            DiagnosticLog.Write("NativeMessaging.WriteNavigationFailed", ex);
         }
     }
 
@@ -229,6 +251,7 @@ internal sealed class NativeMessagingHost : IDisposable
         _disposed = true;
         _cts.Cancel();
         _pickerWindow.AuthoringTargetSelected -= OnAuthoringTargetSelected;
+        _pickerWindow.AuthoredNavigationRequested -= OnAuthoredNavigationRequested;
         _pickerWindow.AuthoringSelectionCancelled -= OnAuthoringSelectionCancelled;
         _cts.Dispose();
         _writeLock.Dispose();
