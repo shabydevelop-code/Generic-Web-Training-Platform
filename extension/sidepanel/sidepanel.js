@@ -168,6 +168,7 @@ const previewGuideButton = document.getElementById("previewGuideButton");
 const previewActiveControls = document.getElementById("previewActiveControls");
 const previewProgress = document.getElementById("previewProgress");
 const exitPreviewButton = document.getElementById("exitPreviewButton");
+const previewModeBadge = document.getElementById("previewModeBadge");
 let previewSession = null;
 let previewStarting = false;
 let startInstructionCancelPending = null;
@@ -256,6 +257,7 @@ function updatePreviewUi() {
   const active = Boolean(previewSession);
   previewGuideButton.hidden = active;
   previewActiveControls.hidden = !active;
+  previewModeBadge.hidden = !active;
 
   if (active) {
     const language = window.i18nService.getLanguage();
