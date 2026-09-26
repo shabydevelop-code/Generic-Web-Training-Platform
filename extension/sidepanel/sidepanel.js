@@ -316,6 +316,12 @@ async function startGuidePreview() {
 }
 
 async function exitGuidePreview() {
+  try {
+    await window.windowsBridgeService.clearStep();
+  } catch (error) {
+    console.info("GWTP Windows preview cleanup skipped:", error);
+  }
+
   if (previewStarting && startInstructionCancelPending) {
     startInstructionCancelPending();
   }
