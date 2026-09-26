@@ -3511,6 +3511,22 @@ test("architecture guard - bubble fallback has no stale gap identifier", async (
 });
 
 
+test("architecture guard - BFCache restore discards stale training visuals before PAGE_READY", async () => {
+  const contentScriptSource = await fs.promises.readFile(
+    path.join(EXTENSION_PATH, "content", "content-script.js"),
+    "utf8"
+  );
+
+  expect(contentScriptSource).toContain('window.addEventListener("pageshow"');
+  expect(contentScriptSource).toContain("if (!event.persisted) return;");
+  const pageshowStart = contentScriptSource.indexOf('window.addEventListener("pageshow"');
+  const pageshowEnd = contentScriptSource.indexOf("});", pageshowStart);
+  const pageshowSource = contentScriptSource.slice(pageshowStart, pageshowEnd);
+  expect(pageshowSource.indexOf("clearTrainingStep();")).toBeLessThan(pageshowSource.indexOf("notifyPageReady();"));
+  expect(pageshowSource.indexOf("clearHighlight();")).toBeLessThan(pageshowSource.indexOf("notifyPageReady();"));
+});
+
+
 test("architecture guard - Preview pending navigation is bound to its source step", async () => {
   const sidepanelSource = await fs.promises.readFile(
     path.join(EXTENSION_PATH, "sidepanel", "sidepanel.js"),
