@@ -170,6 +170,7 @@ const previewProgress = document.getElementById("previewProgress");
 const exitPreviewButton = document.getElementById("exitPreviewButton");
 let previewSession = null;
 let previewStarting = false;
+let startInstructionCancelPending = null;
 let previewRestorePromise = null;
 let previewRestoreQueued = false;
 let previewPendingDirection = null;
@@ -311,6 +312,12 @@ async function startGuidePreview() {
 }
 
 async function exitGuidePreview() {
+  if (previewStarting && startInstructionCancelPending) {
+    startInstructionCancelPending();
+  }
+  previewStarting = false;
+  previewGuideButton.disabled = false;
+
   try {
     await window.messagingService.sendToAllFrames(
       { type: "GWTP_CLEAR_TRAINING_STEP" },
@@ -548,10 +555,14 @@ function showStartInstruction(guide) {
       learnerStartInstructionPanel.hidden = true;
       confirmStartInstructionButton.removeEventListener("click", confirm);
       cancelStartInstructionButton.removeEventListener("click", cancel);
+      if (startInstructionCancelPending === cancel) {
+        startInstructionCancelPending = null;
+      }
       resolve(confirmed);
     };
     const confirm = () => finish(true);
     const cancel = () => finish(false);
+    startInstructionCancelPending = cancel;
     confirmStartInstructionButton.addEventListener("click", confirm);
     cancelStartInstructionButton.addEventListener("click", cancel);
   });
