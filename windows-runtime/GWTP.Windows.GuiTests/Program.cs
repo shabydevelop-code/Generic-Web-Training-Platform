@@ -1,5 +1,8 @@
 using System.IO;
 using System.Diagnostics;
+using System.Buffers.Binary;
+using System.Text;
+using System.Text.Json;
 using System.Runtime.InteropServices;
 using System.Windows.Automation;
 using Forms = System.Windows.Forms;
@@ -562,6 +565,59 @@ internal static class Program
                 WaitUntil(() => IsOverlayAttached(runtime.Id, firstTarget),
                     "Runtime did not recover after the ambiguous second instance closed.");
             });
+
+            Run("22. Production Native Preview transfers foreground between Windows targets", () =>
+            {
+                var firstHost = WaitForTopLevelWindow("GWTP Windows UIA Test Host", LaunchTimeoutMs);
+                Invoke(FindByName(firstHost, "Open second test window"));
+                var secondHost = WaitForTopLevelWindow("GWTP UIA Test Host — Second Window", LaunchTimeoutMs);
+
+                var firstTarget = FindByAutomationId(firstHost, "StableTextBox");
+                var secondTarget = FindByAutomationId(secondHost, "SameProcessTarget");
+                var firstHwnd = new IntPtr(firstHost.Current.NativeWindowHandle);
+                var secondHwnd = new IntPtr(secondHost.Current.NativeWindowHandle);
+                var runtimeHwnd = new IntPtr(runtimeWindow.Current.NativeWindowHandle);
+
+                SetForegroundWindow(runtimeHwnd);
+                WaitUntil(() => GetForegroundWindow() == runtimeHwnd,
+                    "Could not establish the pre-Windows foreground owner.");
+
+                using var native = StartNativeMessagingRuntime(runtimeExe);
+                SendNativeMessage(native, BuildShowStepMessage(
+                    "focus-a", "GWTP Windows UIA Test Host", firstTarget, canPrevious: false, canNext: true));
+                Require(ReadNativeSuccess(native, "stepShown", "focus-a"),
+                    "Native runtime could not show the first Windows target.");
+                WaitUntil(() => GetForegroundWindow() == firstHwnd,
+                    "Windows target A did not receive foreground on entry.");
+
+                SendNativeMessage(native, BuildShowStepMessage(
+                    "focus-b", "GWTP UIA Test Host — Second Window", secondTarget, canPrevious: true, canNext: true));
+                Require(ReadNativeSuccess(native, "stepShown", "focus-b"),
+                    "Native runtime could not show the second Windows target.");
+                WaitUntil(() => GetForegroundWindow() == secondHwnd,
+                    "Windows target B did not receive foreground on Next.");
+
+                SendNativeMessage(native, BuildShowStepMessage(
+                    "focus-a-return", "GWTP Windows UIA Test Host", firstTarget, canPrevious: false, canNext: true));
+                Require(ReadNativeSuccess(native, "stepShown", "focus-a-return"),
+                    "Native runtime could not return to the first Windows target.");
+                WaitUntil(() => GetForegroundWindow() == firstHwnd,
+                    "Windows target A did not regain foreground on Previous.");
+
+                SendNativeMessage(native, new
+                {
+                    type = "clearStep",
+                    requestId = "focus-web-return",
+                    restorePreviousForeground = true
+                });
+                Require(ReadNativeSuccess(native, "stepCleared", "focus-web-return"),
+                    "Native runtime could not clear the Windows step.");
+                WaitUntil(() => GetForegroundWindow() == runtimeHwnd,
+                    "Native Windows-to-Web handoff did not restore the pre-Windows foreground window.");
+
+                native.StandardInput.Close();
+                native.WaitForExit(LaunchTimeoutMs);
+            });
         }
         finally
         {
@@ -574,6 +630,86 @@ internal static class Program
         return _failed == 0 ? 0 : 1;
     }
 
+
+    private static Process StartNativeMessagingRuntime(string runtimeExe)
+    {
+        var process = Process.Start(new ProcessStartInfo(runtimeExe, "chrome-extension://gwtp-gui-tests/")
+        {
+            UseShellExecute = false,
+            RedirectStandardInput = true,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            CreateNoWindow = true
+        });
+        Require(process is not null, "Could not start Native Messaging runtime.");
+        return process!;
+    }
+
+    private static object BuildShowStepMessage(
+        string requestId,
+        string windowName,
+        AutomationElement target,
+        bool canPrevious,
+        bool canNext)
+        => new
+        {
+            type = "showStep",
+            requestId,
+            target = new
+            {
+                processName = "GWTP.Windows.TestHost",
+                window = new { automationId = (string?)null, name = windowName },
+                element = new
+                {
+                    controlType = target.Current.ControlType.ProgrammaticName,
+                    automationId = target.Current.AutomationId,
+                    name = target.Current.Name
+                },
+                ancestors = Array.Empty<object>()
+            },
+            instruction = $"GUI focus test {requestId}",
+            canPrevious,
+            canNext
+        };
+
+    private static void SendNativeMessage(Process process, object message)
+    {
+        var payload = JsonSerializer.SerializeToUtf8Bytes(message);
+        Span<byte> prefix = stackalloc byte[4];
+        BinaryPrimitives.WriteInt32LittleEndian(prefix, payload.Length);
+        process.StandardInput.BaseStream.Write(prefix);
+        process.StandardInput.BaseStream.Write(payload);
+        process.StandardInput.BaseStream.Flush();
+    }
+
+    private static bool ReadNativeSuccess(Process process, string expectedType, string requestId)
+    {
+        var prefix = new byte[4];
+        ReadExactly(process.StandardOutput.BaseStream, prefix);
+        var length = BinaryPrimitives.ReadInt32LittleEndian(prefix);
+        Require(length > 0 && length <= 1024 * 1024, $"Invalid Native Messaging response length: {length}.");
+        var payload = new byte[length];
+        ReadExactly(process.StandardOutput.BaseStream, payload);
+        using var json = JsonDocument.Parse(payload);
+        var root = json.RootElement;
+        return root.TryGetProperty("type", out var type) &&
+               type.GetString() == expectedType &&
+               root.TryGetProperty("requestId", out var id) &&
+               id.GetString() == requestId &&
+               root.TryGetProperty("success", out var success) &&
+               success.ValueKind == JsonValueKind.True;
+    }
+
+    private static void ReadExactly(Stream stream, byte[] buffer)
+    {
+        var offset = 0;
+        while (offset < buffer.Length)
+        {
+            var read = stream.Read(buffer, offset, buffer.Length - offset);
+            if (read <= 0) throw new EndOfStreamException("Native Messaging runtime closed before replying.");
+            offset += read;
+        }
+    }
 
     private static List<AutomationElement> FindAllByAutomationId(AutomationElement root, string id)
         => root.FindAll(TreeScope.Descendants,
