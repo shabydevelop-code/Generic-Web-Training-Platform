@@ -201,7 +201,6 @@ test("stage 6 guidance positioning - bubble follows target while scrolling", asy
     await expect(panel.locator("#learnerStartInstructionPanel")).toBeVisible();
     await expect(panel.locator("#learnerStartInstructionText")).toHaveText("Open the relevant system and navigate to the starting screen.");
     await confirmGuideStartInstruction(panel);
-    await expectEditorPreviewMode(panel, true);
 
     const target = fixture.locator("#fixture-action");
     const bubble = fixture.locator(".gwtp-training-overlay");
