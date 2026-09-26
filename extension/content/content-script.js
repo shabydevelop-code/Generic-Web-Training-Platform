@@ -1,4 +1,9 @@
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+  if (message?.type === "GWTP_CONTENT_READY") {
+    sendResponse({ success: true });
+    return;
+  }
+
   if (message?.type === "GWTP_VALIDATE_ELEMENT") {
     if (!message.selector) {
       sendResponse({ success: false });
