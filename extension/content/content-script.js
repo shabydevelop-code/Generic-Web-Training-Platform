@@ -70,4 +70,20 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 
 
 globalThis.__GWTP_CONTENT_READY__ = true;
-chrome.runtime.sendMessage({ type: "GWTP_PAGE_READY" }).catch(() => {});
+
+const notifyPageReady = () => {
+  chrome.runtime.sendMessage({ type: "GWTP_PAGE_READY" }).catch(() => {});
+};
+
+// A document restored from the browser back/forward cache can retain the exact
+// training overlay/highlight DOM that existed when it was frozen. Browser
+// history is not guide history: discard that cached visual state first, then
+// let the authoritative guide step be restored through PAGE_READY.
+window.addEventListener("pageshow", (event) => {
+  if (!event.persisted) return;
+  clearTrainingStep();
+  clearHighlight();
+  notifyPageReady();
+});
+
+notifyPageReady();
