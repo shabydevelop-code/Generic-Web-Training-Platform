@@ -163,7 +163,6 @@ const backToGuidesButton = document.getElementById("backToGuidesButton");
 const guideAvailableInput = document.getElementById("guideAvailableInput");
 const guideEditorTitle = document.getElementById("guideEditorTitle");
 const guideEditorDescription = document.getElementById("guideEditorDescription");
-const guideEditorView = document.getElementById("guideEditorView");
 const editGuideDeleteSection = document.getElementById("editGuideDeleteSection");
 const previewGuideButton = document.getElementById("previewGuideButton");
 const previewActiveControls = document.getElementById("previewActiveControls");
