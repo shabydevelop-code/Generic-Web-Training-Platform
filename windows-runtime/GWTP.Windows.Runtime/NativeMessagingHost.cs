@@ -11,6 +11,8 @@ internal sealed class NativeMessagingHost : IDisposable
     private readonly Stream _input;
     private readonly Stream _output;
     private readonly CancellationTokenSource _cts = new();
+    private readonly SemaphoreSlim _writeLock = new(1, 1);
+    private bool _disposed;
     private string? _pendingRequestId;
 
     public NativeMessagingHost(MainWindow pickerWindow)
@@ -120,9 +122,17 @@ internal sealed class NativeMessagingHost : IDisposable
         var lengthBytes = new byte[4];
         BinaryPrimitives.WriteInt32LittleEndian(lengthBytes, payload.Length);
 
-        await _output.WriteAsync(lengthBytes);
-        await _output.WriteAsync(payload);
-        await _output.FlushAsync();
+        await _writeLock.WaitAsync();
+        try
+        {
+            await _output.WriteAsync(lengthBytes);
+            await _output.WriteAsync(payload);
+            await _output.FlushAsync();
+        }
+        finally
+        {
+            _writeLock.Release();
+        }
     }
 
     private static async Task<bool> ReadExactlyOrEofAsync(Stream stream, byte[] buffer, CancellationToken cancellationToken)
@@ -139,9 +149,12 @@ internal sealed class NativeMessagingHost : IDisposable
 
     public void Dispose()
     {
+        if (_disposed) return;
+        _disposed = true;
         _cts.Cancel();
         _pickerWindow.AuthoringTargetSelected -= OnAuthoringTargetSelected;
         _pickerWindow.AuthoringSelectionCancelled -= OnAuthoringSelectionCancelled;
         _cts.Dispose();
+        _writeLock.Dispose();
     }
 }
