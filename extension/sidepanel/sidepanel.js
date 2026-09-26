@@ -315,6 +315,39 @@ async function startGuidePreview() {
   }
 }
 
+async function moveWindowsPreview(direction) {
+  if (!previewSession || (direction !== 1 && direction !== -1)) return;
+
+  const nextIndex = previewSession.stepIndex + direction;
+  if (nextIndex < 0 || nextIndex >= previewSession.steps.length) return;
+
+  const current = {
+    step: previewSession.steps[nextIndex],
+    stepIndex: nextIndex,
+    totalSteps: previewSession.steps.length,
+    mode: "preview"
+  };
+
+  if (!(await window.guideRunner.canShowStep(current))) return;
+
+  previewSession.stepIndex = nextIndex;
+  previewPendingDirection = null;
+  updatePreviewUi();
+  await window.guideRunner.showCurrentStep(current);
+}
+
+window.addEventListener("gwtp-windows-preview-navigation", (event) => {
+  const direction = event.detail?.direction === "next"
+    ? 1
+    : event.detail?.direction === "previous"
+      ? -1
+      : 0;
+
+  moveWindowsPreview(direction).catch((error) => {
+    console.info("GWTP Windows preview navigation skipped:", error);
+  });
+});
+
 async function exitGuidePreview() {
   try {
     await window.windowsBridgeService.clearStep();
