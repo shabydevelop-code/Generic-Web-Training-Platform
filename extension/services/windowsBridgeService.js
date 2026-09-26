@@ -54,5 +54,51 @@
     activePort.postMessage({ type: "cancelPick", requestId: activeRequestId });
   }
 
-  window.windowsBridgeService = { pickTarget, cancelPick };
+  let previewPort = null;
+
+  function ensurePreviewPort() {
+    if (previewPort) return previewPort;
+    previewPort = chrome.runtime.connectNative(HOST_NAME);
+    previewPort.onDisconnect.addListener(() => { previewPort = null; });
+    return previewPort;
+  }
+
+  function requestPreview(message, expectedType) {
+    return new Promise((resolve, reject) => {
+      const port = ensurePreviewPort();
+      const requestId = crypto.randomUUID();
+
+      const onMessage = (response) => {
+        if (response?.requestId !== requestId || response?.type !== expectedType) return;
+        port.onMessage.removeListener(onMessage);
+        resolve(response);
+      };
+      port.onMessage.addListener(onMessage);
+      try {
+        port.postMessage({ ...message, requestId });
+      } catch (error) {
+        port.onMessage.removeListener(onMessage);
+        reject(error);
+      }
+    });
+  }
+
+  async function showStep(step) {
+    const response = await requestPreview({
+      type: "showStep",
+      target: step?.windowsTarget,
+      instruction: step?.instruction || ""
+    }, "stepShown");
+    return response;
+  }
+
+  async function clearStep() {
+    if (!previewPort) return { success: true };
+    const response = await requestPreview({ type: "clearStep" }, "stepCleared");
+    try { previewPort.disconnect(); } catch {}
+    previewPort = null;
+    return response;
+  }
+
+  window.windowsBridgeService = { pickTarget, cancelPick, showStep, clearStep };
 })();
