@@ -569,3 +569,5 @@ Later accessibility phases must add their own concrete regression checks to this
 - Removed the permanent startup rewrite of blank StartInstruction values; the data correction is now a versioned one-time migration.
 - Demo CRM guide seeds now use a Hebrew start instruction, avoiding mixed-language authored content in the Hebrew UI.
 - HE/EN interface labels and placeholders continue to come from the existing i18n service; authored StartInstruction remains guide data rather than localized UI text.
+
+- Follow-up: the neutral default is now “פתח את המערכת והגע לנקודה שממנה מתחיל המדריך.” / “Open the system and navigate to the point where the guide begins.” New guides are prefilled from the existing HE/EN i18n language, while the one-time migration replaces blank and temporary fallback values without assuming a specific start screen. Editors can override the text per guide.
