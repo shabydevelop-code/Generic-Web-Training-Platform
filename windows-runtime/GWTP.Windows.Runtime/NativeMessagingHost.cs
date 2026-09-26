@@ -85,6 +85,24 @@ internal sealed class NativeMessagingHost : IDisposable
                 continue;
             }
 
+            if (type == "canShowStep")
+            {
+                if (!message.RootElement.TryGetProperty("target", out var targetElement))
+                {
+                    await WriteMessageAsync(new { type = "stepAvailability", requestId, success = false });
+                    continue;
+                }
+
+                var target = targetElement.Deserialize<WindowsTargetDescriptor>(new JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true
+                });
+                var available = target is not null && await _pickerWindow.Dispatcher.InvokeAsync(
+                    () => _pickerWindow.CanShowAuthoredStep(target));
+                await WriteMessageAsync(new { type = "stepAvailability", requestId, success = available });
+                continue;
+            }
+
             if (type == "showStep")
             {
                 if (!message.RootElement.TryGetProperty("target", out var targetElement))
