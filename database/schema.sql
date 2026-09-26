@@ -34,6 +34,8 @@ CREATE TABLE IF NOT EXISTS GuideSteps (
     GuideId INTEGER NOT NULL,
     StepOrder INTEGER NOT NULL CHECK (StepOrder > 0),
     Selector TEXT NOT NULL,
+    Runtime TEXT NOT NULL DEFAULT 'web' CHECK (Runtime IN ('web', 'windows')),
+    WindowsTarget TEXT,
     Instruction TEXT NOT NULL,
     ScreenName TEXT,
     FrameTarget TEXT,
