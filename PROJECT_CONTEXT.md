@@ -112,3 +112,14 @@ Database:
 - The execution modes diverge only after confirmation: Learner execution may create/update LearnerProgress, while Editor Preview remains local and must not create or mutate LearnerProgress.
 - Resume from InProgress restores the saved step directly and does not replay StartInstruction.
 - Keep this start contract shared across future Web, Windows, and mixed-runtime execution rather than creating runtime- or role-specific start UX.
+
+## Shared Web + Windows step contract (2026-09-26)
+
+- Runtime ownership belongs to each GuideStep, not to Guide and not to TargetType. Supported runtime values are `web` and `windows`; a guide's Web/Windows/Hybrid classification is derived from its steps rather than persisted as a manually selected guide type.
+- `TargetType` keeps its existing semantic meaning: `element` or `none`. It must never be reused as the runtime/platform discriminator.
+- A GuideStep has runtime-neutral learning fields (order, instruction, screen name, target type, validation) plus a runtime-specific target descriptor when `TargetType=element`.
+- Web element targeting remains Web-specific data: CSS selector plus frame identity. These fields must not become requirements for Windows steps.
+- Windows element targeting must use a Windows/UIA descriptor rather than overloading the Web selector. The current Windows runtime proves the initial identity ingredients (process name, AutomationId, Name, ControlType, current-session process scoping), but hierarchy/fallback identity still needs to be hardened before the persisted Windows target DTO/schema is finalized.
+- Instruction-only steps (`TargetType=none`) require no element target. Their runtime still matters because it determines which runtime presents the guidance during a mixed guide.
+- Do not add a database migration merely to introduce a runtime field while the Windows target DTO is unresolved. Define the typed target contract first, then migrate DB/API/Editor/runtime coherently in one production-compatible slice.
+- Existing Web guides must migrate compatibly to runtime `web`; no editor-authored manual Guide.Platform field is planned.
