@@ -229,24 +229,20 @@
         </div>
 
         <div id="guideEditorView" hidden>
-        <header class="panel__header guide-editor-header">
-          <div class="guide-editor-header__copy">
-            <div class="guide-editor-header__title-row">
-              <h1 id="guideEditorTitle" data-i18n="guideEditorTitle">Edit Guide</h1>
-              <span id="previewModeBadge" class="guide-preview-badge" data-i18n="previewModeBadge" hidden>Preview mode</span>
-            </div>
-            <p id="guideEditorDescription" class="description" data-i18n="guideEditorDescription">
-              Edit the guide details and its steps.
-            </p>
-          </div>
-          <div id="previewGuideSection" class="guide-preview-section">
-            <button id="previewGuideButton" class="button guide-preview-button" type="button" data-i18n="previewGuideButton">Preview</button>
-            <div id="previewActiveControls" class="guide-preview-active" hidden>
-              <span id="previewProgress" class="guide-preview-active__status"></span>
-              <button id="exitPreviewButton" class="button guide-preview-exit-button" type="button" data-i18n="exitPreviewButton">Exit preview</button>
-            </div>
-          </div>
+        <header class="panel__header">
+          <h1 id="guideEditorTitle" data-i18n="guideEditorTitle">Edit Guide</h1>
+          <p id="guideEditorDescription" class="description" data-i18n="guideEditorDescription">
+            Edit the guide details and its steps.
+          </p>
         </header>
+
+        <div id="previewGuideSection" class="guide-preview-toolbar">
+          <button id="previewGuideButton" class="button guide-preview-button" type="button" data-i18n="previewGuideButton">Preview</button>
+          <div id="previewActiveControls" class="guide-preview-active" hidden>
+            <span id="previewProgress" class="guide-preview-active__status"></span>
+            <button id="exitPreviewButton" class="button guide-preview-exit-button" type="button" data-i18n="exitPreviewButton">Exit preview</button>
+          </div>
+        </div>
 
         <section class="card guide-details-card">
           <div class="form-field">
