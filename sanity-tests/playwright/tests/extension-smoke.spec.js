@@ -724,8 +724,17 @@ test("stage 5 editor preview - navigation, validation and exit cleanup work thro
     await panel.locator("#saveStepButton").click();
 
     await fixture.bringToFront();
+
+    // Preview start is a visible GUI flow. Cancelling it must leave the editor usable
+    // and must not strand the Preview button in a disabled/pending state.
     await panel.locator("#previewGuideButton").click();
+    await expect(panel.locator("#learnerStartInstructionPanel")).toBeVisible();
     await expect(panel.locator("#learnerStartInstructionText")).toHaveText("Open the relevant system and navigate to the starting screen.");
+    await panel.locator("#cancelStartInstructionButton").click();
+    await expect(panel.locator("#learnerStartInstructionPanel")).toBeHidden();
+    await expect(panel.locator("#previewGuideButton")).toBeEnabled();
+
+    await panel.locator("#previewGuideButton").click();
     await confirmGuideStartInstruction(panel);
     let overlay = content.locator(".gwtp-training-overlay");
     await expect(overlay).toHaveCount(1);
