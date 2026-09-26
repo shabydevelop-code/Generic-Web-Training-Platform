@@ -3664,12 +3664,12 @@ test("stage 6 Windows step authoring - Editor selects and persists native target
     await expect(editor.locator("#stepsList .step-item")).toHaveCount(2);
     await expect(editor.locator("#stepsList .step-item").nth(1)).toContainText("GWTPTestHost");
 
-    await panel.locator("#backToGuidesButton").click();
+    await editor.locator("#backToGuidesButton").click();
     await editor.locator("#guidesList [data-guide-id]").filter({ hasText: name }).first().click();
     await expect(editor.locator("#stepsList .step-item")).toHaveCount(2);
     await editor.locator("#stepsList .step-item").nth(1).click();
-    await expect(panel.locator("#stepRuntimeSelect")).toHaveValue("windows");
-    await expect(panel.locator("#selectorInput")).toHaveValue("");
+    await expect(editor.locator("#stepRuntimeSelect")).toHaveValue("windows");
+    await expect(editor.locator("#selectorInput")).toHaveValue("");
     await expect(editor.locator("#selectedSelector")).toContainText("GWTPTestHost");
 
     const persisted = await editor.evaluate(async (guideId) => {
