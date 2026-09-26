@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <RootNamespace>GWTP_Windows_POC</RootNamespace>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWPF>true</UseWPF>
+    <UseWindowsForms>true</UseWindowsForms>
+  </PropertyGroup>
+
+  <!-- AmbiguityTestHost is a separate executable project nested in this repository.
+       Exclude its sources/resources from the main POC project's default globbing. -->
+  <ItemGroup>
+    <Compile Remove="AmbiguityTestHost\**\*.cs" />
+    <Page Remove="AmbiguityTestHost\**\*.xaml" />
+    <ApplicationDefinition Remove="AmbiguityTestHost\**\App.xaml" />
+    <None Remove="AmbiguityTestHost\**\*" />
+    <Compile Remove="WindowsRuntime.GuiTests\**\*.cs" />
+    <None Remove="WindowsRuntime.GuiTests\**\*" />
+  </ItemGroup>
+
+</Project>
