@@ -359,6 +359,12 @@
     }
 
     const firstStep = guide.steps[0];
+    console.info("GWTP Preview route", {
+      runtime: firstStep.runtime ?? null,
+      targetType: firstStep.targetType ?? null,
+      hasWindowsTarget: Boolean(firstStep.windowsTarget),
+      stepId: firstStep.id ?? null
+    });
     if ((firstStep.runtime || "web") === "windows") {
       if (!firstStep.windowsTarget) {
         throw new Error("The Windows step does not contain a target descriptor.");
