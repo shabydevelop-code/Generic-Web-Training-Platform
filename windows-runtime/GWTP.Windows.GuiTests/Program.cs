@@ -540,7 +540,8 @@ internal static class Program
                 Invoke(FindByAutomationId(runtimeWindow, "FindElementButton"));
                 SetForegroundWindow(reopenedHwnd);
                 WaitUntil(() => IsOverlayAttached(runtime.Id, reopenedTarget),
-                    "Authored target was not rediscovered after the target application restarted.");
+                    "Authored target was not rediscovered after the target application restarted.",
+                    LaunchTimeoutMs);
             });
 
             Run("21. Two identical app instances fail safely instead of choosing an arbitrary target", () =>
