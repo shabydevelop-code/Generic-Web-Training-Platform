@@ -44,12 +44,17 @@ internal sealed class NativeMessagingHost : IDisposable
         while (!_cts.IsCancellationRequested)
         {
             var message = await ReadMessageAsync(_cts.Token);
-            if (message is null) break;
+            if (message is null)
+            {
+                DiagnosticLog.Write("NativeMessaging.Eof");
+                break;
+            }
 
             if (!message.RootElement.TryGetProperty("type", out var typeElement))
                 continue;
 
             var type = typeElement.GetString();
+            DiagnosticLog.Write($"NativeMessaging.Received type='{type}'");
             var requestId = message.RootElement.TryGetProperty("requestId", out var requestElement)
                 ? requestElement.GetString()
                 : null;
@@ -119,7 +124,12 @@ internal sealed class NativeMessagingHost : IDisposable
 
         var length = BinaryPrimitives.ReadInt32LittleEndian(lengthBytes);
         if (length <= 0 || length > 1024 * 1024)
+        {
+            DiagnosticLog.Write($"NativeMessaging.InvalidFrame prefix={Convert.ToHexString(lengthBytes)} length={length}");
             throw new InvalidDataException("Invalid native messaging message length.");
+        }
+
+        DiagnosticLog.Write($"NativeMessaging.Frame length={length}");
 
         var payload = new byte[length];
         if (!await ReadExactlyOrEofAsync(_input, payload, cancellationToken))
