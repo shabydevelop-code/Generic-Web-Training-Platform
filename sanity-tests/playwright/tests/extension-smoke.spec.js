@@ -23,16 +23,16 @@ async function confirmGuideStartInstruction(panel) {
 async function expectEditorPreviewMode(panel, active) {
   const previewButton = panel.locator("#previewGuideButton");
   const exitButton = panel.locator("#exitPreviewButton");
-  const badge = panel.locator("#previewModeBadge");
+  const progress = panel.locator("#previewProgress");
 
   if (active) {
     await expect(previewButton).toBeHidden();
     await expect(exitButton).toBeVisible();
-    await expect(badge).toBeVisible();
+    await expect(progress).toBeVisible();
+    await expect(progress).not.toHaveText("");
   } else {
     await expect(previewButton).toBeVisible();
     await expect(exitButton).toBeHidden();
-    await expect(badge).toBeHidden();
   }
 }
 
