@@ -1620,6 +1620,14 @@ function frameMatchesStep(frameInfo, stepFrame) {
 async function highlightEditorStep(step) {
   // Card selection is editor state and does not depend on whether the target element exists on the current URL.
   markActiveStep(step.id);
+
+  if (step.targetType === "none") {
+    await window.messagingService.sendToAllFrames({ type: "GWTP_CLEAR_HIGHLIGHT" }).catch(() => {});
+    elementPickerStatus.textContent = "";
+    delete elementPickerStatus.dataset.type;
+    return;
+  }
+
   const stepFrame = step.element?.frame || null;
 
   await window.messagingService.sendToAllFrames({ type: "GWTP_CLEAR_HIGHLIGHT" }).catch(() => {});
@@ -1734,6 +1742,7 @@ function openStepEditor(step) {
   });
   selectorInput.value = instructionOnly ? "" : step.selector;
   selectButton.disabled = instructionOnly;
+  selectButton.hidden = instructionOnly;
   validationTypeSelect.disabled = instructionOnly;
   screenNameInput.value = step.screenName || "";
   setInstructionHtml(step.instruction);
@@ -2269,12 +2278,18 @@ instructionOnlyInput.addEventListener("change", () => {
   const instructionOnly = instructionOnlyInput.checked;
   if (instructionOnly && elementPickerActive) cancelElementPicker(false);
   selectButton.disabled = instructionOnly;
+  selectButton.hidden = instructionOnly;
   validationTypeSelect.disabled = instructionOnly;
   if (instructionOnly) {
     currentSelectedElement = null;
     selectorInput.value = "";
     selectedElement.hidden = true;
+    elementPickerStatus.textContent = "";
+    delete elementPickerStatus.dataset.type;
+    clearPageTrainingVisuals();
     resetValidationBuilder();
+  } else {
+    selectButton.hidden = false;
   }
   updateStepSaveValidity();
 });
