@@ -290,6 +290,10 @@ async function startGuidePreview() {
   previewGuideButton.disabled = true;
   previewStarting = true;
   try {
+    if (!(await showStartInstruction(guide))) {
+      return;
+    }
+
     previewSession = { ...guide, stepIndex: 0 };
     previewPendingDirection = null;
     updatePreviewUi();
