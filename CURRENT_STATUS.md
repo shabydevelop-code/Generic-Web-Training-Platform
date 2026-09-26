@@ -561,3 +561,11 @@ Later accessibility phases must add their own concrete regression checks to this
 - Editor authoring now uses a required start-instruction field instead of a URL field.
 - Playwright fixtures were migrated and learner coverage now verifies the start instruction appears before the first training overlay.
 - This establishes one guide model for Web-only, Windows-only, and mixed Web/Windows training. GWTP does not launch the work application; host-system actions may naturally transition between runtimes.
+
+
+## 2026-09-26 — Start instruction language alignment
+
+- Corrected the StartInstruction migration so existing blank values and the temporary English fallback are migrated once, through SchemaMigrations, to the Hebrew authoring baseline used by the current deployment.
+- Removed the permanent startup rewrite of blank StartInstruction values; the data correction is now a versioned one-time migration.
+- Demo CRM guide seeds now use a Hebrew start instruction, avoiding mixed-language authored content in the Hebrew UI.
+- HE/EN interface labels and placeholders continue to come from the existing i18n service; authored StartInstruction remains guide data rather than localized UI text.
