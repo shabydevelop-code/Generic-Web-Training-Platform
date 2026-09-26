@@ -90,6 +90,15 @@
     });
   }
 
+  async function canShowStep(step) {
+    if (!step?.windowsTarget) return false;
+    const response = await requestPreview({
+      type: "canShowStep",
+      target: step.windowsTarget
+    }, "stepAvailability");
+    return response?.success === true;
+  }
+
   async function showStep(step) {
     const response = await requestPreview({
       type: "showStep",
@@ -109,5 +118,5 @@
     return response;
   }
 
-  window.windowsBridgeService = { pickTarget, cancelPick, showStep, clearStep };
+  window.windowsBridgeService = { pickTarget, cancelPick, canShowStep, showStep, clearStep };
 })();
