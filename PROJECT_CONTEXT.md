@@ -132,3 +132,14 @@ Database:
 - Do not persist PID, HWND, SessionId, bounds, RuntimeId or other transient process/window state. Current Windows SessionId remains runtime scoping only.
 - Resolution must be deterministic and fail safe: zero matches => unavailable/pending; multiple indistinguishable matches => ambiguous/pending; never select an arbitrary target.
 - The next implementation slice is now DB/API/Editor/runtime integration of the frozen shared GuideStep runtime + typed target contract, with compatible migration of existing Web steps to runtime `web`.
+
+
+## Shared step persistence implemented (2026-09-26)
+
+- The main API/database now persists GuideStep `Runtime` and typed `WindowsTarget` data. Existing databases are upgraded at API startup; existing/blank runtime values normalize to `web`.
+- Fresh schema defines `Runtime TEXT NOT NULL DEFAULT 'web'` with `web|windows` values and a separate nullable `WindowsTarget` JSON payload. Web Selector/FrameTarget remain separate legacy-compatible Web fields.
+- API request/response DTOs now carry `runtime` and `windowsTarget`. Runtime-specific validation requires a selector for Web element steps and a valid Windows descriptor for Windows element steps; Windows targets cannot smuggle Web selector/frame identity.
+- Instruction-only steps remain targetless but still carry runtime.
+- The Editor's in-memory step model and save paths round-trip runtime/WindowsTarget so future Windows data is not erased by guide reorder/metadata saves before Windows authoring UI is added.
+- Database health exposes whether the two migration columns exist, and `gwtp-sanity.ps1` requires both.
+- Windows authoring UI and Windows execution handoff are not implemented by this persistence slice. The next slice is the Editor/Windows-runtime bridge and GUI authoring flow.
