@@ -575,3 +575,5 @@ Later accessibility phases must add their own concrete regression checks to this
 - Editor Preview now mirrors a fresh learner start: it shows the guide StartInstruction and waits for confirmation before rendering step 1. Cancelling leaves Preview inactive, and Preview still does not create or mutate LearnerProgress. Playwright Preview flows were updated to cover this contract.
 
 - Manual extension verification exposed that the shared StartInstruction panel was nested inside the learner-only view, so Editor Preview could invoke the start flow while the GUI remained hidden by its parent. The panel now lives at the authenticated-view level and is shared by Learner Start/Start Again and Editor Preview. This is a GUI structure fix; Preview still starts only after visible confirmation.
+
+- Preview pending-start lifecycle is now explicit: leaving the guide while StartInstruction confirmation is pending cancels that visible start flow, clears the panel, resets previewStarting, and re-enables Preview. GUI E2E also covers cancelling the visible StartInstruction and starting Preview again, preventing a hidden/pending Preview from stranding the Editor button disabled.
