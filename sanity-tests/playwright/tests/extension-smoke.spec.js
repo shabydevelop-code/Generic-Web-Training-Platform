@@ -12,9 +12,9 @@ let extensionId;
 
 async function confirmGuideStartInstruction(panel) {
   const prompt = panel.locator("#learnerStartInstructionPanel");
-  if (await prompt.isVisible()) {
-    await panel.locator("#confirmStartInstructionButton").click();
-  }
+  await expect(prompt).toBeVisible({ timeout: 10000 });
+  await panel.locator("#confirmStartInstructionButton").click();
+  await expect(prompt).toBeHidden();
 }
 
 async function requireHealthyStack(request) {
@@ -1587,6 +1587,7 @@ test("completed guide is stored as Completed and starts over on the next run", a
 
   await crm.bringToFront();
   await start.click();
+  await confirmGuideStartInstruction(panel);
   await expect.poll(async () => panel.evaluate(async () => {
     const response = await chrome.runtime.sendMessage({ type: "GWTP_TRAINING_GET_CURRENT" });
     return response?.current?.stepIndex ?? null;
