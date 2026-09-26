@@ -573,3 +573,5 @@ Later accessibility phases must add their own concrete regression checks to this
 - Follow-up: the neutral default is now “פתח את המערכת והגע לנקודה שממנה מתחיל המדריך.” / “Open the system and navigate to the point where the guide begins.” New guides are prefilled from the existing HE/EN i18n language, while the one-time migration replaces blank and temporary fallback values without assuming a specific start screen. Editors can override the text per guide.
 
 - Editor Preview now mirrors a fresh learner start: it shows the guide StartInstruction and waits for confirmation before rendering step 1. Cancelling leaves Preview inactive, and Preview still does not create or mutate LearnerProgress. Playwright Preview flows were updated to cover this contract.
+
+- Manual extension verification exposed that the shared StartInstruction panel was nested inside the learner-only view, so Editor Preview could invoke the start flow while the GUI remained hidden by its parent. The panel now lives at the authenticated-view level and is shared by Learner Start/Start Again and Editor Preview. This is a GUI structure fix; Preview still starts only after visible confirmation.
