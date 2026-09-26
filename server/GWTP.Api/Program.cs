@@ -535,7 +535,7 @@ app.MapGet("/api/learner/guides/{id:long}", (long id, HttpContext httpContext) =
 
     using var guideCommand = connection.CreateCommand();
     guideCommand.CommandText = """
-        SELECT Id, TopicId, Name, StartUrl, IsAvailable
+        SELECT Id, TopicId, Name, StartInstruction, IsAvailable
         FROM Guides
         WHERE Id = $id AND IsAvailable = 1;
         """;
@@ -548,7 +548,7 @@ app.MapGet("/api/learner/guides/{id:long}", (long id, HttpContext httpContext) =
     var guideId = guideReader.GetInt64(0);
     var topicId = guideReader.GetInt64(1);
     var name = guideReader.GetString(2);
-    var startUrl = guideReader.IsDBNull(3) ? null : guideReader.GetString(3);
+    var startInstruction = guideReader.IsDBNull(3) ? null : guideReader.GetString(3);
     var isAvailable = guideReader.GetInt64(4) == 1;
     guideReader.Close();
 
@@ -582,7 +582,7 @@ app.MapGet("/api/learner/guides/{id:long}", (long id, HttpContext httpContext) =
                 stepsReader.IsDBNull(10) ? null : stepsReader.GetString(10))));
     }
 
-    return Results.Ok(new GuideResponse(guideId, topicId, name, startUrl, isAvailable, steps));
+    return Results.Ok(new GuideResponse(guideId, topicId, name, startInstruction, isAvailable, steps));
 });
 
 static long? GetAuthenticatedUserId(HttpContext httpContext, Dictionary<string, long> sessions, object sessionLock)
@@ -1055,7 +1055,7 @@ editorGuides.MapGet("/{id:long}", (long id) =>
 
     using var guideCommand = connection.CreateCommand();
     guideCommand.CommandText = """
-        SELECT Id, TopicId, Name, StartUrl, IsAvailable
+        SELECT Id, TopicId, Name, StartInstruction, IsAvailable
         FROM Guides
         WHERE Id = $id;
         """;
@@ -1070,7 +1070,7 @@ editorGuides.MapGet("/{id:long}", (long id) =>
     var guideId = guideReader.GetInt64(0);
     var topicId = guideReader.GetInt64(1);
     var name = guideReader.GetString(2);
-    var startUrl = guideReader.IsDBNull(3) ? null : guideReader.GetString(3);
+    var startInstruction = guideReader.IsDBNull(3) ? null : guideReader.GetString(3);
     var isAvailable = guideReader.GetInt64(4) == 1;
     guideReader.Close();
 
@@ -1104,15 +1104,15 @@ editorGuides.MapGet("/{id:long}", (long id) =>
                 stepsReader.IsDBNull(10) ? null : stepsReader.GetString(10))));
     }
 
-    return Results.Ok(new GuideResponse(guideId, topicId, name, startUrl, isAvailable, steps));
+    return Results.Ok(new GuideResponse(guideId, topicId, name, startInstruction, isAvailable, steps));
 });
 
 editorGuides.MapPut("/{id:long}", (long id, CreateGuideRequest request) =>
 {
     var name = request.Name?.Trim();
 
-    if (string.IsNullOrWhiteSpace(name) || string.IsNullOrWhiteSpace(request.StartUrl) || request.TopicId <= 0 || request.Steps is null)
-        return Results.BadRequest(new { message = "Topic, guide name and start URL are required." });
+    if (string.IsNullOrWhiteSpace(name) || string.IsNullOrWhiteSpace(request.StartInstruction) || request.TopicId <= 0 || request.Steps is null)
+        return Results.BadRequest(new { message = "Topic, guide name and start instruction are required." });
 
     if (request.IsAvailable && request.Steps.Count == 0)
         return Results.BadRequest(new { message = "An available guide must contain at least one step." });
@@ -1138,10 +1138,10 @@ editorGuides.MapPut("/{id:long}", (long id, CreateGuideRequest request) =>
 
     using var guideCommand = connection.CreateCommand();
     guideCommand.Transaction = transaction;
-    guideCommand.CommandText = "UPDATE Guides SET TopicId = $topicId, Name = $name, StartUrl = $startUrl, IsAvailable = $isAvailable WHERE Id = $id;";
+    guideCommand.CommandText = "UPDATE Guides SET TopicId = $topicId, Name = $name, StartInstruction = $startInstruction, IsAvailable = $isAvailable WHERE Id = $id;";
     guideCommand.Parameters.AddWithValue("$topicId", request.TopicId);
     guideCommand.Parameters.AddWithValue("$name", name);
-    guideCommand.Parameters.AddWithValue("$startUrl", (object?)request.StartUrl?.Trim() ?? DBNull.Value);
+    guideCommand.Parameters.AddWithValue("$startInstruction", (object?)request.StartInstruction?.Trim() ?? DBNull.Value);
     guideCommand.Parameters.AddWithValue("$isAvailable", request.IsAvailable ? 1 : 0);
     guideCommand.Parameters.AddWithValue("$id", id);
     if (guideCommand.ExecuteNonQuery() == 0)
@@ -1167,7 +1167,7 @@ editorGuides.MapPut("/{id:long}", (long id, CreateGuideRequest request) =>
         id,
         request.TopicId,
         name,
-        request.StartUrl?.Trim(),
+        request.StartInstruction?.Trim(),
         request.IsAvailable,
         savedSteps));
 });
@@ -1229,9 +1229,9 @@ editorGuides.MapPost("", (CreateGuideRequest request) =>
 {
     var name = request.Name?.Trim();
 
-    if (string.IsNullOrWhiteSpace(name) || string.IsNullOrWhiteSpace(request.StartUrl) || request.TopicId <= 0 || request.Steps is null)
+    if (string.IsNullOrWhiteSpace(name) || string.IsNullOrWhiteSpace(request.StartInstruction) || request.TopicId <= 0 || request.Steps is null)
     {
-        return Results.BadRequest(new { message = "Topic, guide name and start URL are required." });
+        return Results.BadRequest(new { message = "Topic, guide name and start instruction are required." });
     }
 
     if (request.IsAvailable && request.Steps.Count == 0)
@@ -1272,13 +1272,13 @@ editorGuides.MapPost("", (CreateGuideRequest request) =>
     using var guideCommand = connection.CreateCommand();
     guideCommand.Transaction = transaction;
     guideCommand.CommandText = """
-        INSERT INTO Guides (TopicId, Name, StartUrl, IsAvailable)
-        VALUES ($topicId, $name, $startUrl, $isAvailable);
+        INSERT INTO Guides (TopicId, Name, StartInstruction, IsAvailable)
+        VALUES ($topicId, $name, $startInstruction, $isAvailable);
         SELECT last_insert_rowid();
         """;
     guideCommand.Parameters.AddWithValue("$topicId", request.TopicId);
     guideCommand.Parameters.AddWithValue("$name", name);
-    guideCommand.Parameters.AddWithValue("$startUrl", request.StartUrl!.Trim());
+    guideCommand.Parameters.AddWithValue("$startInstruction", request.StartInstruction!.Trim());
     guideCommand.Parameters.AddWithValue("$isAvailable", request.IsAvailable ? 1 : 0);
     var guideId = Convert.ToInt64(guideCommand.ExecuteScalar());
 
@@ -1291,7 +1291,7 @@ editorGuides.MapPost("", (CreateGuideRequest request) =>
             guideId,
             request.TopicId,
             name,
-            request.StartUrl?.Trim(),
+            request.StartInstruction?.Trim(),
             request.IsAvailable,
             savedSteps));
 });
@@ -1562,24 +1562,56 @@ static void ApplyDatabaseMigrations(string databasePath)
     columnsCommand.CommandText = "PRAGMA table_info(Guides);";
 
     using var reader = columnsCommand.ExecuteReader();
-    var hasStartUrl = false;
+    var hasStartInstruction = false;
 
     while (reader.Read())
     {
-        if (string.Equals(reader.GetString(1), "StartUrl", StringComparison.OrdinalIgnoreCase))
+        if (string.Equals(reader.GetString(1), "StartInstruction", StringComparison.OrdinalIgnoreCase))
         {
-            hasStartUrl = true;
+            hasStartInstruction = true;
             break;
         }
     }
 
     reader.Close();
 
-    if (!hasStartUrl)
+    if (!hasStartInstruction)
     {
         using var migrationCommand = connection.CreateCommand();
-        migrationCommand.CommandText = "ALTER TABLE Guides ADD COLUMN StartUrl TEXT;";
+        migrationCommand.CommandText = "ALTER TABLE Guides ADD COLUMN StartInstruction TEXT;";
         migrationCommand.ExecuteNonQuery();
+    }
+
+    using (var populateStartInstructionCommand = connection.CreateCommand())
+    {
+        populateStartInstructionCommand.CommandText = """
+            UPDATE Guides
+            SET StartInstruction = 'Open the relevant system and navigate to the starting screen.'
+            WHERE StartInstruction IS NULL OR TRIM(StartInstruction) = '';
+            """;
+        populateStartInstructionCommand.ExecuteNonQuery();
+    }
+
+    var hasLegacyStartUrl = false;
+    using (var legacyColumnsCommand = connection.CreateCommand())
+    {
+        legacyColumnsCommand.CommandText = "PRAGMA table_info(Guides);";
+        using var legacyReader = legacyColumnsCommand.ExecuteReader();
+        while (legacyReader.Read())
+        {
+            if (string.Equals(legacyReader.GetString(1), "StartUrl", StringComparison.OrdinalIgnoreCase))
+            {
+                hasLegacyStartUrl = true;
+                break;
+            }
+        }
+    }
+
+    if (hasLegacyStartUrl)
+    {
+        using var removeLegacyColumnCommand = connection.CreateCommand();
+        removeLegacyColumnCommand.CommandText = "ALTER TABLE Guides DROP COLUMN StartUrl;";
+        removeLegacyColumnCommand.ExecuteNonQuery();
     }
 
     var guideStepColumns = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -1695,13 +1727,13 @@ static void ApplyDatabaseMigrations(string databasePath)
             using var guideCommand = connection.CreateCommand();
             guideCommand.Transaction = transaction;
             guideCommand.CommandText = """
-                INSERT INTO Guides (TopicId, Name, StartUrl, IsAvailable)
-                VALUES ($topicId, $name, $startUrl, 1);
+                INSERT INTO Guides (TopicId, Name, StartInstruction, IsAvailable)
+                VALUES ($topicId, $name, $startInstruction, 1);
                 SELECT last_insert_rowid();
                 """;
             guideCommand.Parameters.AddWithValue("$topicId", topicId);
             guideCommand.Parameters.AddWithValue("$name", guideName);
-            guideCommand.Parameters.AddWithValue("$startUrl", "http://localhost:5100/site.html");
+            guideCommand.Parameters.AddWithValue("$startInstruction", "Open the Demo CRM and navigate to the starting screen.");
             guideId = Convert.ToInt64(guideCommand.ExecuteScalar());
         }
         else
@@ -2001,13 +2033,13 @@ static void EnsureDemoSiteGuide(string databasePath)
     using var guideCommand = connection.CreateCommand();
     guideCommand.Transaction = transaction;
     guideCommand.CommandText = """
-        INSERT INTO Guides (TopicId, Name, StartUrl, IsAvailable)
-        VALUES ($topicId, $name, $startUrl, 1);
+        INSERT INTO Guides (TopicId, Name, StartInstruction, IsAvailable)
+        VALUES ($topicId, $name, $startInstruction, 1);
         SELECT last_insert_rowid();
         """;
     guideCommand.Parameters.AddWithValue("$topicId", topicId);
     guideCommand.Parameters.AddWithValue("$name", guideName);
-    guideCommand.Parameters.AddWithValue("$startUrl", "http://localhost:5100/site.html");
+    guideCommand.Parameters.AddWithValue("$startInstruction", "Open the Demo CRM and navigate to the starting screen.");
     var guideId = Convert.ToInt64(guideCommand.ExecuteScalar());
 
     for (var index = 0; index < steps.Length; index++)
@@ -2174,7 +2206,7 @@ sealed record CreateGuideStepRequest(
 sealed record CreateGuideRequest(
     long TopicId,
     string Name,
-    string? StartUrl,
+    string? StartInstruction,
     bool IsAvailable,
     List<CreateGuideStepRequest> Steps);
 
@@ -2192,7 +2224,7 @@ sealed record GuideResponse(
     long Id,
     long TopicId,
     string Name,
-    string? StartUrl,
+    string? StartInstruction,
     bool IsAvailable,
     List<GuideStepResponse> Steps);
 
