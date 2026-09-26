@@ -329,7 +329,12 @@
     if (!current?.step) return false;
 
     if ((current.step.runtime || "web") === "windows") {
-      return current.step.targetType === "none" || Boolean(current.step.windowsTarget);
+      if (current.step.targetType === "none") return true;
+      try {
+        return await window.windowsBridgeService.canShowStep(current.step);
+      } catch {
+        return false;
+      }
     }
 
     try {
