@@ -95,7 +95,6 @@ async function showTrainingStep(step, navigation = {}) {
 
   if (
     canDestroyDocumentThroughNativeNavigation &&
-    navigation.mode !== "preview" &&
     Number.isInteger(navigation.stepIndex)
   ) {
     let activationPendingStored = false;
@@ -103,13 +102,21 @@ async function showTrainingStep(step, navigation = {}) {
     const persistActivationIntent = () => {
       if (activationPendingStored) return;
       activationPendingStored = true;
-      chrome.runtime.sendMessage({
-        type: "GWTP_TRAINING_PENDING_SET",
-        pending: {
-          direction: 1,
-          stepIndex: navigation.stepIndex
-        }
-      }).catch(() => {
+
+      const pendingRequest = navigation.mode === "preview"
+        // Preview has no learner progress/persisted pending record. PEEK is enough:
+        // the Side Panel records previewPendingDirection before this document can
+        // unload, and destination PAGE_READY commits that adjacent step.
+        ? chrome.runtime.sendMessage({ type: "GWTP_PREVIEW_PEEK_NEXT" })
+        : chrome.runtime.sendMessage({
+            type: "GWTP_TRAINING_PENDING_SET",
+            pending: {
+              direction: 1,
+              stepIndex: navigation.stepIndex
+            }
+          });
+
+      pendingRequest.catch(() => {
         activationPendingStored = false;
       });
     };
