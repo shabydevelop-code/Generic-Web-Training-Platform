@@ -328,8 +328,12 @@
   async function canShowStep(current) {
     if (!current?.step) return false;
 
+    // Instruction-only steps have no runtime target to resolve. They are always
+    // available once the execution flow reaches them, including after a Web
+    // navigation/PAGE_READY transition.
+    if (current.step.targetType === "none") return true;
+
     if ((current.step.runtime || "web") === "windows") {
-      if (current.step.targetType === "none") return true;
       try {
         return await window.windowsBridgeService.canShowStep(current.step);
       } catch {
