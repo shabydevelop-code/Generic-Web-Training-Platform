@@ -3610,3 +3610,69 @@ test("stage 6 instruction-only step - editor UI persists, reopens and previews t
     if (fixture) await fixture.close().catch(() => {});
   }
 });
+
+
+test("stage 6 Windows step authoring - Editor selects and persists native target descriptor", async () => {
+  test.setTimeout(60000);
+  const suffix = Date.now();
+  const name = `Windows Authoring ${suffix}`;
+  const panel = await openPanel();
+  let setup = null;
+
+  const windowsTarget = {
+    processName: "GWTPTestHost",
+    window: { automationId: "MainWindow", name: "GWTP UIA Test Host" },
+    element: { controlType: "ControlType.Button", automationId: "SharedContinue", name: "Continue" },
+    ancestors: [
+      { controlType: "ControlType.Group", automationId: "GroupA", name: "Group A" }
+    ]
+  };
+
+  try {
+    await login(panel, "sanity.editor");
+    setup = await createTemporaryFixtureGuide(panel, name, [{
+      selector: "",
+      targetType: "none",
+      runtime: "web",
+      windowsTarget: null,
+      instruction: "Existing instruction-only step",
+      screenName: "Start",
+      frame: null,
+      validation: null
+    }]);
+
+    await panel.locator("#guidesList [data-guide-id]").filter({ hasText: name }).first().click();
+    await panel.locator("#addStepButton").click();
+    await panel.locator("#stepRuntimeSelect").selectOption("windows");
+
+    await panel.evaluate((target) => {
+      window.windowsBridgeService.pickTarget = async () => structuredClone(target);
+    }, windowsTarget);
+
+    await panel.locator("#selectButton").click();
+    await expect(panel.locator("#selectedElement")).toBeVisible();
+    await expect(panel.locator("#selectedSelector")).toContainText("GWTPTestHost");
+    await panel.locator("#instructionInput").fill("Use the selected Windows control.");
+    await expect(panel.locator("#saveStepButton")).toBeEnabled();
+    await panel.locator("#saveStepButton").click();
+    await expect(panel.locator("#stepsList .step-item")).toHaveCount(2);
+    await expect(panel.locator("#stepsList .step-item").nth(1)).toContainText("GWTPTestHost");
+
+    await panel.locator("#backToGuidesButton").click();
+    await panel.locator("#guidesList [data-guide-id]").filter({ hasText: name }).first().click();
+    await expect(panel.locator("#stepsList .step-item")).toHaveCount(2);
+    await panel.locator("#stepsList .step-item").nth(1).click();
+    await expect(panel.locator("#stepRuntimeSelect")).toHaveValue("windows");
+    await expect(panel.locator("#selectorInput")).toHaveValue("");
+    await expect(panel.locator("#selectedSelector")).toContainText("GWTPTestHost");
+
+    const persisted = await panel.evaluate(async (guideId) => {
+      return window.apiService.request(`/api/guides/${guideId}`);
+    }, setup.guideId);
+    expect(persisted.steps[1].runtime).toBe("windows");
+    expect(persisted.steps[1].selector).toBe("");
+    expect(persisted.steps[1].windowsTarget).toEqual(windowsTarget);
+  } finally {
+    if (setup) await deleteTemporaryFixtureGuide(panel, setup).catch(() => {});
+  }
+});
