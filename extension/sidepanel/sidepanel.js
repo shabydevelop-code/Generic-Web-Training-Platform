@@ -163,6 +163,7 @@ const backToGuidesButton = document.getElementById("backToGuidesButton");
 const guideAvailableInput = document.getElementById("guideAvailableInput");
 const guideEditorTitle = document.getElementById("guideEditorTitle");
 const guideEditorDescription = document.getElementById("guideEditorDescription");
+const guideEditorView = document.getElementById("guideEditorView");
 const editGuideDeleteSection = document.getElementById("editGuideDeleteSection");
 const previewGuideButton = document.getElementById("previewGuideButton");
 const previewActiveControls = document.getElementById("previewActiveControls");
@@ -256,6 +257,8 @@ function updatePreviewUi() {
   const active = Boolean(previewSession);
   previewGuideButton.hidden = active;
   previewActiveControls.hidden = !active;
+  guideEditorView.classList.toggle("preview-active", active);
+  guideEditorView.setAttribute("aria-readonly", active ? "true" : "false");
 
   if (active) {
     const language = window.i18nService.getLanguage();
