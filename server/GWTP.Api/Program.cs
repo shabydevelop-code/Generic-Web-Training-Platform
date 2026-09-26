@@ -554,7 +554,7 @@ app.MapGet("/api/learner/guides/{id:long}", (long id, HttpContext httpContext) =
 
     using var stepsCommand = connection.CreateCommand();
     stepsCommand.CommandText = """
-        SELECT Id, StepOrder, Selector, Instruction, ScreenName, FrameTarget, ValidationEngine, ValidationExpression, ValidationErrorMessage, ValidationBuilderType, ValidationBuilderValue, TargetType
+        SELECT Id, StepOrder, Selector, Instruction, ScreenName, FrameTarget, ValidationEngine, ValidationExpression, ValidationErrorMessage, ValidationBuilderType, ValidationBuilderValue, TargetType, Runtime, WindowsTarget
         FROM GuideSteps
         WHERE GuideId = $guideId
         ORDER BY StepOrder;
@@ -579,7 +579,9 @@ app.MapGet("/api/learner/guides/{id:long}", (long id, HttpContext httpContext) =
                 stepsReader.GetString(7),
                 stepsReader.IsDBNull(8) ? "" : stepsReader.GetString(8),
                 stepsReader.IsDBNull(9) ? null : stepsReader.GetString(9),
-                stepsReader.IsDBNull(10) ? null : stepsReader.GetString(10))));
+                stepsReader.IsDBNull(10) ? null : stepsReader.GetString(10)),
+            stepsReader.IsDBNull(12) ? "web" : stepsReader.GetString(12),
+            stepsReader.IsDBNull(13) ? null : JsonSerializer.Deserialize<WindowsTargetDescriptor>(stepsReader.GetString(13))));
     }
 
     return Results.Ok(new GuideResponse(guideId, topicId, name, startInstruction, isAvailable, steps));
@@ -1076,7 +1078,7 @@ editorGuides.MapGet("/{id:long}", (long id) =>
 
     using var stepsCommand = connection.CreateCommand();
     stepsCommand.CommandText = """
-        SELECT Id, StepOrder, Selector, Instruction, ScreenName, FrameTarget, ValidationEngine, ValidationExpression, ValidationErrorMessage, ValidationBuilderType, ValidationBuilderValue, TargetType
+        SELECT Id, StepOrder, Selector, Instruction, ScreenName, FrameTarget, ValidationEngine, ValidationExpression, ValidationErrorMessage, ValidationBuilderType, ValidationBuilderValue, TargetType, Runtime, WindowsTarget
         FROM GuideSteps
         WHERE GuideId = $guideId
         ORDER BY StepOrder;
@@ -1101,7 +1103,9 @@ editorGuides.MapGet("/{id:long}", (long id) =>
                 stepsReader.GetString(7),
                 stepsReader.IsDBNull(8) ? "" : stepsReader.GetString(8),
                 stepsReader.IsDBNull(9) ? null : stepsReader.GetString(9),
-                stepsReader.IsDBNull(10) ? null : stepsReader.GetString(10))));
+                stepsReader.IsDBNull(10) ? null : stepsReader.GetString(10)),
+            stepsReader.IsDBNull(12) ? "web" : stepsReader.GetString(12),
+            stepsReader.IsDBNull(13) ? null : JsonSerializer.Deserialize<WindowsTargetDescriptor>(stepsReader.GetString(13))));
     }
 
     return Results.Ok(new GuideResponse(guideId, topicId, name, startInstruction, isAvailable, steps));
@@ -1117,8 +1121,8 @@ editorGuides.MapPut("/{id:long}", (long id, CreateGuideRequest request) =>
     if (request.IsAvailable && request.Steps.Count == 0)
         return Results.BadRequest(new { message = "An available guide must contain at least one step." });
 
-    if (request.Steps.Any(step => string.IsNullOrWhiteSpace(step.Instruction) || (!string.Equals(step.TargetType, "none", StringComparison.OrdinalIgnoreCase) && string.IsNullOrWhiteSpace(step.Selector))))
-        return Results.BadRequest(new { message = "Every step requires an instruction; element steps also require a selector." });
+    if (request.Steps.Any(step => !IsValidStepTarget(step)))
+        return Results.BadRequest(new { message = "Every step requires a valid runtime-specific target; instruction-only steps require no element target." });
 
     if (request.Steps.Any(step => string.Equals(step.TargetType, "none", StringComparison.OrdinalIgnoreCase) && step.Validation is not null))
         return Results.BadRequest(new { message = "Instruction-only steps cannot contain element validation." });
@@ -1239,11 +1243,9 @@ editorGuides.MapPost("", (CreateGuideRequest request) =>
         return Results.BadRequest(new { message = "An available guide must contain at least one step." });
     }
 
-    if (request.Steps.Any(step =>
-        string.IsNullOrWhiteSpace(step.Instruction) ||
-        (!string.Equals(step.TargetType, "none", StringComparison.OrdinalIgnoreCase) && string.IsNullOrWhiteSpace(step.Selector))))
+    if (request.Steps.Any(step => !IsValidStepTarget(step)))
     {
-        return Results.BadRequest(new { message = "Every step requires an instruction; element steps also require a selector." });
+        return Results.BadRequest(new { message = "Every step requires a valid runtime-specific target; instruction-only steps require no element target." });
     }
 
     if (request.Steps.Any(step => string.Equals(step.TargetType, "none", StringComparison.OrdinalIgnoreCase) && step.Validation is not null))
@@ -1342,6 +1344,8 @@ static List<GuideStepResponse> SaveGuideSteps(SqliteConnection connection, Sqlit
                 SET StepOrder = $stepOrder,
                     Selector = $selector,
                     TargetType = $targetType,
+                    Runtime = $runtime,
+                    WindowsTarget = $windowsTarget,
                     Instruction = $instruction,
                     ScreenName = $screenName,
                     FrameTarget = $frameTarget,
@@ -1355,8 +1359,12 @@ static List<GuideStepResponse> SaveGuideSteps(SqliteConnection connection, Sqlit
             updateCommand.Parameters.AddWithValue("$stepId", stepId);
             updateCommand.Parameters.AddWithValue("$guideId", guideId);
             updateCommand.Parameters.AddWithValue("$stepOrder", stepOrder);
-            updateCommand.Parameters.AddWithValue("$selector", string.Equals(step.TargetType, "none", StringComparison.OrdinalIgnoreCase) ? "" : step.Selector.Trim());
-            updateCommand.Parameters.AddWithValue("$targetType", string.Equals(step.TargetType, "none", StringComparison.OrdinalIgnoreCase) ? "none" : "element");
+            var runtime = NormalizeRuntime(step.Runtime);
+            var targetType = NormalizeTargetType(step.TargetType);
+            updateCommand.Parameters.AddWithValue("$selector", runtime == "web" && targetType == "element" ? step.Selector?.Trim() ?? "" : "");
+            updateCommand.Parameters.AddWithValue("$targetType", targetType);
+            updateCommand.Parameters.AddWithValue("$runtime", runtime);
+            updateCommand.Parameters.AddWithValue("$windowsTarget", runtime == "windows" && targetType == "element" ? JsonSerializer.Serialize(step.WindowsTarget) : DBNull.Value);
             updateCommand.Parameters.AddWithValue("$instruction", step.Instruction.Trim());
             updateCommand.Parameters.AddWithValue("$screenName", string.IsNullOrWhiteSpace(step.ScreenName) ? DBNull.Value : step.ScreenName.Trim());
             updateCommand.Parameters.AddWithValue("$frameTarget", step.Frame is null ? DBNull.Value : JsonSerializer.Serialize(step.Frame));
@@ -1372,14 +1380,18 @@ static List<GuideStepResponse> SaveGuideSteps(SqliteConnection connection, Sqlit
             using var insertCommand = connection.CreateCommand();
             insertCommand.Transaction = transaction;
             insertCommand.CommandText = """
-                INSERT INTO GuideSteps (GuideId, StepOrder, Selector, TargetType, Instruction, ScreenName, FrameTarget, ValidationEngine, ValidationExpression, ValidationErrorMessage, ValidationBuilderType, ValidationBuilderValue)
-                VALUES ($guideId, $stepOrder, $selector, $targetType, $instruction, $screenName, $frameTarget, $validationEngine, $validationExpression, $validationErrorMessage, $validationBuilderType, $validationBuilderValue);
+                INSERT INTO GuideSteps (GuideId, StepOrder, Selector, TargetType, Runtime, WindowsTarget, Instruction, ScreenName, FrameTarget, ValidationEngine, ValidationExpression, ValidationErrorMessage, ValidationBuilderType, ValidationBuilderValue)
+                VALUES ($guideId, $stepOrder, $selector, $targetType, $runtime, $windowsTarget, $instruction, $screenName, $frameTarget, $validationEngine, $validationExpression, $validationErrorMessage, $validationBuilderType, $validationBuilderValue);
                 SELECT last_insert_rowid();
                 """;
             insertCommand.Parameters.AddWithValue("$guideId", guideId);
             insertCommand.Parameters.AddWithValue("$stepOrder", stepOrder);
-            insertCommand.Parameters.AddWithValue("$selector", string.Equals(step.TargetType, "none", StringComparison.OrdinalIgnoreCase) ? "" : step.Selector.Trim());
-            insertCommand.Parameters.AddWithValue("$targetType", string.Equals(step.TargetType, "none", StringComparison.OrdinalIgnoreCase) ? "none" : "element");
+            var runtime = NormalizeRuntime(step.Runtime);
+            var targetType = NormalizeTargetType(step.TargetType);
+            insertCommand.Parameters.AddWithValue("$selector", runtime == "web" && targetType == "element" ? step.Selector?.Trim() ?? "" : "");
+            insertCommand.Parameters.AddWithValue("$targetType", targetType);
+            insertCommand.Parameters.AddWithValue("$runtime", runtime);
+            insertCommand.Parameters.AddWithValue("$windowsTarget", runtime == "windows" && targetType == "element" ? JsonSerializer.Serialize(step.WindowsTarget) : DBNull.Value);
             insertCommand.Parameters.AddWithValue("$instruction", step.Instruction.Trim());
             insertCommand.Parameters.AddWithValue("$screenName", string.IsNullOrWhiteSpace(step.ScreenName) ? DBNull.Value : step.ScreenName.Trim());
             insertCommand.Parameters.AddWithValue("$frameTarget", step.Frame is null ? DBNull.Value : JsonSerializer.Serialize(step.Frame));
@@ -1392,7 +1404,9 @@ static List<GuideStepResponse> SaveGuideSteps(SqliteConnection connection, Sqlit
         }
 
         keptIds.Add(stepId);
-        result.Add(new GuideStepResponse(stepId, stepOrder, string.Equals(step.TargetType, "none", StringComparison.OrdinalIgnoreCase) ? "" : step.Selector.Trim(), string.Equals(step.TargetType, "none", StringComparison.OrdinalIgnoreCase) ? "none" : "element", step.Instruction.Trim(), string.IsNullOrWhiteSpace(step.ScreenName) ? null : step.ScreenName.Trim(), step.Frame, step.Validation));
+        var savedRuntime = NormalizeRuntime(step.Runtime);
+        var savedTargetType = NormalizeTargetType(step.TargetType);
+        result.Add(new GuideStepResponse(stepId, stepOrder, savedRuntime == "web" && savedTargetType == "element" ? step.Selector?.Trim() ?? "" : "", savedTargetType, step.Instruction.Trim(), string.IsNullOrWhiteSpace(step.ScreenName) ? null : step.ScreenName.Trim(), step.Frame, step.Validation, savedRuntime, savedRuntime == "windows" && savedTargetType == "element" ? step.WindowsTarget : null));
     }
 
     foreach (var removedId in existingIds.Except(keptIds))
@@ -1409,6 +1423,36 @@ static List<GuideStepResponse> SaveGuideSteps(SqliteConnection connection, Sqlit
 }
 
 app.Run();
+
+static string NormalizeRuntime(string? runtime)
+    => string.Equals(runtime, "windows", StringComparison.OrdinalIgnoreCase) ? "windows" : "web";
+
+static string NormalizeTargetType(string? targetType)
+    => string.Equals(targetType, "none", StringComparison.OrdinalIgnoreCase) ? "none" : "element";
+
+static bool IsValidStepTarget(CreateGuideStepRequest step)
+{
+    if (string.IsNullOrWhiteSpace(step.Instruction)) return false;
+
+    var runtime = NormalizeRuntime(step.Runtime);
+    var targetType = NormalizeTargetType(step.TargetType);
+
+    if (targetType == "none")
+        return step.WindowsTarget is null;
+
+    if (runtime == "web")
+        return !string.IsNullOrWhiteSpace(step.Selector) && step.WindowsTarget is null;
+
+    if (step.WindowsTarget is null ||
+        string.IsNullOrWhiteSpace(step.WindowsTarget.ProcessName) ||
+        step.WindowsTarget.Window is null ||
+        step.WindowsTarget.Element is null ||
+        string.IsNullOrWhiteSpace(step.WindowsTarget.Element.ControlType))
+        return false;
+
+    return !string.IsNullOrWhiteSpace(step.WindowsTarget.Element.AutomationId) ||
+           !string.IsNullOrWhiteSpace(step.WindowsTarget.Element.Name);
+}
 
 static bool IsValidStepValidation(ValidationRule? validation)
 {
@@ -1641,7 +1685,9 @@ static void ApplyDatabaseMigrations(string databasePath)
         ["ValidationBuilderType"] = "ALTER TABLE GuideSteps ADD COLUMN ValidationBuilderType TEXT;",
         ["ValidationBuilderValue"] = "ALTER TABLE GuideSteps ADD COLUMN ValidationBuilderValue TEXT;",
         ["ScreenName"] = "ALTER TABLE GuideSteps ADD COLUMN ScreenName TEXT;",
-        ["TargetType"] = "ALTER TABLE GuideSteps ADD COLUMN TargetType TEXT NOT NULL DEFAULT 'element';"
+        ["TargetType"] = "ALTER TABLE GuideSteps ADD COLUMN TargetType TEXT NOT NULL DEFAULT 'element';",
+        ["Runtime"] = "ALTER TABLE GuideSteps ADD COLUMN Runtime TEXT NOT NULL DEFAULT 'web';",
+        ["WindowsTarget"] = "ALTER TABLE GuideSteps ADD COLUMN WindowsTarget TEXT;"
     };
 
     foreach (var migration in guideStepMigrations)
@@ -1651,6 +1697,17 @@ static void ApplyDatabaseMigrations(string databasePath)
         migrationCommand.CommandText = migration.Value;
         migrationCommand.ExecuteNonQuery();
     }
+
+    ApplyOneTimeMigration(connection, "20260926_guide_step_runtime_windows_target_v1", () =>
+    {
+        using var normalizeRuntimeCommand = connection.CreateCommand();
+        normalizeRuntimeCommand.CommandText = """
+            UPDATE GuideSteps
+            SET Runtime = 'web'
+            WHERE Runtime IS NULL OR TRIM(Runtime) = '';
+            """;
+        normalizeRuntimeCommand.ExecuteNonQuery();
+    });
 
     var progressColumns = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
     using (var progressColumnsCommand = connection.CreateCommand())
@@ -2198,14 +2255,36 @@ sealed record ValidationRule(
     string? BuilderType,
     string? BuilderValue);
 
+sealed record WindowsWindowDescriptor(
+    string? AutomationId,
+    string? Name);
+
+sealed record WindowsElementDescriptor(
+    string ControlType,
+    string? AutomationId,
+    string? Name);
+
+sealed record WindowsAncestorDescriptor(
+    string ControlType,
+    string? AutomationId,
+    string? Name);
+
+sealed record WindowsTargetDescriptor(
+    string ProcessName,
+    WindowsWindowDescriptor Window,
+    WindowsElementDescriptor Element,
+    List<WindowsAncestorDescriptor> Ancestors);
+
 sealed record CreateGuideStepRequest(
     long? Id,
-    string Selector,
+    string? Selector,
     string? TargetType,
     string Instruction,
     string? ScreenName,
     FrameTarget? Frame,
-    ValidationRule? Validation);
+    ValidationRule? Validation,
+    string? Runtime,
+    WindowsTargetDescriptor? WindowsTarget);
 
 sealed record CreateGuideRequest(
     long TopicId,
@@ -2222,7 +2301,9 @@ sealed record GuideStepResponse(
     string Instruction,
     string? ScreenName,
     FrameTarget? Frame,
-    ValidationRule? Validation);
+    ValidationRule? Validation,
+    string Runtime,
+    WindowsTargetDescriptor? WindowsTarget);
 
 sealed record GuideResponse(
     long Id,
