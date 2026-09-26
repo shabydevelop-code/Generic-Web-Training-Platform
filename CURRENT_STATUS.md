@@ -551,3 +551,14 @@ Later accessibility phases must add their own concrete regression checks to this
 - **Dynamic-app E2E stabilization (2026-09-24):** full-suite runs exposed a reproducible race after creating the dynamic iframe: the test could resolve a transient disabled Next button while PAGE_READY/restoration replaced the overlay, causing Playwright to retry against a detached node until the 30s test timeout. The isolated test could pass because the lifecycle settled sooner. The GUI test now waits for the post-frame-creation Next control to be visible and enabled before clicking; no sleep or timeout increase was added. This is test synchronization with the public GUI state, not a product behavior change. Targeted and full regression verification remain pending.
 - **Admin user-list isolation fix (2026-09-24):** full-suite execution exposed a real UI race, not duplicate DB data: login makes `#appView` visible before the initial asynchronous `loadAdminUsers()` finishes, so an immediate role-filter change could start a second load. Both requests cleared the lists before awaiting the API and later both appended the same users, producing duplicate cards even though the DB contained one `sanity.editor`. `loadAdminUsers()` now uses a monotonically increasing load generation; stale responses are discarded and only the newest request clears/renders the lists after the API response. This preserves responsive filtering while preventing stale async renders. Targeted GUI verification and full regression remain pending.
 - **Full Playwright regression verified (2026-09-24):** after the dynamic-iframe lifecycle stabilization and the admin user-list stale-load race fix, the user ran the complete Playwright suite and reported **85/85 passed (2.6m)**. The current regression baseline is therefore green.
+
+
+## Guide start instruction and runtime model (2026-09-26)
+
+- Removed the guide StartUrl model and automatic learner navigation to a guide URL.
+- Added required guide StartInstruction; Start and Start Again show it before step 1, while Resume continues directly from saved progress.
+- Added GuideSteps.RuntimePlatform with web default and windows support as the ownership field for future cross-runtime execution.
+- Database migration adds/populates StartInstruction, removes the legacy StartUrl column, and adds RuntimePlatform to existing step tables.
+- Editor authoring now uses a required start-instruction field instead of a URL field.
+- Playwright fixtures were migrated and learner coverage now verifies the start instruction appears before the first training overlay.
+- This establishes one guide model for Web-only, Windows-only, and mixed Web/Windows training. GWTP does not launch the work application; host-system actions may naturally transition between runtimes.
