@@ -549,6 +549,7 @@ function showStartInstruction(guide) {
 
   learnerStartInstructionText.textContent = instruction;
   learnerStartInstructionPanel.hidden = false;
+  confirmStartInstructionButton.focus();
 
   return new Promise((resolve) => {
     const finish = (confirmed) => {
