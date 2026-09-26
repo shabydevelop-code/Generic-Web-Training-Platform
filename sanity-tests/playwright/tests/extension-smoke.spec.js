@@ -3511,6 +3511,24 @@ test("architecture guard - bubble fallback has no stale gap identifier", async (
 });
 
 
+test("architecture guard - restored Windows target does not fail Preview on transient empty bounds", async () => {
+  const runtimeSource = await fs.promises.readFile(
+    path.join(ROOT_PATH, "windows-runtime", "GWTP.Windows.Runtime", "MainWindow.xaml.cs"),
+    "utf8"
+  );
+
+  const showStart = runtimeSource.indexOf("public bool ShowAuthoredStep");
+  const clearStart = runtimeSource.indexOf("public void ClearAuthoredStep", showStart);
+  const showSource = runtimeSource.slice(showStart, clearStart);
+
+  expect(showSource).toContain("ActivateAuthoredTargetWindow(element);");
+  expect(showSource).toContain("StartElementTracking(element);");
+  expect(showSource).toContain("AuthoredStep.WaitingForVisibleBounds");
+  expect(showSource).not.toContain("AuthoredStep.InvalidBounds");
+  expect(showSource).not.toMatch(/bounds\.IsEmpty[\s\S]{0,200}return false;/);
+});
+
+
 test("architecture guard - BFCache restore discards stale training visuals before PAGE_READY", async () => {
   const contentScriptSource = await fs.promises.readFile(
     path.join(EXTENSION_PATH, "content", "content-script.js"),
