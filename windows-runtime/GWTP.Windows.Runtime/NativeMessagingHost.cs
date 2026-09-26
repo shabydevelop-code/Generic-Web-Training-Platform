@@ -36,7 +36,7 @@ internal sealed class NativeMessagingHost : IDisposable
             throw new InvalidOperationException($"Native messaging standard handle {handleId} is unavailable.");
 
         var safeHandle = new SafeFileHandle(handle, ownsHandle: false);
-        return new FileStream(safeHandle, access, bufferSize: 4096, isAsync: true);
+        return new FileStream(safeHandle, access, bufferSize: 4096, isAsync: false);
     }
 
     public async Task RunAsync()
