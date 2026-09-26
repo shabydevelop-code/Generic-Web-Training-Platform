@@ -1,7 +1,7 @@
 <Window x:Class="GWTP_Windows_POC.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="GWTP Windows POC"
+        Title="GWTP Windows Runtime"
         Height="520"
         Width="720"
         MinHeight="480"
@@ -15,7 +15,7 @@
         </Grid.RowDefinitions>
 
         <StackPanel>
-            <TextBlock Text="GWTP Windows POC"
+            <TextBlock Text="GWTP Windows Runtime"
                        FontSize="24"
                        FontWeight="SemiBold" />
             <TextBlock Margin="0,6,0,0"
