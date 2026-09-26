@@ -76,6 +76,11 @@ Database:
 
 ## Code architecture
 - Prefer global/architectural solutions over local hacks.
+- Architecture and shared behavioral contracts take precedence over local UX fixes. Before introducing role-, screen-, or runtime-specific behavior, first determine whether the behavior belongs to a shared domain/execution concept.
+- Prefer one shared model, state transition, and execution flow when Learner, Editor Preview, Web, or Windows are expressing the same domain behavior. Presentation may differ only when a concrete functional requirement requires it; visual inconvenience alone is not a reason to fork the underlying flow.
+- Solve problems in this order: (1) preserve domain invariants and the shared architecture, (2) preserve responsibility boundaries and state ownership, (3) reuse the shared execution contract, (4) adapt presentation/UX, and only then (5) introduce a specialized path when the shared model cannot satisfy a real requirement.
+- Editor Preview is a simulation mode of the learner execution contract, not a separate training product flow. It should reuse learner-visible lifecycle behavior wherever the semantics are the same, while isolating only side effects such as LearnerProgress persistence.
+- When a local fix appears easier than a shared architectural solution, explicitly evaluate the shared solution first. Do not duplicate state, lifecycle logic, or UI behavior merely to fix one view.
 - Keep responsibilities separated between side panel UI, learner runner, content/overlay logic, background training engine, services and backend.
 - Preserve existing server-side progress infrastructure unless a backend change is actually required.
 
