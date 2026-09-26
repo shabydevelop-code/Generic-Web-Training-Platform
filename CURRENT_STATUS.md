@@ -557,8 +557,7 @@ Later accessibility phases must add their own concrete regression checks to this
 
 - Removed the guide StartUrl model and automatic learner navigation to a guide URL.
 - Added required guide StartInstruction; Start and Start Again show it before step 1, while Resume continues directly from saved progress.
-- Added GuideSteps.RuntimePlatform with web default and windows support as the ownership field for future cross-runtime execution.
-- Database migration adds/populates StartInstruction, removes the legacy StartUrl column, and adds RuntimePlatform to existing step tables.
+- Database migration adds/populates StartInstruction and removes the legacy StartUrl column.
 - Editor authoring now uses a required start-instruction field instead of a URL field.
 - Playwright fixtures were migrated and learner coverage now verifies the start instruction appears before the first training overlay.
 - This establishes one guide model for Web-only, Windows-only, and mixed Web/Windows training. GWTP does not launch the work application; host-system actions may naturally transition between runtimes.
