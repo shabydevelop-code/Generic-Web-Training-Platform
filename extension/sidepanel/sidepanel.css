@@ -1169,31 +1169,11 @@ body {
   bottom: -6px;
 }
 
-.guide-editor-header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.guide-editor-header__copy {
-  min-width: 0;
-  flex: 1 1 auto;
-}
-
-.guide-editor-header__title-row {
+.guide-preview-toolbar {
   display: flex;
   align-items: center;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.guide-editor-header__title-row h1 {
-  margin: 0;
-}
-
-.guide-preview-section {
-  flex: 0 0 auto;
+  min-height: 38px;
+  margin: 0 0 14px;
 }
 
 .guide-preview-button,
@@ -1209,36 +1189,25 @@ body {
 }
 
 .guide-preview-exit-button {
+  flex: 0 0 auto;
   border-color: #344054;
   background: #344054;
   color: #ffffff;
 }
 
 .guide-preview-active {
-  display: grid;
-  justify-items: end;
-  gap: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  gap: 12px;
 }
 
 .guide-preview-active__status {
-  display: block;
+  min-width: 0;
   font-size: 12px;
   font-weight: 600;
-  white-space: nowrap;
-}
-
-.guide-preview-badge {
-  padding: 3px 8px;
-  border: 1px solid #98a2b3;
-  border-radius: 999px;
-  background: #f2f4f7;
-  font-size: 12px;
-  font-weight: 600;
-  white-space: nowrap;
-}
-
-.guide-preview-badge[hidden] {
-  display: none;
+  line-height: 1.35;
 }
 
 
