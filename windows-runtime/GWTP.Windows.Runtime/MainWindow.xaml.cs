@@ -448,7 +448,7 @@ public partial class MainWindow : Window
             var element = ResolveSelectableElement(AutomationElement.FromPoint(
                 new System.Windows.Point(cursorPosition.X, cursorPosition.Y)));
 
-            if (element is null)
+            if (element is null || (_authoringSelection && IsBrowserElement(element)))
             {
                 ClearHoverHighlight();
                 return;
@@ -519,6 +519,20 @@ public partial class MainWindow : Window
         return element;
     }
 
+    private static bool IsBrowserElement(AutomationElement element)
+    {
+        try
+        {
+            var processName = GetProcessName(element.Current.ProcessId);
+            return string.Equals(processName, "chrome", StringComparison.OrdinalIgnoreCase) ||
+                   string.Equals(processName, "msedge", StringComparison.OrdinalIgnoreCase);
+        }
+        catch (ElementNotAvailableException)
+        {
+            return false;
+        }
+    }
+
     private static bool AreSameElement(AutomationElement first, AutomationElement second)
     {
         try
@@ -544,6 +558,12 @@ public partial class MainWindow : Window
             if (element is null)
             {
                 StopSelection("No UI Automation element was found.");
+                return;
+            }
+
+            if (_authoringSelection && IsBrowserElement(element))
+            {
+                DiagnosticLog.Write("Picker.BrowserTargetIgnored");
                 return;
             }
 
