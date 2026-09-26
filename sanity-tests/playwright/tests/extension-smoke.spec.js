@@ -58,7 +58,7 @@ async function createTemporaryFixtureGuide(panel, name, steps) {
     const topic = await requestJson("/api/topics", { method: "POST", body: JSON.stringify({ name }) });
     const guide = await requestJson("/api/guides", {
       method: "POST",
-      body: JSON.stringify({ topicId: topic.id, name, startInstruction: "Open the relevant system and navigate to the starting screen."}/gwtp-test-fixture.html`, isAvailable: true, steps })
+      body: JSON.stringify({ topicId: topic.id, name, startInstruction: "Open the relevant system and navigate to the starting screen.", isAvailable: true, steps })
     });
     return { token, topicId: topic.id, guideId: guide.id };
   }, { token: auth.accessToken, name, siteUrl: SITE_URL, steps });
@@ -253,7 +253,7 @@ test("stage 6 dynamic web app - GWTP follows SPA, DOM replacement, dynamic frame
       body: JSON.stringify({
         topicId: topic.id,
         name: fixtureName,
-        startInstruction: "Open the relevant system and navigate to the starting screen."}/dynamic-app.html`,
+        startInstruction: "Open the relevant system and navigate to the starting screen.",
         isAvailable: true,
         steps: [
           { selector: "#js-launcher", instruction: "Open launcher", screenName: "Dynamic", frame: null, validation: null },
