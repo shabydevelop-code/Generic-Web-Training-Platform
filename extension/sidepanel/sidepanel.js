@@ -12,7 +12,7 @@ const newTopicInput = document.getElementById("newTopicInput");
 const createTopicButton = document.getElementById("createTopicButton");
 const topicStatus = document.getElementById("topicStatus");
 const guideNameInput = document.getElementById("guideNameInput");
-const guideStartUrlInput = document.getElementById("guideStartUrlInput");
+const guideStartInstructionInput = document.getElementById("guideStartInstructionInput");
 const saveGuideButton = document.getElementById("saveGuideButton");
 const saveGuideStatus = document.getElementById("saveGuideStatus");
 const statusElement = document.getElementById("status");
@@ -79,6 +79,10 @@ const learnerTopicSelect = document.getElementById("learnerTopicSelect");
 const learnerGuideSelect = document.getElementById("learnerGuideSelect");
 const startLearningButton = document.getElementById("startLearningButton");
 const restartLearningButton = document.getElementById("restartLearningButton");
+const learnerStartInstructionPanel = document.getElementById("learnerStartInstructionPanel");
+const learnerStartInstructionText = document.getElementById("learnerStartInstructionText");
+const confirmStartInstructionButton = document.getElementById("confirmStartInstructionButton");
+const cancelStartInstructionButton = document.getElementById("cancelStartInstructionButton");
 const exitLearningButton = document.getElementById("exitLearningButton");
 const learnerRecoveryPanel = document.getElementById("learnerRecoveryPanel");
 const learnerRecoveryMessage = document.getElementById("learnerRecoveryMessage");
@@ -265,7 +269,7 @@ function buildPreviewGuide() {
   return {
     id: editingGuideId,
     name: guideNameInput.value.trim(),
-    startUrl: guideStartUrlInput.value.trim(),
+    startInstruction: guideStartInstructionInput.value.trim(),
     steps: window.trainingService.getSteps().map((step) => ({
       ...step,
       frame: step.element?.frame || step.frame || null
@@ -277,7 +281,7 @@ async function startGuidePreview() {
   const guide = buildPreviewGuide();
   const language = window.i18nService.getLanguage();
 
-  if (!guide.startUrl || guide.steps.length === 0) {
+  if (!guide.startInstruction || guide.steps.length === 0) {
     saveGuideStatus.textContent = window.i18nService.translate("previewStartError", language);
     saveGuideStatus.dataset.type = "error";
     return;
@@ -528,6 +532,27 @@ async function handleRetryLearning() {
   }
 }
 
+function showStartInstruction(guide) {
+  const instruction = String(guide?.startInstruction || "").trim();
+  if (!instruction) return Promise.reject(new Error("The guide start instruction is missing."));
+
+  learnerStartInstructionText.textContent = instruction;
+  learnerStartInstructionPanel.hidden = false;
+
+  return new Promise((resolve) => {
+    const finish = (confirmed) => {
+      learnerStartInstructionPanel.hidden = true;
+      confirmStartInstructionButton.removeEventListener("click", confirm);
+      cancelStartInstructionButton.removeEventListener("click", cancel);
+      resolve(confirmed);
+    };
+    const confirm = () => finish(true);
+    const cancel = () => finish(false);
+    confirmStartInstructionButton.addEventListener("click", confirm);
+    cancelStartInstructionButton.addEventListener("click", cancel);
+  });
+}
+
 async function handleRestartLearning() {
   hideLearnerRecovery();
   const guideId = Number(learnerGuideSelect.value);
@@ -541,6 +566,7 @@ async function handleRestartLearning() {
 
   try {
     const guide = await window.apiService.request(`/api/learner/guides/${guideId}`);
+    if (!(await showStartInstruction(guide))) return;
     await window.guideRunner.restart(guide);
     learnerSessionActive = true;
 
@@ -591,8 +617,10 @@ async function handleStartLearning() {
         throw new Error("Could not resume the saved guide step.");
       }
     } else if (isCompleted) {
+      if (!(await showStartInstruction(guide))) return;
       await window.guideRunner.restart(guide);
     } else {
+      if (!(await showStartInstruction(guide))) return;
       await window.guideRunner.start(guide);
     }
     learnerSessionActive = true;
@@ -918,7 +946,7 @@ async function openExistingGuide(guideId) {
     guideAvailableInput.checked = Boolean(guide.isAvailable);
     topicSelect.value = String(guide.topicId);
     guideNameInput.value = guide.name;
-    guideStartUrlInput.value = guide.startUrl || "";
+    guideStartInstructionInput.value = guide.startInstruction || "";
     window.trainingService.replaceSteps(guide.steps || []);
     activeStepId = null;
     editingStepId = null;
@@ -965,7 +993,7 @@ function openNewGuide() {
   topicsView.hidden = true;
   topicSelect.value = "";
   guideNameInput.value = "";
-  guideStartUrlInput.value = "";
+  guideStartInstructionInput.value = "";
   window.trainingService.clearSteps();
   activeStepId = null;
   editingStepId = null;
@@ -1403,7 +1431,7 @@ function hasGuideDefinitionChanges() {
   return (
     Number(topicSelect.value) !== Number(editingGuideSnapshot.topicId) ||
     guideNameInput.value.trim() !== String(editingGuideSnapshot.name || "").trim() ||
-    guideStartUrlInput.value.trim() !== String(editingGuideSnapshot.startUrl || "").trim() ||
+    guideStartInstructionInput.value.trim() !== String(editingGuideSnapshot.startInstruction || "").trim() ||
     guideAvailableInput.checked !== Boolean(editingGuideSnapshot.isAvailable)
   );
 }
@@ -1411,8 +1439,8 @@ function hasGuideDefinitionChanges() {
 function updateGuideEditorValidity() {
   const hasTopic = Boolean(topicSelect.value);
   const hasGuideName = Boolean(guideNameInput.value.trim());
-  const hasStartUrl = Boolean(guideStartUrlInput.value.trim());
-  const guideIdentityValid = hasTopic && hasGuideName && hasStartUrl;
+  const hasStartInstruction = Boolean(guideStartInstructionInput.value.trim());
+  const guideIdentityValid = hasTopic && hasGuideName && hasStartInstruction;
   const steps = window.trainingService.getSteps();
   const language = window.i18nService.getLanguage();
 
@@ -2024,10 +2052,10 @@ async function persistExistingGuide() {
 
   const topicId = Number(topicSelect.value);
   const guideName = guideNameInput.value.trim();
-  const startUrl = guideStartUrlInput.value.trim();
+  const startInstruction = guideStartInstructionInput.value.trim();
   const steps = window.trainingService.getSteps();
 
-  if (!topicId || !guideName || !startUrl) {
+  if (!topicId || !guideName || !startInstruction) {
     throw new Error("Guide details are incomplete.");
   }
 
@@ -2037,7 +2065,7 @@ async function persistExistingGuide() {
     body: JSON.stringify({
       topicId,
       name: guideName,
-      startUrl,
+      startInstruction,
       isAvailable: guideAvailableInput.checked,
       steps: steps.map((step) => ({
         id: step.persistedId || null,
@@ -2253,11 +2281,11 @@ richTextToolbarButtons.forEach((button) => {
 saveGuideButton.addEventListener("click", async () => {
   const topicId = Number(topicSelect.value);
   const guideName = guideNameInput.value.trim();
-  const startUrl = guideStartUrlInput.value.trim();
+  const startInstruction = guideStartInstructionInput.value.trim();
   const steps = window.trainingService.getSteps();
   const language = window.i18nService.getLanguage();
 
-  clearFieldInvalid(topicSelect, guideNameInput, guideStartUrlInput);
+  clearFieldInvalid(topicSelect, guideNameInput, guideStartInstructionInput);
   if (!topicId) {
     setFieldInvalid(topicSelect, true, saveGuideStatus);
     saveGuideStatus.textContent = window.i18nService.translate("guideTopicRequired", language);
@@ -2274,11 +2302,11 @@ saveGuideButton.addEventListener("click", async () => {
     return;
   }
 
-  if (!startUrl) {
-    setFieldInvalid(guideStartUrlInput, true, saveGuideStatus);
-    saveGuideStatus.textContent = window.i18nService.translate("guideStartUrlRequired", language);
+  if (!startInstruction) {
+    setFieldInvalid(guideStartInstructionInput, true, saveGuideStatus);
+    saveGuideStatus.textContent = window.i18nService.translate("guideStartInstructionRequired", language);
     saveGuideStatus.dataset.type = "error";
-    guideStartUrlInput.focus();
+    guideStartInstructionInput.focus();
     return;
   }
 
@@ -2301,7 +2329,7 @@ saveGuideButton.addEventListener("click", async () => {
       body: JSON.stringify({
         topicId,
         name: guideName,
-        startUrl: startUrl || null,
+        startInstruction: startInstruction || null,
         isAvailable: guideAvailableInput.checked,
         steps: steps.map((step) => ({
           id: step.persistedId || null,
@@ -2332,7 +2360,7 @@ saveGuideButton.addEventListener("click", async () => {
   }
 });
 
-guideStartUrlInput.addEventListener("input", () => {
+guideStartInstructionInput.addEventListener("input", () => {
   saveGuideStatus.textContent = "";
   saveGuideStatus.removeAttribute("data-type");
   updateGuideEditorValidity();
@@ -2487,7 +2515,7 @@ function resetTransientUiStateForLogout() {
 
   topicSelect.value = "";
   guideNameInput.value = "";
-  guideStartUrlInput.value = "";
+  guideStartInstructionInput.value = "";
   guideAvailableInput.checked = false;
 
   closeStepCreator();
@@ -2674,7 +2702,7 @@ newUsername.addEventListener("input", () => setFieldInvalid(newUsername, false))
 newPassword.addEventListener("input", () => setFieldInvalid(newPassword, false));
 topicSelect.addEventListener("change", () => setFieldInvalid(topicSelect, false));
 guideNameInput.addEventListener("input", () => setFieldInvalid(guideNameInput, false));
-guideStartUrlInput.addEventListener("input", () => setFieldInvalid(guideStartUrlInput, false));
+guideStartInstructionInput.addEventListener("input", () => setFieldInvalid(guideStartInstructionInput, false));
 instructionInput.addEventListener("input", () => setFieldInvalid(instructionInput, false));
 validationValueInput.addEventListener("input", () => setFieldInvalid(validationValueInput, false));
 validationErrorInput.addEventListener("input", () => setFieldInvalid(validationErrorInput, false));
