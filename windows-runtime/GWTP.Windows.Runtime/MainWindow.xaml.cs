@@ -72,6 +72,11 @@ public partial class MainWindow : Window
         AuthoringSelectionCancelled?.Invoke();
     }
 
+    public bool CanShowAuthoredStep(WindowsTargetDescriptor target)
+    {
+        return WindowsTargetResolver.Resolve(target) is not null;
+    }
+
     public bool ShowAuthoredStep(WindowsTargetDescriptor target, string? instruction, bool canPrevious, bool canNext)
     {
         CloseTrainingOverlay();
