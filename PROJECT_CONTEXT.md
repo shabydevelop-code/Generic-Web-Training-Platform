@@ -143,3 +143,11 @@ Database:
 - The Editor's in-memory step model and save paths round-trip runtime/WindowsTarget so future Windows data is not erased by guide reorder/metadata saves before Windows authoring UI is added.
 - Database health exposes whether the two migration columns exist, and `gwtp-sanity.ps1` requires both.
 - Windows authoring UI and Windows execution handoff are not implemented by this persistence slice. The next slice is the Editor/Windows-runtime bridge and GUI authoring flow.
+
+
+## Local API execution rule (2026-09-26)
+
+- The normal GWTP development/test environment uses the installed `GWTP.Api` Windows Service. Do **not** run `start-server.bat` while that service is running.
+- After pulling Backend/API changes, deploy them with `deploy-gwtp-service.bat`; the deployed service is the API instance used by sanity and Playwright tests.
+- `start-server.bat` is reserved for intentional standalone/local API debugging when the Windows Service is stopped/not being used.
+- Normal Backend verification flow: `git pull` -> `deploy-gwtp-service.bat` -> sanity tests -> relevant/full Playwright regression.
