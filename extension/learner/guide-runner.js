@@ -354,13 +354,25 @@
   }
 
   async function preview(guide) {
-    await beginValidationSession("preview", guide?.id);
     if (!guide?.steps?.length) {
       throw new Error("A valid guide with at least one step is required.");
     }
 
+    const firstStep = guide.steps[0];
+    if ((firstStep.runtime || "web") === "windows") {
+      if (!firstStep.windowsTarget) {
+        throw new Error("The Windows step does not contain a target descriptor.");
+      }
+      const response = await window.windowsBridgeService.showStep(firstStep);
+      if (!response?.success) {
+        throw new Error(response?.code || "Could not show the Windows guide step.");
+      }
+      return response;
+    }
+
+    await beginValidationSession("preview", guide?.id);
     return showFirstStep({
-      steps: [guide.steps[0]],
+      steps: [firstStep],
       stepIndex: 0,
       totalSteps: guide.steps.length,
       mode: "preview"
