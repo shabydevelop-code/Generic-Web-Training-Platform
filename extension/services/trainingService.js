@@ -1,10 +1,14 @@
 (() => {
   const steps = [];
 
-  function createStep({ selector = "", instruction, screenName = "", element, validation = null, targetType = "element" }) {
+  function createStep({ selector = "", instruction, screenName = "", element, validation = null, targetType = "element", runtime = "web", windowsTarget = null }) {
     const normalizedTargetType = targetType === "none" ? "none" : "element";
-    if (normalizedTargetType === "element" && (!selector || !selector.trim())) {
-      throw new Error("A selector is required to create an element step.");
+    const normalizedRuntime = runtime === "windows" ? "windows" : "web";
+    if (normalizedTargetType === "element" && normalizedRuntime === "web" && (!selector || !selector.trim())) {
+      throw new Error("A selector is required to create a Web element step.");
+    }
+    if (normalizedTargetType === "element" && normalizedRuntime === "windows" && !windowsTarget) {
+      throw new Error("A Windows target is required to create a Windows element step.");
     }
 
     if (!instruction || !instruction.trim()) {
@@ -14,8 +18,10 @@
     const step = {
       id: crypto.randomUUID(),
       order: steps.length + 1,
-      selector: normalizedTargetType === "none" ? "" : selector.trim(),
+      selector: normalizedTargetType === "none" || normalizedRuntime === "windows" ? "" : selector.trim(),
       targetType: normalizedTargetType,
+      runtime: normalizedRuntime,
+      windowsTarget: normalizedTargetType === "element" && normalizedRuntime === "windows" ? structuredClone(windowsTarget) : null,
       instruction: instruction.trim(),
       screenName: screenName.trim(),
       element: element
@@ -32,17 +38,21 @@
     return { ...step };
   }
 
-  function updateStep(id, { selector = "", instruction, screenName = "", element, validation = null, targetType = "element" }) {
+  function updateStep(id, { selector = "", instruction, screenName = "", element, validation = null, targetType = "element", runtime = "web", windowsTarget = null }) {
     const index = steps.findIndex((step) => step.id === id);
     if (index < 0) throw new Error("Step not found.");
     const normalizedTargetType = targetType === "none" ? "none" : "element";
-    if (normalizedTargetType === "element" && (!selector || !selector.trim())) throw new Error("A selector is required to update an element step.");
+    const normalizedRuntime = runtime === "windows" ? "windows" : "web";
+    if (normalizedTargetType === "element" && normalizedRuntime === "web" && (!selector || !selector.trim())) throw new Error("A selector is required to update a Web element step.");
+    if (normalizedTargetType === "element" && normalizedRuntime === "windows" && !windowsTarget) throw new Error("A Windows target is required to update a Windows element step.");
     if (!instruction || !instruction.trim()) throw new Error("An instruction is required to update a step.");
 
     steps[index] = {
       ...steps[index],
-      selector: normalizedTargetType === "none" ? "" : selector.trim(),
+      selector: normalizedTargetType === "none" || normalizedRuntime === "windows" ? "" : selector.trim(),
       targetType: normalizedTargetType,
+      runtime: normalizedRuntime,
+      windowsTarget: normalizedTargetType === "element" && normalizedRuntime === "windows" ? structuredClone(windowsTarget) : null,
       instruction: instruction.trim(),
       screenName: screenName.trim(),
       element: normalizedTargetType === "none"
