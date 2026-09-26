@@ -2827,8 +2827,10 @@ test("stage 4 learner - active guidance restores after a full page reload", asyn
 
   await panel.locator("#learnerGuideSelect").selectOption(String(guideId));
   await panel.locator("#startLearningButton").click();
-  await confirmGuideStartInstruction(panel);
 
+  // Progress was prepared as InProgress above. Resume must restore the saved
+  // step directly and must not replay the guide-level start instruction.
+  await expect(panel.locator("#learnerStartInstructionPanel")).toBeHidden();
   await expect(crm.locator(".gwtp-training-overlay")).toBeVisible({ timeout: 10000 });
   const before = await panel.evaluate(async () =>
     (await chrome.runtime.sendMessage({ type: "GWTP_TRAINING_GET_CURRENT" }))?.current?.stepIndex ?? null
