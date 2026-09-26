@@ -53,6 +53,15 @@
           <button id="logoutButton" class="logout-button" type="button" data-i18n="logoutButton">Log out</button>
         </div>
 
+      <div id="learnerStartInstructionPanel" class="card learner-recovery" hidden>
+        <strong data-i18n="beforeStartingGuide">Before starting</strong>
+        <p id="learnerStartInstructionText" class="learner-recovery__message"></p>
+        <div class="actions">
+          <button id="confirmStartInstructionButton" class="button button--primary" type="button" data-i18n="readyToStartButton">I'm ready</button>
+          <button id="cancelStartInstructionButton" class="button" type="button" data-i18n="cancelButton">Cancel</button>
+        </div>
+      </div>
+
         <div id="adminView" hidden>
           <header class="panel__header">
               <h1 data-i18n="adminTitle">Administration</h1>
@@ -418,15 +427,6 @@
             <button id="cancelDeleteButton" class="button" type="button" data-i18n="cancelStepButton">Cancel</button>
             <button id="confirmDeleteButton" class="button button--danger" type="button" data-i18n="confirmDeleteButton">Delete</button>
           </div>
-        </div>
-      </div>
-
-      <div id="learnerStartInstructionPanel" class="card learner-recovery" hidden>
-        <strong data-i18n="beforeStartingGuide">Before starting</strong>
-        <p id="learnerStartInstructionText" class="learner-recovery__message"></p>
-        <div class="actions">
-          <button id="confirmStartInstructionButton" class="button button--primary" type="button" data-i18n="readyToStartButton">I'm ready</button>
-          <button id="cancelStartInstructionButton" class="button" type="button" data-i18n="cancelButton">Cancel</button>
         </div>
       </div>
 
