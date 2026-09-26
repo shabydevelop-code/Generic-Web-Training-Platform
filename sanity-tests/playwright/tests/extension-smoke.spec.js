@@ -20,6 +20,22 @@ async function confirmGuideStartInstruction(panel) {
   await expect(prompt).toBeHidden();
 }
 
+async function expectEditorPreviewMode(panel, active) {
+  const previewButton = panel.locator("#previewGuideButton");
+  const exitButton = panel.locator("#exitPreviewButton");
+  const badge = panel.locator("#previewModeBadge");
+
+  if (active) {
+    await expect(previewButton).toBeHidden();
+    await expect(exitButton).toBeVisible();
+    await expect(badge).toBeVisible();
+  } else {
+    await expect(previewButton).toBeVisible();
+    await expect(exitButton).toBeHidden();
+    await expect(badge).toBeHidden();
+  }
+}
+
 async function requireHealthyStack(request) {
   const api = await request.get(`${API_URL}/api/health`);
   expect(api.ok(), "GWTP API must be running before Stage 3").toBeTruthy();
@@ -155,6 +171,7 @@ test("stage 6 guidance positioning - bubble follows target while scrolling", asy
     await expect(panel.locator("#learnerStartInstructionPanel")).toBeVisible();
     await expect(panel.locator("#learnerStartInstructionText")).toHaveText("Open the relevant system and navigate to the starting screen.");
     await confirmGuideStartInstruction(panel);
+    await expectEditorPreviewMode(panel, true);
 
     const target = fixture.locator("#fixture-action");
     const bubble = fixture.locator(".gwtp-training-overlay");
