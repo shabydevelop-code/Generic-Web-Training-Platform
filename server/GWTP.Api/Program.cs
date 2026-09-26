@@ -554,7 +554,7 @@ app.MapGet("/api/learner/guides/{id:long}", (long id, HttpContext httpContext) =
 
     using var stepsCommand = connection.CreateCommand();
     stepsCommand.CommandText = """
-        SELECT Id, StepOrder, Selector, Instruction, ScreenName, FrameTarget, ValidationEngine, ValidationExpression, ValidationErrorMessage, ValidationBuilderType, ValidationBuilderValue, TargetType
+        SELECT Id, StepOrder, Selector, Instruction, ScreenName, FrameTarget, ValidationEngine, ValidationExpression, ValidationErrorMessage, ValidationBuilderType, ValidationBuilderValue, TargetType, RuntimePlatform
         FROM GuideSteps
         WHERE GuideId = $guideId
         ORDER BY StepOrder;
@@ -571,6 +571,7 @@ app.MapGet("/api/learner/guides/{id:long}", (long id, HttpContext httpContext) =
             stepsReader.GetInt32(1),
             stepsReader.GetString(2),
             stepsReader.IsDBNull(11) ? "element" : stepsReader.GetString(11),
+            stepsReader.IsDBNull(12) ? "web" : stepsReader.GetString(12),
             stepsReader.GetString(3),
             stepsReader.IsDBNull(4) ? null : stepsReader.GetString(4),
             stepsReader.IsDBNull(5) ? null : JsonSerializer.Deserialize<FrameTarget>(stepsReader.GetString(5)),
@@ -1076,7 +1077,7 @@ editorGuides.MapGet("/{id:long}", (long id) =>
 
     using var stepsCommand = connection.CreateCommand();
     stepsCommand.CommandText = """
-        SELECT Id, StepOrder, Selector, Instruction, ScreenName, FrameTarget, ValidationEngine, ValidationExpression, ValidationErrorMessage, ValidationBuilderType, ValidationBuilderValue, TargetType
+        SELECT Id, StepOrder, Selector, Instruction, ScreenName, FrameTarget, ValidationEngine, ValidationExpression, ValidationErrorMessage, ValidationBuilderType, ValidationBuilderValue, TargetType, RuntimePlatform
         FROM GuideSteps
         WHERE GuideId = $guideId
         ORDER BY StepOrder;
@@ -1093,6 +1094,7 @@ editorGuides.MapGet("/{id:long}", (long id) =>
             stepsReader.GetInt32(1),
             stepsReader.GetString(2),
             stepsReader.IsDBNull(11) ? "element" : stepsReader.GetString(11),
+            stepsReader.IsDBNull(12) ? "web" : stepsReader.GetString(12),
             stepsReader.GetString(3),
             stepsReader.IsDBNull(4) ? null : stepsReader.GetString(4),
             stepsReader.IsDBNull(5) ? null : JsonSerializer.Deserialize<FrameTarget>(stepsReader.GetString(5)),
@@ -1342,6 +1344,7 @@ static List<GuideStepResponse> SaveGuideSteps(SqliteConnection connection, Sqlit
                 SET StepOrder = $stepOrder,
                     Selector = $selector,
                     TargetType = $targetType,
+                    RuntimePlatform = $runtimePlatform,
                     Instruction = $instruction,
                     ScreenName = $screenName,
                     FrameTarget = $frameTarget,
@@ -1357,6 +1360,7 @@ static List<GuideStepResponse> SaveGuideSteps(SqliteConnection connection, Sqlit
             updateCommand.Parameters.AddWithValue("$stepOrder", stepOrder);
             updateCommand.Parameters.AddWithValue("$selector", string.Equals(step.TargetType, "none", StringComparison.OrdinalIgnoreCase) ? "" : step.Selector.Trim());
             updateCommand.Parameters.AddWithValue("$targetType", string.Equals(step.TargetType, "none", StringComparison.OrdinalIgnoreCase) ? "none" : "element");
+            updateCommand.Parameters.AddWithValue("$runtimePlatform", string.Equals(step.RuntimePlatform, "windows", StringComparison.OrdinalIgnoreCase) ? "windows" : "web");
             updateCommand.Parameters.AddWithValue("$instruction", step.Instruction.Trim());
             updateCommand.Parameters.AddWithValue("$screenName", string.IsNullOrWhiteSpace(step.ScreenName) ? DBNull.Value : step.ScreenName.Trim());
             updateCommand.Parameters.AddWithValue("$frameTarget", step.Frame is null ? DBNull.Value : JsonSerializer.Serialize(step.Frame));
@@ -1372,14 +1376,15 @@ static List<GuideStepResponse> SaveGuideSteps(SqliteConnection connection, Sqlit
             using var insertCommand = connection.CreateCommand();
             insertCommand.Transaction = transaction;
             insertCommand.CommandText = """
-                INSERT INTO GuideSteps (GuideId, StepOrder, Selector, TargetType, Instruction, ScreenName, FrameTarget, ValidationEngine, ValidationExpression, ValidationErrorMessage, ValidationBuilderType, ValidationBuilderValue)
-                VALUES ($guideId, $stepOrder, $selector, $targetType, $instruction, $screenName, $frameTarget, $validationEngine, $validationExpression, $validationErrorMessage, $validationBuilderType, $validationBuilderValue);
+                INSERT INTO GuideSteps (GuideId, StepOrder, Selector, TargetType, RuntimePlatform, Instruction, ScreenName, FrameTarget, ValidationEngine, ValidationExpression, ValidationErrorMessage, ValidationBuilderType, ValidationBuilderValue)
+                VALUES ($guideId, $stepOrder, $selector, $targetType, $runtimePlatform, $instruction, $screenName, $frameTarget, $validationEngine, $validationExpression, $validationErrorMessage, $validationBuilderType, $validationBuilderValue);
                 SELECT last_insert_rowid();
                 """;
             insertCommand.Parameters.AddWithValue("$guideId", guideId);
             insertCommand.Parameters.AddWithValue("$stepOrder", stepOrder);
             insertCommand.Parameters.AddWithValue("$selector", string.Equals(step.TargetType, "none", StringComparison.OrdinalIgnoreCase) ? "" : step.Selector.Trim());
             insertCommand.Parameters.AddWithValue("$targetType", string.Equals(step.TargetType, "none", StringComparison.OrdinalIgnoreCase) ? "none" : "element");
+            insertCommand.Parameters.AddWithValue("$runtimePlatform", string.Equals(step.RuntimePlatform, "windows", StringComparison.OrdinalIgnoreCase) ? "windows" : "web");
             insertCommand.Parameters.AddWithValue("$instruction", step.Instruction.Trim());
             insertCommand.Parameters.AddWithValue("$screenName", string.IsNullOrWhiteSpace(step.ScreenName) ? DBNull.Value : step.ScreenName.Trim());
             insertCommand.Parameters.AddWithValue("$frameTarget", step.Frame is null ? DBNull.Value : JsonSerializer.Serialize(step.Frame));
@@ -1392,7 +1397,7 @@ static List<GuideStepResponse> SaveGuideSteps(SqliteConnection connection, Sqlit
         }
 
         keptIds.Add(stepId);
-        result.Add(new GuideStepResponse(stepId, stepOrder, string.Equals(step.TargetType, "none", StringComparison.OrdinalIgnoreCase) ? "" : step.Selector.Trim(), string.Equals(step.TargetType, "none", StringComparison.OrdinalIgnoreCase) ? "none" : "element", step.Instruction.Trim(), string.IsNullOrWhiteSpace(step.ScreenName) ? null : step.ScreenName.Trim(), step.Frame, step.Validation));
+        result.Add(new GuideStepResponse(stepId, stepOrder, string.Equals(step.TargetType, "none", StringComparison.OrdinalIgnoreCase) ? "" : step.Selector.Trim(), string.Equals(step.TargetType, "none", StringComparison.OrdinalIgnoreCase) ? "none" : "element", string.Equals(step.RuntimePlatform, "windows", StringComparison.OrdinalIgnoreCase) ? "windows" : "web", step.Instruction.Trim(), string.IsNullOrWhiteSpace(step.ScreenName) ? null : step.ScreenName.Trim(), step.Frame, step.Validation));
     }
 
     foreach (var removedId in existingIds.Except(keptIds))
@@ -1631,6 +1636,7 @@ static void ApplyDatabaseMigrations(string databasePath)
 
     var guideStepMigrations = new Dictionary<string, string>
     {
+        ["RuntimePlatform"] = "ALTER TABLE GuideSteps ADD COLUMN RuntimePlatform TEXT NOT NULL DEFAULT 'web';",
         ["ValidationEngine"] = "ALTER TABLE GuideSteps ADD COLUMN ValidationEngine TEXT;",
         ["ValidationExpression"] = "ALTER TABLE GuideSteps ADD COLUMN ValidationExpression TEXT;",
         ["ValidationErrorMessage"] = "ALTER TABLE GuideSteps ADD COLUMN ValidationErrorMessage TEXT;",
@@ -2198,6 +2204,7 @@ sealed record CreateGuideStepRequest(
     long? Id,
     string Selector,
     string? TargetType,
+    string? RuntimePlatform,
     string Instruction,
     string? ScreenName,
     FrameTarget? Frame,
@@ -2215,6 +2222,7 @@ sealed record GuideStepResponse(
     int StepOrder,
     string Selector,
     string TargetType,
+    string RuntimePlatform,
     string Instruction,
     string? ScreenName,
     FrameTarget? Frame,
