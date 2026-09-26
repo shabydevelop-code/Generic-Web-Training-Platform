@@ -13,6 +13,9 @@ let extensionId;
 async function confirmGuideStartInstruction(panel) {
   const prompt = panel.locator("#learnerStartInstructionPanel");
   await expect(prompt).toBeVisible({ timeout: 10000 });
+  await expect(prompt).toHaveAttribute("class", /confirm-overlay/);
+  await expect(prompt.locator("[role='dialog']")).toBeVisible();
+  await expect(panel.locator("#confirmStartInstructionButton")).toBeFocused();
   await panel.locator("#confirmStartInstructionButton").click();
   await expect(prompt).toBeHidden();
 }
