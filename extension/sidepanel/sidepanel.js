@@ -1755,7 +1755,6 @@ function openStepEditor(step) {
   if (!instructionOnly) renderSelectedFrame(currentSelectedElement);
   selectedElement.hidden = instructionOnly;
   stepEditor.hidden = false;
-  selectButton.hidden = false;
   addStepButton.hidden = true;
   statusElement.textContent = "";
   statusElement.removeAttribute("data-type");
