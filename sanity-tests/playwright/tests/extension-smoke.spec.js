@@ -3493,7 +3493,8 @@ test("stage 6 instruction-only step - editor UI persists, reopens and previews t
 
     await panel.locator("#addStepButton").click();
     await panel.locator("#instructionOnlyInput").check();
-    await expect(panel.locator("#selectButton")).toBeDisabled();
+    await expect(panel.locator("#selectButton")).toBeHidden();
+    await expect(panel.locator("#elementPickerStatus")).toHaveText("");
     await panel.locator("#instructionInput").fill(instruction);
     await panel.locator("#saveStepButton").click();
     await expect(panel.locator("#stepsList .step-item")).toHaveCount(1);
@@ -3508,6 +3509,8 @@ test("stage 6 instruction-only step - editor UI persists, reopens and previews t
     await expect(panel.locator("#stepsList .step-item")).toHaveCount(1);
     await panel.locator("#stepsList .step-item").first().click();
     await expect(panel.locator("#instructionOnlyInput")).toBeChecked();
+    await expect(panel.locator("#selectButton")).toBeHidden();
+    await expect(panel.locator("#elementPickerStatus")).toHaveText("");
     await expect(panel.locator("#instructionInput")).toContainText(instruction);
     await expect(panel.locator("#selectorInput")).toHaveValue("");
 
