@@ -328,6 +328,10 @@
   async function canShowStep(current) {
     if (!current?.step) return false;
 
+    if ((current.step.runtime || "web") === "windows") {
+      return current.step.targetType === "none" || Boolean(current.step.windowsTarget);
+    }
+
     try {
       const response = await sendStepToTargetFrame({
         type: "GWTP_CAN_SHOW_TRAINING_STEP",
@@ -341,8 +345,27 @@
 
   async function showCurrentStep(current, options = {}) {
     if (!current?.step) return false;
-    const renderVersion = ++learnerRenderVersion;
 
+    if ((current.step.runtime || "web") === "windows") {
+      try {
+        await clearTrainingAcrossFrames();
+      } catch {}
+
+      const response = await window.windowsBridgeService.showStep({
+        ...current.step,
+        navigation: {
+          canPrevious: current.stepIndex > 0,
+          canNext: current.stepIndex < (current.totalSteps || 1) - 1
+        }
+      });
+      return response?.success === true;
+    }
+
+    try {
+      await window.windowsBridgeService.clearStep();
+    } catch {}
+
+    const renderVersion = ++learnerRenderVersion;
     const result = await showFirstStep({
       steps: [current.step],
       stepIndex: current.stepIndex,
@@ -359,30 +382,20 @@
     }
 
     const firstStep = guide.steps[0];
-    console.info("GWTP Preview route", {
-      runtime: firstStep.runtime ?? null,
-      targetType: firstStep.targetType ?? null,
-      hasWindowsTarget: Boolean(firstStep.windowsTarget),
-      stepId: firstStep.id ?? null
-    });
-    if ((firstStep.runtime || "web") === "windows") {
-      if (!firstStep.windowsTarget) {
-        throw new Error("The Windows step does not contain a target descriptor.");
-      }
-      const response = await window.windowsBridgeService.showStep(firstStep);
-      if (!response?.success) {
-        throw new Error(response?.code || "Could not show the Windows guide step.");
-      }
-      return response;
+    if ((firstStep.runtime || "web") === "web") {
+      await beginValidationSession("preview", guide?.id);
     }
 
-    await beginValidationSession("preview", guide?.id);
-    return showFirstStep({
-      steps: [firstStep],
+    const shown = await showCurrentStep({
+      step: firstStep,
       stepIndex: 0,
       totalSteps: guide.steps.length,
       mode: "preview"
     });
+    if (!shown) {
+      throw new Error("Could not show the first guide step.");
+    }
+    return { success: true };
   }
 
   async function resumePendingNavigationCore() {
