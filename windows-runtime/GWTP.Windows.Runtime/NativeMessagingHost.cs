@@ -2,6 +2,8 @@ using System.Buffers.Binary;
 using System.IO;
 using System.Text;
 using System.Text.Json;
+using Microsoft.Win32.SafeHandles;
+using System.Runtime.InteropServices;
 
 namespace GWTP_Windows_POC;
 
@@ -18,10 +20,23 @@ internal sealed class NativeMessagingHost : IDisposable
     public NativeMessagingHost(MainWindow pickerWindow)
     {
         _pickerWindow = pickerWindow;
-        _input = Console.OpenStandardInput();
-        _output = Console.OpenStandardOutput();
+        _input = OpenStandardHandle(STD_INPUT_HANDLE, FileAccess.Read);
+        _output = OpenStandardHandle(STD_OUTPUT_HANDLE, FileAccess.Write);
         _pickerWindow.AuthoringTargetSelected += OnAuthoringTargetSelected;
         _pickerWindow.AuthoringSelectionCancelled += OnAuthoringSelectionCancelled;
+    }
+
+    private const int STD_INPUT_HANDLE = -10;
+    private const int STD_OUTPUT_HANDLE = -11;
+
+    private static FileStream OpenStandardHandle(int handleId, FileAccess access)
+    {
+        var handle = GetStdHandle(handleId);
+        if (handle == IntPtr.Zero || handle == new IntPtr(-1))
+            throw new InvalidOperationException($"Native messaging standard handle {handleId} is unavailable.");
+
+        var safeHandle = new SafeFileHandle(handle, ownsHandle: false);
+        return new FileStream(safeHandle, access, bufferSize: 4096, isAsync: true);
     }
 
     public async Task RunAsync()
@@ -156,5 +171,10 @@ internal sealed class NativeMessagingHost : IDisposable
         _pickerWindow.AuthoringSelectionCancelled -= OnAuthoringSelectionCancelled;
         _cts.Dispose();
         _writeLock.Dispose();
+        _input.Dispose();
+        _output.Dispose();
     }
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    private static extern IntPtr GetStdHandle(int nStdHandle);
 }
