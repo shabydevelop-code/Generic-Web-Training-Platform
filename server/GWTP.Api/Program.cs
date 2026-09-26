@@ -1582,15 +1582,16 @@ static void ApplyDatabaseMigrations(string databasePath)
         migrationCommand.ExecuteNonQuery();
     }
 
-    ApplyOneTimeMigration(connection, "20260926_start_instruction_he_v1", () =>
+    ApplyOneTimeMigration(connection, "20260926_start_instruction_neutral_v2", () =>
     {
         using var populateStartInstructionCommand = connection.CreateCommand();
         populateStartInstructionCommand.CommandText = """
             UPDATE Guides
-            SET StartInstruction = 'פתח את המערכת הרלוונטית ועבור למסך ההתחלה.'
+            SET StartInstruction = 'פתח את המערכת והגע לנקודה שממנה מתחיל המדריך.'
             WHERE StartInstruction IS NULL
                OR TRIM(StartInstruction) = ''
-               OR StartInstruction = 'Open the relevant system and navigate to the starting screen.';
+               OR StartInstruction = 'Open the relevant system and navigate to the starting screen.'
+               OR StartInstruction = 'פתח את המערכת הרלוונטית ועבור למסך ההתחלה.';
             """;
         populateStartInstructionCommand.ExecuteNonQuery();
     });
@@ -1736,7 +1737,7 @@ static void ApplyDatabaseMigrations(string databasePath)
                 """;
             guideCommand.Parameters.AddWithValue("$topicId", topicId);
             guideCommand.Parameters.AddWithValue("$name", guideName);
-            guideCommand.Parameters.AddWithValue("$startInstruction", "פתח את Demo CRM ועבור למסך ההתחלה.");
+            guideCommand.Parameters.AddWithValue("$startInstruction", "פתח את המערכת והגע לנקודה שממנה מתחיל המדריך.");
             guideId = Convert.ToInt64(guideCommand.ExecuteScalar());
         }
         else
@@ -2042,7 +2043,7 @@ static void EnsureDemoSiteGuide(string databasePath)
         """;
     guideCommand.Parameters.AddWithValue("$topicId", topicId);
     guideCommand.Parameters.AddWithValue("$name", guideName);
-    guideCommand.Parameters.AddWithValue("$startInstruction", "פתח את Demo CRM ועבור למסך ההתחלה.");
+    guideCommand.Parameters.AddWithValue("$startInstruction", "פתח את המערכת והגע לנקודה שממנה מתחיל המדריך.");
     var guideId = Convert.ToInt64(guideCommand.ExecuteScalar());
 
     for (var index = 0; index < steps.Length; index++)
