@@ -224,9 +224,16 @@ internal sealed class ElementTrackingService : IDisposable
             return;
         }
 
-        if (eventType == EventSystemMinimizeStart && IsHostWindowEvent(hwnd))
+        if (eventType == EventSystemMinimizeStart)
         {
-            _dispatcher.BeginInvoke(() => ElementTemporarilyHidden?.Invoke());
+            // Some UI frameworks report MINIMIZESTART on a related top-level HWND
+            // rather than the exact UIA host HWND. The hook is already scoped to
+            // the target process, so confirm the authoritative host state instead
+            // of waiting for a later UIA/offscreen notification.
+            if (IsHostWindowEvent(hwnd) || IsIconic(_hostWindow))
+            {
+                _dispatcher.BeginInvoke(() => ElementTemporarilyHidden?.Invoke());
+            }
             return;
         }
 
@@ -238,6 +245,15 @@ internal sealed class ElementTrackingService : IDisposable
 
         if (eventType == EventObjectLocationChange && (hwnd == _hostWindow || IsChild(_hostWindow, hwnd)))
         {
+            // Minimize commonly emits LOCATIONCHANGE before UIA updates
+            // IsOffscreen/BoundingRectangle. Hide synchronously from Win32 state
+            // so stale overlays never linger while waiting for the provider.
+            if (IsIconic(_hostWindow))
+            {
+                _dispatcher.BeginInvoke(() => ElementTemporarilyHidden?.Invoke());
+                return;
+            }
+
             RequestBoundsRefresh();
         }
     }
