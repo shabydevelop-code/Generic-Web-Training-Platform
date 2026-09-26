@@ -87,20 +87,6 @@
     });
   }
 
-  async function navigateToStartUrl(startUrl) {
-    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-
-    if (!tab?.id) {
-      throw new Error("No active browser tab was found.");
-    }
-
-    const loadPromise = waitForTabComplete(tab.id);
-    await chrome.tabs.update(tab.id, { url: startUrl });
-    await loadPromise;
-
-    return tab.id;
-  }
-
   function frameMatchesStep(frameInfo, stepFrame) {
     if (!stepFrame) return frameInfo?.isTop === true;
     if (stepFrame.isTop) return frameInfo?.isTop === true;
@@ -229,10 +215,6 @@
 
   async function start(guide) {
     await beginValidationSession("learner", guide?.id);
-    if (!guide?.startUrl) {
-      throw new Error("The guide start URL is missing.");
-    }
-
     const firstStep = guide?.steps?.[0];
 
     if (!firstStep) {
@@ -256,7 +238,6 @@
       throw new Error("The saved guide step was not found.");
     }
 
-    await navigateToStartUrl(guide.startUrl);
     return showFirstStep({
       steps: [step],
       stepIndex,
@@ -324,8 +305,8 @@
 
   async function restart(guide) {
     await beginValidationSession("learner", guide?.id);
-    if (!guide?.startUrl || !guide?.steps?.length) {
-      throw new Error("A valid guide with a start URL and at least one step is required.");
+    if (!guide?.steps?.length) {
+      throw new Error("A valid guide with at least one step is required.");
     }
 
     const restartResponse = await chrome.runtime.sendMessage({
@@ -337,7 +318,6 @@
       throw new Error(restartResponse?.message || "Could not restart the training session.");
     }
 
-    await navigateToStartUrl(guide.startUrl);
     return showFirstStep({
       steps: [guide.steps[0]],
       stepIndex: 0,
@@ -375,11 +355,10 @@
 
   async function preview(guide) {
     await beginValidationSession("preview", guide?.id);
-    if (!guide?.startUrl || !guide?.steps?.length) {
-      throw new Error("A valid guide with a start URL and at least one step is required.");
+    if (!guide?.steps?.length) {
+      throw new Error("A valid guide with at least one step is required.");
     }
 
-    await navigateToStartUrl(guide.startUrl);
     return showFirstStep({
       steps: [guide.steps[0]],
       stepIndex: 0,
