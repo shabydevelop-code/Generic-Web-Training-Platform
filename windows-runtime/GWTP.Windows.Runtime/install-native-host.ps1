@@ -6,7 +6,7 @@ param(
 
 $ErrorActionPreference = 'Stop'
 $hostName = 'com.gwtp.windows'
-$exePath = Join-Path $PSScriptRoot 'bin\Release\net8.0-windows\GWTP-Windows-POC.exe'
+$exePath = Join-Path $PSScriptRoot 'bin\Release\net8.0-windows\GWTP.Windows.Runtime.exe'
 
 if (-not (Test-Path $exePath)) {
     Write-Host 'Building GWTP Windows Runtime...'
