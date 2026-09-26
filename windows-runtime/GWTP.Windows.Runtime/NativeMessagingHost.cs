@@ -144,7 +144,11 @@ internal sealed class NativeMessagingHost : IDisposable
 
             if (type == "clearStep")
             {
-                await _pickerWindow.Dispatcher.InvokeAsync(() => _pickerWindow.ClearAuthoredStep());
+                var restorePreviousForeground =
+                    message.RootElement.TryGetProperty("restorePreviousForeground", out var restoreElement) &&
+                    restoreElement.ValueKind == JsonValueKind.True;
+                await _pickerWindow.Dispatcher.InvokeAsync(
+                    () => _pickerWindow.ClearAuthoredStep(restorePreviousForeground));
                 await WriteMessageAsync(new { type = "stepCleared", requestId, success = true });
             }
         }
