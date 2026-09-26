@@ -18,8 +18,8 @@ internal static class Program
     {
         var selectedTests = ParseSelectedTests(args);
         var root = FindRepoRoot();
-        var runtimeExe = Path.Combine(root, "bin", "Debug", "net8.0-windows", "GWTP-Windows-POC.exe");
-        var hostExe = Path.Combine(root, "AmbiguityTestHost", "bin", "Debug", "net8.0-windows", "AmbiguityTestHost.exe");
+        var runtimeExe = Path.Combine(root, "GWTP.Windows.Runtime", "bin", "Debug", "net8.0-windows", "GWTP.Windows.Runtime.exe");
+        var hostExe = Path.Combine(root, "GWTP.Windows.TestHost", "bin", "Debug", "net8.0-windows", "GWTP.Windows.TestHost.exe");
 
         if (!File.Exists(runtimeExe) || !File.Exists(hostExe))
         {
@@ -159,7 +159,7 @@ internal static class Program
 
                 Run("20. Cross-launch rediscovery finds authored target in a new process instance", () =>
                 {
-                    WaitUntil(() => Process.GetProcessesByName("AmbiguityTestHost").Length == 1,
+                    WaitUntil(() => Process.GetProcessesByName("GWTP.Windows.TestHost").Length == 1,
                         "Previous test-host process did not exit before cross-launch rediscovery.",
                         LaunchTimeoutMs);
                     var reopenedHost = WaitForTopLevelWindow("GWTP Windows UIA Test Host", LaunchTimeoutMs);
@@ -510,7 +510,7 @@ internal static class Program
                 // old process is fully gone before exercising cross-launch identity;
                 // otherwise Process.GetProcessesByName can temporarily expose both
                 // generations and correctly make discovery ambiguous.
-                WaitUntil(() => Process.GetProcessesByName("AmbiguityTestHost").Length == 1,
+                WaitUntil(() => Process.GetProcessesByName("GWTP.Windows.TestHost").Length == 1,
                     "Previous test-host process did not exit before cross-launch rediscovery.",
                     LaunchTimeoutMs);
                 var reopenedHost = WaitForTopLevelWindow("GWTP Windows UIA Test Host", LaunchTimeoutMs);
@@ -561,7 +561,7 @@ internal static class Program
         }
         finally
         {
-            TryCloseProcessByName("AmbiguityTestHost");
+            TryCloseProcessByName("GWTP.Windows.TestHost");
             if (!runtime.HasExited) runtime.Kill(true);
         }
 
@@ -991,7 +991,7 @@ internal static class Program
         var dir = new DirectoryInfo(AppContext.BaseDirectory);
         while (dir is not null)
         {
-            if (File.Exists(Path.Combine(dir.FullName, "GWTP-Windows-POC.csproj"))) return dir.FullName;
+            if (Directory.Exists(Path.Combine(dir.FullName, "GWTP.Windows.Runtime")) && Directory.Exists(Path.Combine(dir.FullName, "GWTP.Windows.GuiTests"))) return dir.FullName;
             dir = dir.Parent;
         }
         throw new DirectoryNotFoundException("Repository root not found.");
