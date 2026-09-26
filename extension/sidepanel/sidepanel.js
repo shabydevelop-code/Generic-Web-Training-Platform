@@ -354,7 +354,9 @@ async function moveWindowsPreview(direction) {
     }
   }
 
-  await window.guideRunner.showCurrentStep(current);
+  await window.guideRunner.showCurrentStep(current, {
+    restorePreviousForeground: previousRuntime === "windows" && nextRuntime === "web"
+  });
 }
 
 window.addEventListener("gwtp-windows-preview-navigation", (event) => {
