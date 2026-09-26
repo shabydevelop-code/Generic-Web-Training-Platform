@@ -70,6 +70,44 @@ public partial class MainWindow : Window
         AuthoringSelectionCancelled?.Invoke();
     }
 
+    public bool ShowAuthoredStep(WindowsTargetDescriptor target, string? instruction)
+    {
+        CloseTrainingOverlay();
+        var element = WindowsTargetResolver.Resolve(target);
+        if (element is null)
+        {
+            DiagnosticLog.Write("AuthoredStep.TargetUnavailable");
+            return false;
+        }
+
+        var bounds = element.Current.BoundingRectangle;
+        if (bounds.IsEmpty || bounds.Width <= 0 || bounds.Height <= 0)
+        {
+            DiagnosticLog.Write("AuthoredStep.InvalidBounds");
+            return false;
+        }
+
+        ShowElement(element);
+        _highlightWindow ??= new HighlightWindow();
+        _highlightWindow.ShowAt(bounds);
+
+        EnsureGuidanceWindow();
+        _guidanceWindow!.SetInstruction(instruction);
+        _guidanceWindow.SetValidationMessage(null);
+        _guidanceWindow.SetNavigationState(false, false);
+        _guidanceWindow.ResetManualPosition();
+        _guidanceWindow.ShowNear(bounds);
+        StartElementTracking(element);
+        DiagnosticLog.Write("AuthoredStep.Shown");
+        return true;
+    }
+
+    public void ClearAuthoredStep()
+    {
+        CloseTrainingOverlay();
+        DiagnosticLog.Write("AuthoredStep.Cleared");
+    }
+
     private void SelectElementButton_Click(object sender, RoutedEventArgs e)
     {
         if (_isSelecting)
