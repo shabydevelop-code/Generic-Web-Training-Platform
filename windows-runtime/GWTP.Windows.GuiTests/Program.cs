@@ -34,7 +34,7 @@ internal static class Program
         {
             if (selectedTests is not null && selectedTests.SetEquals(new[] { 17, 18 }))
             {
-                var focusedRuntimeWindow = WaitForWindow(runtime.Id, "GWTP Windows POC");
+                var focusedRuntimeWindow = WaitForWindow(runtime.Id, "GWTP Windows Runtime");
                 Invoke(FindByName(focusedRuntimeWindow, "Open Ambiguity Test"));
                 var focusedHostWindow = WaitForTopLevelWindow("GWTP Windows UIA Test Host", LaunchTimeoutMs);
 
@@ -96,7 +96,7 @@ internal static class Program
 
             if (selectedTests is not null && selectedTests.SetEquals(new[] { 18 }))
             {
-                var focusedRuntimeWindow = WaitForWindow(runtime.Id, "GWTP Windows POC");
+                var focusedRuntimeWindow = WaitForWindow(runtime.Id, "GWTP Windows Runtime");
                 Invoke(FindByName(focusedRuntimeWindow, "Open Ambiguity Test"));
                 var focusedHostWindow = WaitForTopLevelWindow("GWTP Windows UIA Test Host", LaunchTimeoutMs);
 
@@ -141,7 +141,7 @@ internal static class Program
 
             if (selectedTests is not null && selectedTests.SetEquals(new[] { 20 }))
             {
-                var focusedRuntimeWindow = WaitForWindow(runtime.Id, "GWTP Windows POC");
+                var focusedRuntimeWindow = WaitForWindow(runtime.Id, "GWTP Windows Runtime");
                 Invoke(FindByName(focusedRuntimeWindow, "Open Ambiguity Test"));
                 var authoredHost = WaitForTopLevelWindow("GWTP Windows UIA Test Host", LaunchTimeoutMs);
                 PrepareHostTargetForPicker(focusedRuntimeWindow, authoredHost, automationId: "GroupA");
@@ -186,7 +186,7 @@ internal static class Program
                 return _failed == 0 ? 0 : 1;
             }
 
-            var runtimeWindow = WaitForWindow(runtime.Id, "GWTP Windows POC");
+            var runtimeWindow = WaitForWindow(runtime.Id, "GWTP Windows Runtime");
             Run("01. Open UIA Test Host through GUI", () =>
             {
                 Invoke(FindByName(runtimeWindow, "Open Ambiguity Test"));
