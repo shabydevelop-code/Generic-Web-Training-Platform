@@ -14,7 +14,7 @@ async function requireHealthyStack(request) {
   const api = await request.get(`${API_URL}/api/health`);
   expect(api.ok(), "GWTP API must be running before Stage 3").toBeTruthy();
 
-  const site = await request.get(`${SITE_URL}/site.html`);
+  const site = await request.get("Open the Demo CRM and navigate to the starting screen.");
   expect(site.ok(), "Demo CRM must be running before Stage 3").toBeTruthy();
 }
 
@@ -51,7 +51,7 @@ async function createTemporaryFixtureGuide(panel, name, steps) {
     const topic = await requestJson("/api/topics", { method: "POST", body: JSON.stringify({ name }) });
     const guide = await requestJson("/api/guides", {
       method: "POST",
-      body: JSON.stringify({ topicId: topic.id, name, startUrl: `${siteUrl}/gwtp-test-fixture.html`, isAvailable: true, steps })
+      body: JSON.stringify({ topicId: topic.id, name, startInstruction: "Open the test fixture and navigate to the starting screen.", isAvailable: true, steps })
     });
     return { token, topicId: topic.id, guideId: guide.id };
   }, { token: auth.accessToken, name, siteUrl: SITE_URL, steps });
@@ -132,7 +132,7 @@ test("stage 6 guidance positioning - bubble follows target while scrolling", asy
     const panel = await openPanel();
     await login(panel, "sanity.learner");
     const fixture = await context.newPage();
-    await fixture.goto(`${SITE_URL}/gwtp-test-fixture.html`);
+    await fixture.goto("Open the test fixture and navigate to the starting screen.");
     await fixture.evaluate(() => {
       document.body.style.minHeight = "2200px";
       document.querySelector("#fixture-action").style.marginTop = "900px";
@@ -176,14 +176,14 @@ test("stage 6 selector resilience - generated ids do not bind authored steps", a
   await login(panel, "sanity.editor");
 
   const fixture = await context.newPage();
-  await fixture.goto(`${SITE_URL}/gwtp-test-fixture.html`);
+  await fixture.goto("Open the test fixture and navigate to the starting screen.");
   await fixture.bringToFront();
 
   await panel.locator("#openNewGuideButton").click();
   const demoTopic = panel.locator("#topicSelect option").filter({ hasText: "Demo CRM" });
   await panel.locator("#topicSelect").selectOption(await demoTopic.getAttribute("value"));
   await panel.locator("#guideNameInput").fill(`Dynamic selector ${Date.now()}`);
-  await panel.locator("#guideStartUrlInput").fill(`${SITE_URL}/gwtp-test-fixture.html`);
+  await panel.locator("#guideStartInstructionInput").fill("Open the test fixture and navigate to the starting screen.");
   await panel.locator("#addStepButton").click();
   await panel.locator("#selectButton").click();
 
@@ -245,7 +245,7 @@ test("stage 6 dynamic web app - GWTP follows SPA, DOM replacement, dynamic frame
       body: JSON.stringify({
         topicId: topic.id,
         name: fixtureName,
-        startUrl: `${siteUrl}/dynamic-app.html`,
+        startInstruction: "Open the dynamic test app and navigate to the starting screen.",
         isAvailable: true,
         steps: [
           { selector: "#js-launcher", instruction: "Open launcher", screenName: "Dynamic", frame: null, validation: null },
@@ -335,7 +335,7 @@ test("stage 6 dynamic web app - GWTP follows SPA, DOM replacement, dynamic frame
 
 test("Demo CRM loads with the GWTP content script", async () => {
   const page = await context.newPage();
-  await page.goto(`${SITE_URL}/site.html`);
+  await page.goto("Open the Demo CRM and navigate to the starting screen.");
   await expect(page).toHaveTitle(/.+/);
 
   const contentScriptReady = await page.evaluate(() => {
@@ -579,7 +579,7 @@ test("stage 5 management CRUD - editor creates, edits and deletes a guide and it
     const demoTopic = panel.locator("#topicSelect option").filter({ hasText: "Demo CRM" });
     await panel.locator("#topicSelect").selectOption(await demoTopic.getAttribute("value"));
     await panel.locator("#guideNameInput").fill(guideName);
-    await panel.locator("#guideStartUrlInput").fill(SITE_URL + "/gwtp-test-fixture.html");
+    await panel.locator("#guideStartInstructionInput").fill(SITE_URL + "/gwtp-test-fixture.html");
     await panel.locator("#addStepButton").click();
     await panel.locator("#selectButton").click();
     const content = fixture;
@@ -693,7 +693,7 @@ test("stage 5 editor preview - navigation, validation and exit cleanup work thro
     const demoTopic = panel.locator("#topicSelect option").filter({ hasText: "Demo CRM" });
     await panel.locator("#topicSelect").selectOption(await demoTopic.getAttribute("value"));
     await panel.locator("#guideNameInput").fill(guideName);
-    await panel.locator("#guideStartUrlInput").fill(SITE_URL + "/gwtp-test-fixture.html");
+    await panel.locator("#guideStartInstructionInput").fill(SITE_URL + "/gwtp-test-fixture.html");
 
     // Step 1: required validation on a real input.
     await panel.locator("#addStepButton").click();
@@ -777,7 +777,7 @@ test("stage 5 editor management - persisted step reorder survives reopening the 
     const demoTopic = panel.locator("#topicSelect option").filter({ hasText: "Demo CRM" });
     await panel.locator("#topicSelect").selectOption(await demoTopic.getAttribute("value"));
     await panel.locator("#guideNameInput").fill(guideName);
-    await panel.locator("#guideStartUrlInput").fill(SITE_URL + "/gwtp-test-fixture.html");
+    await panel.locator("#guideStartInstructionInput").fill(SITE_URL + "/gwtp-test-fixture.html");
 
     for (const [selector, instruction] of [["#fixture-code", "Reorder first"], ["#fixture-name", "Reorder second"]]) {
       await panel.locator("#addStepButton").click();
@@ -938,7 +938,7 @@ test("stage 5 management validation - topic required duplicate and guide depende
     const topicOption = panel.locator("#topicSelect option").filter({ hasText: topicName });
     await panel.locator("#topicSelect").selectOption(await topicOption.getAttribute("value"));
     await panel.locator("#guideNameInput").fill(guideName);
-    await panel.locator("#guideStartUrlInput").fill(SITE_URL + "/site.html");
+    await panel.locator("#guideStartInstructionInput").fill("Open the Demo CRM and navigate to the starting screen.");
     await panel.locator("#saveGuideButton").click();
     await expect(panel.locator("[data-guide-id]").filter({ hasText: guideName })).toHaveCount(1);
 
@@ -989,7 +989,7 @@ test("stage 5 management validation - guide identity and availability rules bloc
     await panel.locator("#topicSelect").selectOption(await demoTopic.getAttribute("value"));
     await panel.locator("#guideNameInput").fill(guideName);
     await expect(panel.locator("#addStepButton")).toBeDisabled();
-    await panel.locator("#guideStartUrlInput").fill(SITE_URL + "/site.html");
+    await panel.locator("#guideStartInstructionInput").fill("Open the Demo CRM and navigate to the starting screen.");
     await expect(panel.locator("#addStepButton")).toBeEnabled();
 
     // Availability cannot be enabled for a guide that has no authored steps.
@@ -999,7 +999,7 @@ test("stage 5 management validation - guide identity and availability rules bloc
     await expect(panel.locator("#guideEditorView")).toBeVisible();
 
     crm = await context.newPage();
-    await crm.goto(SITE_URL + "/site.html");
+    await crm.goto("Open the Demo CRM and navigate to the starting screen.");
     await crm.bringToFront();
     const content = crm.frameLocator('iframe[name="TargetContent"]');
     await panel.locator("#addStepButton").click();
@@ -1044,7 +1044,7 @@ test("learner can start a generic guide and receives visible guidance", async ()
     const learner = await openPanel();
     await login(learner, "sanity.learner");
     const fixture = await context.newPage();
-    await fixture.goto(`${SITE_URL}/gwtp-test-fixture.html`);
+    await fixture.goto("Open the test fixture and navigate to the starting screen.");
     await fixture.bringToFront();
 
     await learner.locator("#learnerTopicSelect").selectOption(String(setup.topicId));
@@ -1080,7 +1080,7 @@ test("learner Next and Previous move between generic fixture steps", async () =>
     const learner = await openPanel();
     await login(learner, "sanity.learner");
     const fixture = await context.newPage();
-    await fixture.goto(`${SITE_URL}/gwtp-test-fixture.html`);
+    await fixture.goto("Open the test fixture and navigate to the starting screen.");
     await fixture.bringToFront();
 
     await learner.locator("#learnerTopicSelect").selectOption(String(setup.topicId));
@@ -1122,7 +1122,7 @@ test("learner required validation blocks Next until corrected", async () => {
     const panel = await openPanel();
     await login(panel, "sanity.learner");
     const fixture = await context.newPage();
-    await fixture.goto(`${SITE_URL}/gwtp-test-fixture.html`);
+    await fixture.goto("Open the test fixture and navigate to the starting screen.");
     await fixture.bringToFront();
     await panel.locator("#learnerTopicSelect").selectOption(String(setup.topicId));
     await panel.locator("#learnerGuideSelect").selectOption(String(setup.guideId));
@@ -1156,7 +1156,7 @@ test("stage 4 validation - equals, not-equals and contains block then allow Next
   try {
     await editor.close();
     const panel = await openPanel(); await login(panel, "sanity.learner");
-    const fixture = await context.newPage(); await fixture.goto(`${SITE_URL}/gwtp-test-fixture.html`); await fixture.bringToFront();
+    const fixture = await context.newPage(); await fixture.goto("Open the test fixture and navigate to the starting screen."); await fixture.bringToFront();
     await panel.locator("#learnerTopicSelect").selectOption(String(setup.topicId));
     await panel.locator("#learnerGuideSelect").selectOption(String(setup.guideId));
     await panel.locator("#startLearningButton").click();
@@ -1197,7 +1197,7 @@ test("stage 4 validation - changed and changed-regex block then allow Next", asy
     }, setup.guideId);
     await editor.close();
     const panel = await openPanel(); await login(panel, "sanity.learner");
-    const fixture = await context.newPage(); await fixture.goto(`${SITE_URL}/gwtp-test-fixture.html`); await fixture.bringToFront();
+    const fixture = await context.newPage(); await fixture.goto("Open the test fixture and navigate to the starting screen."); await fixture.bringToFront();
     await panel.locator("#learnerTopicSelect").selectOption(String(setup.topicId)); await panel.locator("#learnerGuideSelect").selectOption(String(setup.guideId));
     await panel.evaluate(async (guideValue) => {
       const restart = await chrome.runtime.sendMessage({ type: "GWTP_TRAINING_RESTART", guide: guideValue }); if (!restart?.success) throw new Error(restart?.message || "restart failed");
@@ -1223,7 +1223,7 @@ test("learner continues automatically across the Site to Case page transition", 
   await login(panel, "sanity.learner");
 
   const crm = await context.newPage();
-  await crm.goto(`${SITE_URL}/site.html`);
+  await crm.goto("Open the Demo CRM and navigate to the starting screen.");
   await crm.bringToFront();
 
   const topic = panel.locator("#learnerTopicSelect option").filter({ hasText: "Demo CRM" });
@@ -1317,7 +1317,7 @@ test("learner survives a real Site server save and reload", async () => {
   await login(panel, "sanity.learner");
 
   const crm = await context.newPage();
-  await crm.goto(`${SITE_URL}/site.html`);
+  await crm.goto("Open the Demo CRM and navigate to the starting screen.");
   await crm.bringToFront();
 
   const topic = panel.locator("#learnerTopicSelect option").filter({ hasText: "Demo CRM" });
@@ -1404,7 +1404,7 @@ test("learner can reopen the extension and resume saved progress", async () => {
   await login(panel, "sanity.learner");
 
   const crm = await context.newPage();
-  await crm.goto(`${SITE_URL}/site.html`);
+  await crm.goto("Open the Demo CRM and navigate to the starting screen.");
   await crm.bringToFront();
 
   const topic = panel.locator("#learnerTopicSelect option").filter({ hasText: "Demo CRM" });
@@ -1475,7 +1475,7 @@ test("completed guide is stored as Completed and starts over on the next run", a
   await login(panel, "sanity.learner");
 
   const crm = await context.newPage();
-  await crm.goto(`${SITE_URL}/site.html`);
+  await crm.goto("Open the Demo CRM and navigate to the starting screen.");
   await crm.bringToFront();
 
   const topic = panel.locator("#learnerTopicSelect option").filter({ hasText: "Demo CRM" });
@@ -1582,7 +1582,7 @@ test("stage 6 resilience batch - learner survives target-page reload without adv
   const panel = await openPanel();
   await login(panel, "sanity.learner");
   const crm = await context.newPage();
-  await crm.goto(`${SITE_URL}/site.html`);
+  await crm.goto("Open the Demo CRM and navigate to the starting screen.");
   await crm.bringToFront();
 
   const topic = panel.locator("#learnerTopicSelect option").filter({ hasText: "Demo CRM" });
@@ -1617,7 +1617,7 @@ test("stage 6 resilience batch - repeated PAGE_READY signals do not duplicate or
     const panel = await openPanel();
     await login(panel, "sanity.learner");
     const fixture = await context.newPage();
-    await fixture.goto(`${SITE_URL}/gwtp-test-fixture.html`);
+    await fixture.goto("Open the test fixture and navigate to the starting screen.");
     await fixture.bringToFront();
     await panel.locator("#learnerTopicSelect").selectOption(String(setup.topicId));
     await panel.locator("#learnerGuideSelect").selectOption(String(setup.guideId));
@@ -1657,7 +1657,7 @@ test("stage 6 resilience batch - rapid duplicate Next does not skip a generic le
     const panel = await openPanel();
     await login(panel, "sanity.learner");
     const fixture = await context.newPage();
-    await fixture.goto(`${SITE_URL}/gwtp-test-fixture.html`);
+    await fixture.goto("Open the test fixture and navigate to the starting screen.");
     await fixture.bringToFront();
     await panel.locator("#learnerTopicSelect").selectOption(String(setup.topicId));
     await panel.locator("#learnerGuideSelect").selectOption(String(setup.guideId));
@@ -1683,7 +1683,7 @@ test("stage 6 resilience batch - leaving the target page preserves progress and 
   const panel = await openPanel();
   await login(panel, "sanity.learner");
   const crm = await context.newPage();
-  await crm.goto(`${SITE_URL}/site.html`);
+  await crm.goto("Open the Demo CRM and navigate to the starting screen.");
   await crm.bringToFront();
 
   const topic = panel.locator("#learnerTopicSelect option").filter({ hasText: "Demo CRM" });
@@ -1702,7 +1702,7 @@ test("stage 6 resilience batch - leaving the target page preserves progress and 
   await crm.goto(`${SITE_URL}/leads.html`);
   await expect.poll(async () => panel.evaluate(async () => (await chrome.runtime.sendMessage({ type: "GWTP_TRAINING_GET_CURRENT" }))?.current?.stepIndex ?? null), { timeout: 10000 }).toBe(1);
 
-  await crm.goto(`${SITE_URL}/site.html`);
+  await crm.goto("Open the Demo CRM and navigate to the starting screen.");
   await expect.poll(async () => panel.evaluate(async () => (await chrome.runtime.sendMessage({ type: "GWTP_TRAINING_GET_CURRENT" }))?.current?.stepIndex ?? null), { timeout: 10000 }).toBe(1);
   await expect(crm.frameLocator('iframe[name="TargetContent"]').locator("#site-name")).toHaveCSS("outline-width", "3px", { timeout: 10000 });
   await expect(crm.frameLocator('iframe[name="TargetContent"]').locator(".gwtp-training-overlay")).toHaveCount(1);
@@ -1715,7 +1715,7 @@ test("stage 6 resilience batch - logout during learning clears UI session withou
   const panel = await openPanel();
   await login(panel, "sanity.learner");
   const crm = await context.newPage();
-  await crm.goto(`${SITE_URL}/site.html`);
+  await crm.goto("Open the Demo CRM and navigate to the starting screen.");
   await crm.bringToFront();
 
   const topic = panel.locator("#learnerTopicSelect option").filter({ hasText: "Demo CRM" });
@@ -1776,7 +1776,7 @@ test("stage 6 full authoring lifecycle - new topic guide reopen edit steps previ
     await panel.locator("#backFromTopicsButton").click();
 
     crm = await context.newPage();
-    await crm.goto(SITE_URL + "/site.html");
+    await crm.goto("Open the Demo CRM and navigate to the starting screen.");
     await crm.bringToFront();
     const content = crm.frameLocator('iframe[name="TargetContent"]');
 
@@ -1786,7 +1786,7 @@ test("stage 6 full authoring lifecycle - new topic guide reopen edit steps previ
     await expect(topicOption).toHaveCount(1);
     await panel.locator("#topicSelect").selectOption(await topicOption.getAttribute("value"));
     await panel.locator("#guideNameInput").fill(guideName);
-    await panel.locator("#guideStartUrlInput").fill(SITE_URL + "/site.html");
+    await panel.locator("#guideStartInstructionInput").fill("Open the Demo CRM and navigate to the starting screen.");
 
     await panel.locator("#addStepButton").click();
     await panel.locator("#selectButton").click();
@@ -1810,7 +1810,7 @@ test("stage 6 full authoring lifecycle - new topic guide reopen edit steps previ
     await guideCard.click();
     await expect(panel.locator("#guideNameInput")).toHaveValue(guideName);
     await expect(panel.locator("#topicSelect option:checked")).toHaveText(topicName);
-    await expect(panel.locator("#guideStartUrlInput")).toHaveValue(SITE_URL + "/site.html");
+    await expect(panel.locator("#guideStartInstructionInput")).toHaveValue("Open the Demo CRM and navigate to the starting screen.");
     await expect(panel.locator("#stepsList .step-item")).toHaveCount(2);
     await panel.locator("#stepsList .step-item").first().click();
     await expect(panel.locator("#instructionInput")).toContainText(originalFirstInstruction);
@@ -1944,7 +1944,7 @@ test("stage 6 GUI forms batch - required markers and error regions are adjacent 
   });
   expect(loginOrder).toBeTruthy();
 
-  await panel.locator("#usernameInput").fill("x");
+  await panel.locator("#usernameInput").fill("Prepare the starting screen.");
   await panel.locator("#loginButton").click();
   await expect(panel.locator("#loginStatus")).not.toHaveText("");
   await expect(panel.locator("#loginView")).toBeVisible();
@@ -2024,14 +2024,14 @@ test("stage 6 GUI forms batch - guide required errors stay with guide details an
   await login(panel, "sanity.editor");
   await panel.locator("#openNewGuideButton").click();
 
-  for (const selector of ["#topicSelect", "#guideNameInput", "#guideStartUrlInput"]) {
+  for (const selector of ["#topicSelect", "#guideNameInput", "#guideStartInstructionInput"]) {
     await expect(panel.locator(selector)).toHaveAttribute("required", "");
     await expect(panel.locator(selector)).toHaveAttribute("aria-required", "true");
     await expect(panel.locator(`label[for="${selector.slice(1)}"] .required-marker`)).toBeVisible();
   }
 
   await panel.locator("#guideNameInput").fill("");
-  await panel.locator("#guideStartUrlInput").fill("not-a-url");
+  await panel.locator("#guideStartInstructionInput").fill("Prepare the starting screen.");
   await panel.locator("#saveGuideButton").click();
   await expect(panel.locator("#saveGuideStatus")).not.toHaveText("");
   await expect(panel.locator("#saveGuideStatus")).toHaveAttribute("data-type", "error");
@@ -2045,7 +2045,7 @@ test("stage 6 GUI forms batch - guide required errors stay with guide details an
   expect(placement).toBeTruthy();
 
   await panel.locator("#guideNameInput").fill("Stage 6 GUI temporary");
-  await panel.locator("#guideStartUrlInput").fill(`${SITE_URL}/site.html`);
+  await panel.locator("#guideStartInstructionInput").fill("Open the Demo CRM and navigate to the starting screen.");
   await expect(panel.locator("#saveGuideButton")).toBeEnabled();
 
   await panel.close();
@@ -2097,7 +2097,7 @@ test("stage 6 GUI forms batch - long error messages remain contained at narrow r
   await panel.locator("#openNewGuideButton").click();
 
   await panel.locator("#guideNameInput").fill("");
-  await panel.locator("#guideStartUrlInput").fill("x");
+  await panel.locator("#guideStartInstructionInput").fill("Prepare the starting screen.");
   await panel.locator("#saveGuideButton").click();
   await expect(panel.locator("#saveGuideStatus")).not.toHaveText("");
 
@@ -2331,7 +2331,7 @@ test("stage 6 accessibility batch - required editor fields expose programmatic s
   await login(panel, "sanity.editor");
 
   await panel.locator("#openNewGuideButton").click();
-  for (const selector of ["#guideNameInput", "#topicSelect", "#guideStartUrlInput"]) {
+  for (const selector of ["#guideNameInput", "#topicSelect", "#guideStartInstructionInput"]) {
     await expect(panel.locator(selector)).toHaveAttribute("required", "");
     await expect(panel.locator(selector)).toHaveAttribute("aria-required", "true");
   }
@@ -2367,7 +2367,7 @@ test("visual layout - learner guidance stays inside a narrow target viewport", a
   await login(panel, "sanity.learner");
   const crm = await context.newPage();
   await crm.setViewportSize({ width: 360, height: 640 });
-  await crm.goto(`${SITE_URL}/site.html`);
+  await crm.goto("Open the Demo CRM and navigate to the starting screen.");
   await crm.bringToFront();
 
   const topic = panel.locator("#learnerTopicSelect option").filter({ hasText: "Demo CRM" });
@@ -2396,7 +2396,7 @@ test("visual layout - guidance controls remain usable with enlarged text", async
   await login(panel, "sanity.learner");
   const crm = await context.newPage();
   await crm.setViewportSize({ width: 480, height: 720 });
-  await crm.goto(`${SITE_URL}/site.html`);
+  await crm.goto("Open the Demo CRM and navigate to the starting screen.");
   await crm.bringToFront();
 
   const topic = panel.locator("#learnerTopicSelect option").filter({ hasText: "Demo CRM" });
@@ -2431,7 +2431,7 @@ test("visual layout - Hebrew learner guidance uses RTL direction", async () => {
   const panel = await openPanel();
   await login(panel, "sanity.learner");
   const crm = await context.newPage();
-  await crm.goto(`${SITE_URL}/site.html`);
+  await crm.goto("Open the Demo CRM and navigate to the starting screen.");
   await crm.bringToFront();
 
   const topic = panel.locator("#learnerTopicSelect option").filter({ hasText: "Demo CRM" });
@@ -2491,7 +2491,7 @@ test("accessibility resilience - completion dialog traps focus and closes with E
   const panel = await openPanel();
   await login(panel, "sanity.learner");
   const crm = await context.newPage();
-  await crm.goto(`${SITE_URL}/site.html`);
+  await crm.goto("Open the Demo CRM and navigate to the starting screen.");
   await crm.bringToFront();
 
   const topic = panel.locator("#learnerTopicSelect option").filter({ hasText: "Demo CRM" });
@@ -2541,7 +2541,7 @@ test("accessibility resilience - learner recovery actions remain available after
   const panel = await openPanel();
   await login(panel, "sanity.learner");
   const crm = await context.newPage();
-  await crm.goto(`${SITE_URL}/site.html`);
+  await crm.goto("Open the Demo CRM and navigate to the starting screen.");
   await crm.bringToFront();
 
   const topic = panel.locator("#learnerTopicSelect option").filter({ hasText: "Demo CRM" });
@@ -2577,7 +2577,7 @@ test("stage 4 lifecycle - editor authors, previews and publishes a guide that le
     await login(editor, "sanity.editor");
 
     crm = await context.newPage();
-    await crm.goto(`${SITE_URL}/site.html`);
+    await crm.goto("Open the Demo CRM and navigate to the starting screen.");
     await crm.bringToFront();
 
   // Create a new unpublished guide in the real editor.
@@ -2587,7 +2587,7 @@ test("stage 4 lifecycle - editor authors, previews and publishes a guide that le
   const demoTopic = editor.locator("#topicSelect option").filter({ hasText: "Demo CRM" });
   await editor.locator("#topicSelect").selectOption(await demoTopic.getAttribute("value"));
   await editor.locator("#guideNameInput").fill(guideName);
-  await editor.locator("#guideStartUrlInput").fill(`${SITE_URL}/site.html`);
+  await editor.locator("#guideStartInstructionInput").fill("Open the Demo CRM and navigate to the starting screen.");
   await expect(editor.locator("#guideAvailableInput")).not.toBeChecked();
 
   // Author one real step with the real element picker.
@@ -2760,7 +2760,7 @@ test("stage 4 learner - active guidance restores after a full page reload", asyn
   await login(panel, "sanity.learner");
 
   const crm = await context.newPage();
-  await crm.goto(`${SITE_URL}/site.html`);
+  await crm.goto("Open the Demo CRM and navigate to the starting screen.");
   await crm.bringToFront();
 
   const topic = panel.locator("#learnerTopicSelect option").filter({ hasText: "Demo CRM" });
@@ -3113,7 +3113,7 @@ test("stage 6 editor highlight - falls back when persisted frame metadata is sta
   await login(panel, "sanity.editor");
 
   const page = await context.newPage();
-  await page.goto(`${SITE_URL}/site.html`);
+  await page.goto("Open the Demo CRM and navigate to the starting screen.");
   await page.bringToFront();
 
   const result = await panel.evaluate(async () => {
@@ -3153,7 +3153,7 @@ test("architecture guard - editor picker keyboard command is declared", async ()
 
 test("stage 6 element highlight - editor and picker outlines use important priority", async () => {
   const page = await context.newPage();
-  await page.goto(`${SITE_URL}/site.html`);
+  await page.goto("Open the Demo CRM and navigate to the starting screen.");
 
   await page.evaluate(() => {
     document.body.style.setProperty("outline", "1px solid transparent", "important");
@@ -3431,14 +3431,14 @@ test("stage 6 instruction-only step - editor UI persists, reopens and previews t
     await panel.locator("#backFromTopicsButton").click();
 
     fixture = await context.newPage();
-    await fixture.goto(`${SITE_URL}/gwtp-test-fixture.html`);
+    await fixture.goto("Open the test fixture and navigate to the starting screen.");
     await fixture.bringToFront();
 
     await panel.locator("#openNewGuideButton").click();
     const topicOption = panel.locator("#topicSelect option").filter({ hasText: topicName });
     await panel.locator("#topicSelect").selectOption(await topicOption.getAttribute("value"));
     await panel.locator("#guideNameInput").fill(guideName);
-    await panel.locator("#guideStartUrlInput").fill(`${SITE_URL}/gwtp-test-fixture.html`);
+    await panel.locator("#guideStartInstructionInput").fill("Open the test fixture and navigate to the starting screen.");
     await panel.locator("#guideAvailableInput").check();
 
     await panel.locator("#addStepButton").click();
