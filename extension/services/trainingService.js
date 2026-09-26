@@ -113,6 +113,8 @@
         order: index + 1,
         selector: (step.selector || "").trim(),
         targetType: step.targetType === "none" ? "none" : "element",
+        runtime: step.runtime === "windows" ? "windows" : "web",
+        windowsTarget: step.windowsTarget ? structuredClone(step.windowsTarget) : null,
         instruction: step.instruction.trim(),
         screenName: (step.screenName || "").trim(),
         element: step.targetType === "none" ? null : {
