@@ -421,6 +421,15 @@
         </div>
       </div>
 
+      <div id="learnerStartInstructionPanel" class="card learner-recovery" hidden>
+        <strong data-i18n="beforeStartingGuide">Before starting</strong>
+        <p id="learnerStartInstructionText" class="learner-recovery__message"></p>
+        <div class="actions">
+          <button id="confirmStartInstructionButton" class="button button--primary" type="button" data-i18n="readyToStartButton">I'm ready</button>
+          <button id="cancelStartInstructionButton" class="button" type="button" data-i18n="cancelButton">Cancel</button>
+        </div>
+      </div>
+
       <div id="learnModeView" hidden>
         <header class="panel__header">
           <h1 data-i18n="learnerTitle">Learning</h1>
@@ -447,15 +456,6 @@
           <button id="exitLearningButton" class="button button--primary button--full learner-restart-button" type="button" data-i18n="exitLearningButton" hidden>
             Exit learning
           </button>
-
-          <div id="learnerStartInstructionPanel" class="learner-recovery" hidden>
-            <strong data-i18n="beforeStartingGuide">Before starting</strong>
-            <p id="learnerStartInstructionText" class="learner-recovery__message"></p>
-            <div class="actions">
-              <button id="confirmStartInstructionButton" class="button button--primary" type="button" data-i18n="readyToStartButton">I'm ready</button>
-              <button id="cancelStartInstructionButton" class="button" type="button" data-i18n="cancelButton">Cancel</button>
-            </div>
-          </div>
 
           <div id="learnerRecoveryPanel" class="learner-recovery" hidden>
             <p id="learnerRecoveryMessage" class="learner-recovery__message"></p>
