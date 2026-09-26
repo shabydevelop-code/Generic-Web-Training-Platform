@@ -81,6 +81,47 @@ internal sealed class NativeMessagingHost : IDisposable
             if (type == "cancelPick")
             {
                 await _pickerWindow.Dispatcher.InvokeAsync(() => _pickerWindow.CancelAuthoringSelection());
+                continue;
+            }
+
+            if (type == "showStep")
+            {
+                if (!message.RootElement.TryGetProperty("target", out var targetElement))
+                {
+                    await WriteMessageAsync(new { type = "stepShown", requestId, success = false, code = "missing-target" });
+                    continue;
+                }
+
+                var target = targetElement.Deserialize<WindowsTargetDescriptor>(new JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true
+                });
+                var instruction = message.RootElement.TryGetProperty("instruction", out var instructionElement)
+                    ? instructionElement.GetString()
+                    : null;
+
+                if (target is null)
+                {
+                    await WriteMessageAsync(new { type = "stepShown", requestId, success = false, code = "invalid-target" });
+                    continue;
+                }
+
+                var shown = await _pickerWindow.Dispatcher.InvokeAsync(
+                    () => _pickerWindow.ShowAuthoredStep(target, instruction));
+                await WriteMessageAsync(new
+                {
+                    type = "stepShown",
+                    requestId,
+                    success = shown,
+                    code = shown ? null : "target-unavailable"
+                });
+                continue;
+            }
+
+            if (type == "clearStep")
+            {
+                await _pickerWindow.Dispatcher.InvokeAsync(() => _pickerWindow.ClearAuthoredStep());
+                await WriteMessageAsync(new { type = "stepCleared", requestId, success = true });
             }
         }
     }
