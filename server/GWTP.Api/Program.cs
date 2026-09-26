@@ -70,11 +70,19 @@ app.MapGet("/api/health/database", () =>
 
     var tableCount = Convert.ToInt32(command.ExecuteScalar());
 
+    using var stepColumnsCommand = connection.CreateCommand();
+    stepColumnsCommand.CommandText = "PRAGMA table_info(GuideSteps);";
+    using var stepColumnsReader = stepColumnsCommand.ExecuteReader();
+    var stepColumns = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+    while (stepColumnsReader.Read()) stepColumns.Add(stepColumnsReader.GetString(1));
+
     return Results.Ok(new
     {
         database = "GWTP.db",
         status = "ok",
-        tableCount
+        tableCount,
+        guideStepRuntime = stepColumns.Contains("Runtime"),
+        windowsTargetPersistence = stepColumns.Contains("WindowsTarget")
     });
 });
 
