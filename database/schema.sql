@@ -24,7 +24,7 @@ CREATE TABLE IF NOT EXISTS Guides (
     Id INTEGER PRIMARY KEY AUTOINCREMENT,
     TopicId INTEGER NOT NULL,
     Name TEXT NOT NULL,
-    StartUrl TEXT,
+    StartInstruction TEXT NOT NULL,
     IsAvailable INTEGER NOT NULL DEFAULT 0 CHECK (IsAvailable IN (0, 1)),
     FOREIGN KEY (TopicId) REFERENCES Topics(Id)
 );
@@ -37,6 +37,7 @@ CREATE TABLE IF NOT EXISTS GuideSteps (
     Instruction TEXT NOT NULL,
     ScreenName TEXT,
     FrameTarget TEXT,
+    RuntimePlatform TEXT NOT NULL DEFAULT 'web' CHECK (RuntimePlatform IN ('web', 'windows')),
     ValidationEngine TEXT,
     ValidationExpression TEXT,
     ValidationErrorMessage TEXT,
