@@ -161,3 +161,16 @@ Database:
 - Editor Windows target selection is descriptor-only. It captures/stores the frozen `WindowsTargetDescriptor`; it must not create learner progress or show GuidanceWindow as a side effect.
 - Web picker and Windows picker are isolated paths behind the same step-level Runtime model. Web continues to use selector/frame identity; Windows uses WindowsTarget only.
 - Runtime synchronization remains event-driven. Native Messaging is request/event based; do not add HTTP polling or timer-based bridge discovery.
+
+
+## Single-repository architecture (2026-09-26)
+
+- `Generic-Web-Training-Platform` is the single source repository for GWTP, including Web and Windows runtimes.
+- The former standalone `GWTP-Windows-POC` repository is retired from active development. Its proven implementation has been consolidated under `windows-runtime/`; do not make new product changes in the old repository.
+- Consolidated layout:
+  - `windows-runtime/GWTP.Windows.Runtime/` — interactive Windows UIA runtime and Native Messaging host.
+  - `windows-runtime/GWTP.Windows.TestHost/` — deterministic external WPF UIA test host.
+  - `windows-runtime/GWTP.Windows.GuiTests/` — Windows GUI/E2E sanity runner.
+  - `windows-runtime/run-sanity.ps1` — builds all three projects and runs the Windows GUI suite.
+- Browser extension, API, database contract, Windows runtime and both Web/Windows automated suites must evolve atomically in this repository.
+- The old Windows POC repository may be retained temporarily for history/reference until the consolidated Windows suite is verified, but it is not a source of truth.
