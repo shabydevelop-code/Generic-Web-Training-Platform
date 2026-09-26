@@ -94,19 +94,27 @@ public partial class MainWindow : Window
             return false;
         }
 
-        ShowElement(element);
-        _highlightWindow ??= new HighlightWindow();
-        _highlightWindow.ShowAt(bounds);
+        _authoredStepActive = true;
+        StartElementTracking(element);
 
-        EnsureGuidanceWindow();
         _guidanceWindow!.SetInstruction(instruction);
         _guidanceWindow.SetValidationMessage(null);
-        _authoredStepActive = true;
         _guidanceWindow.SetNavigationState(canPrevious, canNext);
         _guidanceWindow.ResetManualPosition();
-        _guidanceWindow.ShowNear(bounds);
-        StartElementTracking(element);
-        DiagnosticLog.Write("AuthoredStep.Shown");
+
+        if (_elementTracker!.IsTemporarilyHidden())
+        {
+            OnTrackedElementTemporarilyHidden();
+            DiagnosticLog.Write("AuthoredStep.HiddenUntilVisible");
+        }
+        else
+        {
+            ShowElement(element);
+            _highlightWindow ??= new HighlightWindow();
+            _highlightWindow.ShowAt(bounds);
+            _guidanceWindow.ShowNear(bounds);
+            DiagnosticLog.Write("AuthoredStep.Shown");
+        }
         return true;
     }
 
