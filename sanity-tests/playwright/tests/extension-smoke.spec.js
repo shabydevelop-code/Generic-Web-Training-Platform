@@ -3511,6 +3511,23 @@ test("architecture guard - bubble fallback has no stale gap identifier", async (
 });
 
 
+test("architecture guard - instruction-only availability bypasses DOM target lookup", async () => {
+  const guideRunnerSource = await fs.promises.readFile(
+    path.join(EXTENSION_PATH, "learner", "guide-runner.js"),
+    "utf8"
+  );
+
+  const canShowStart = guideRunnerSource.indexOf("async function canShowStep(current)");
+  const canShowEnd = guideRunnerSource.indexOf("async function showCurrentStep(current", canShowStart);
+  const canShowSource = guideRunnerSource.slice(canShowStart, canShowEnd);
+
+  expect(canShowSource).toContain('if (current.step.targetType === "none") return true;');
+  expect(canShowSource.indexOf('targetType === "none"')).toBeLessThan(
+    canShowSource.indexOf('runtime || "web"')
+  );
+});
+
+
 test("stage 6 instruction-only step - editor UI persists, reopens and previews target-free guidance", async () => {
   test.setTimeout(60000);
   const suffix = Date.now();
