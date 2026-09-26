@@ -244,7 +244,7 @@ test("stage 6 selector resilience - generated ids do not bind authored steps", a
   await panel.locator("#guideNameInput").fill(`Dynamic selector ${Date.now()}`);
   await panel.locator("#guideStartInstructionInput").fill("Open the relevant system and navigate to the starting screen.");
   await panel.locator("#addStepButton").click();
-  await editor.locator("#selectButton").click();
+  await panel.locator("#selectButton").click();
 
   await fixture.locator("#_aAq0arv7IvWchbIPqeDzkAc_108").click();
   const selector = await panel.locator("#selectorInput").inputValue();
@@ -642,21 +642,21 @@ test("stage 5 management CRUD - editor creates, edits and deletes a guide and it
     await expect(panel.locator("#guideStartInstructionInput")).toHaveValue("פתח את המערכת והגע לנקודה שממנה מתחיל המדריך.");
     await panel.locator("#guideStartInstructionInput").fill("Open the relevant system and navigate to the starting screen.");
     await panel.locator("#addStepButton").click();
-    await editor.locator("#selectButton").click();
+    await panel.locator("#selectButton").click();
     const content = fixture;
     await content.locator("#fixture-code").click();
     await panel.locator("#screenNameInput").fill("Stage5 Screen");
-    await editor.locator("#instructionInput").fill("Stage 5 original instruction");
-    await editor.locator("#saveStepButton").click();
+    await panel.locator("#instructionInput").fill("Stage 5 original instruction");
+    await panel.locator("#saveStepButton").click();
     await panel.locator("#saveGuideButton").click();
     let guideCard = panel.locator("[data-guide-id]").filter({ hasText: guideName }).first();
     await expect(guideCard).toBeVisible();
     await guideCard.click();
-    await editor.locator("#stepsList .step-item").first().click();
-    await editor.locator("#instructionInput").fill("Stage 5 updated instruction");
+    await panel.locator("#stepsList .step-item").first().click();
+    await panel.locator("#instructionInput").fill("Stage 5 updated instruction");
     await panel.locator("#screenNameInput").fill("Stage5 Updated Screen");
-    await editor.locator("#saveStepButton").click();
-    await editor.locator("#stepsList .step-item").first().click();
+    await panel.locator("#saveStepButton").click();
+    await panel.locator("#stepsList .step-item").first().click();
     await expect(panel.locator("#instructionInput")).toContainText("Stage 5 updated instruction");
     await expect(panel.locator("#screenNameInput")).toHaveValue("Stage5 Updated Screen");
     await panel.locator("#cancelStepButton").click();
@@ -665,16 +665,16 @@ test("stage 5 management CRUD - editor creates, edits and deletes a guide and it
     guideCard = panel.locator("[data-guide-id]").filter({ hasText: updatedGuideName }).first();
     await expect(guideCard).toBeVisible();
     await guideCard.click();
-    await editor.locator("#stepsList .step-item").first().click();
+    await panel.locator("#stepsList .step-item").first().click();
     await panel.locator("#deleteEditedStepButton").click();
     await panel.locator("#confirmDeleteButton").click();
-    await expect(editor.locator("#stepsList .step-item")).toHaveCount(0);
+    await expect(panel.locator("#stepsList .step-item")).toHaveCount(0);
     await panel.locator("#deleteEditedGuideButton").click();
     await panel.locator("#confirmDeleteButton").click();
     await expect(panel.locator("[data-guide-id]").filter({ hasText: updatedGuideName })).toHaveCount(0);
   } finally {
     try {
-      if (await panel.locator("#guideEditorView").isVisible()) await editor.locator("#backToGuidesButton").click();
+      if (await panel.locator("#guideEditorView").isVisible()) await panel.locator("#backToGuidesButton").click();
       for (const name of [updatedGuideName, guideName]) { const leftover = panel.locator("[data-guide-id]").filter({ hasText: name }).first(); if (await leftover.count()) { await leftover.click(); await panel.locator("#deleteEditedGuideButton").click(); if (await panel.locator("#deleteConfirmOverlay").isVisible()) await panel.locator("#confirmDeleteButton").click(); } }
     } catch {}
     await panel.close();
@@ -691,7 +691,7 @@ test("stage 5 editor management - metadata-only step edit does not require the t
   await expect(guideCard).toBeVisible();
   await guideCard.click();
 
-  const firstStep = editor.locator("#stepsList .step-item").first();
+  const firstStep = panel.locator("#stepsList .step-item").first();
   await firstStep.click();
   const originalScreenName = await panel.locator("#screenNameInput").inputValue();
   const temporaryScreenName = `Stage5 Metadata ${Date.now()}`;
@@ -705,13 +705,13 @@ test("stage 5 editor management - metadata-only step edit does not require the t
 
     const pageErrors = [];
     panel.on("pageerror", (error) => pageErrors.push(error.message));
-    await editor.locator("#stepsList .step-item").first().click();
+    await panel.locator("#stepsList .step-item").first().click();
     await expect(panel.locator("#stepEditor")).toBeVisible();
     expect(pageErrors.filter((message) => message.includes("Receiving end does not exist"))).toEqual([]);
 
     // Element Picker feedback must follow the configured UI language even when the
     // active page cannot host a picker/content-script receiver.
-    await editor.locator("#selectButton").click();
+    await panel.locator("#selectButton").click();
     const pickerStatus = panel.locator("#elementPickerStatus");
     await expect(pickerStatus).toContainText("לא ניתן להתחיל בחירת אלמנט בעמוד זה");
     await expect(pickerStatus).toContainText("רענן את העמוד ונסה שוב");
@@ -720,19 +720,19 @@ test("stage 5 editor management - metadata-only step edit does not require the t
     await expect(panel.locator("#status")).not.toContainText("לא ניתן להתחיל בחירת אלמנט בעמוד זה");
 
     await panel.locator("#screenNameInput").fill(temporaryScreenName);
-    await editor.locator("#saveStepButton").click();
+    await panel.locator("#saveStepButton").click();
     await expect(panel.locator("#stepEditor")).toBeHidden();
 
-    await editor.locator("#stepsList .step-item").first().click();
+    await panel.locator("#stepsList .step-item").first().click();
     await expect(panel.locator("#screenNameInput")).toHaveValue(temporaryScreenName);
     await panel.locator("#screenNameInput").fill(originalScreenName);
-    await editor.locator("#saveStepButton").click();
+    await panel.locator("#saveStepButton").click();
     await unrelated.close();
   } finally {
     // Best-effort restore if an assertion interrupted the normal restore path.
     if (await panel.locator("#stepEditor").isVisible().catch(() => false)) {
       await panel.locator("#screenNameInput").fill(originalScreenName).catch(() => {});
-      await editor.locator("#saveStepButton").click().catch(() => {});
+      await panel.locator("#saveStepButton").click().catch(() => {});
     }
     await panel.close().catch(() => {});
   }
@@ -1079,17 +1079,17 @@ test("stage 5 management validation - guide identity and availability rules bloc
     await crm.bringToFront();
     const content = crm.frameLocator('iframe[name="TargetContent"]');
     await panel.locator("#addStepButton").click();
-    await editor.locator("#selectButton").click();
+    await panel.locator("#selectButton").click();
     await content.locator("#site-code").click();
 
     // Missing Instruction is prevented proactively by the editor: Save Step stays
     // disabled until both an element and non-empty instruction are present.
     await expect(panel.locator("#stepEditor")).toBeVisible();
-    await expect(editor.locator("#saveStepButton")).toBeDisabled();
+    await expect(panel.locator("#saveStepButton")).toBeDisabled();
 
-    await editor.locator("#instructionInput").fill("Valid authored step");
-    await expect(editor.locator("#saveStepButton")).toBeEnabled();
-    await editor.locator("#saveStepButton").click();
+    await panel.locator("#instructionInput").fill("Valid authored step");
+    await expect(panel.locator("#saveStepButton")).toBeEnabled();
+    await panel.locator("#saveStepButton").click();
     await expect(panel.locator("#stepEditor")).toBeHidden();
     await expect(panel.locator("#saveGuideStatus")).toHaveText("");
     await expect(panel.locator("#saveGuideStatus")).not.toHaveAttribute("data-type", "error");
@@ -1880,18 +1880,18 @@ test("stage 6 full authoring lifecycle - new topic guide reopen edit steps previ
     await panel.locator("#guideStartInstructionInput").fill("Open the relevant system and navigate to the starting screen.");
 
     await panel.locator("#addStepButton").click();
-    await editor.locator("#selectButton").click();
+    await panel.locator("#selectButton").click();
     await content.locator("#site-code").click();
     await panel.locator("#screenNameInput").fill("Journey Site");
-    await editor.locator("#instructionInput").fill(originalFirstInstruction);
-    await editor.locator("#saveStepButton").click();
+    await panel.locator("#instructionInput").fill(originalFirstInstruction);
+    await panel.locator("#saveStepButton").click();
 
     await panel.locator("#addStepButton").click();
-    await editor.locator("#selectButton").click();
+    await panel.locator("#selectButton").click();
     await content.locator("#site-name").click();
     await panel.locator("#screenNameInput").fill("Journey Site");
-    await editor.locator("#instructionInput").fill(secondInstruction);
-    await editor.locator("#saveStepButton").click();
+    await panel.locator("#instructionInput").fill(secondInstruction);
+    await panel.locator("#saveStepButton").click();
 
     await panel.locator("#saveGuideButton").click();
     let guideCard = findGuide(guideName);
@@ -1902,36 +1902,36 @@ test("stage 6 full authoring lifecycle - new topic guide reopen edit steps previ
     await expect(panel.locator("#guideNameInput")).toHaveValue(guideName);
     await expect(panel.locator("#topicSelect option:checked")).toHaveText(topicName);
     await expect(panel.locator("#guideStartInstructionInput")).toHaveValue("Open the relevant system and navigate to the starting screen.");
-    await expect(editor.locator("#stepsList .step-item")).toHaveCount(2);
-    await editor.locator("#stepsList .step-item").first().click();
+    await expect(panel.locator("#stepsList .step-item")).toHaveCount(2);
+    await panel.locator("#stepsList .step-item").first().click();
     await expect(panel.locator("#instructionInput")).toContainText(originalFirstInstruction);
     await expect(panel.locator("#screenNameInput")).toHaveValue("Journey Site");
 
     // Edit persisted Step 1, add Step 3, then reorder and delete so persistence is
     // verified across multiple authoring mutations rather than only a simple update.
-    await editor.locator("#instructionInput").fill(updatedFirstInstruction);
+    await panel.locator("#instructionInput").fill(updatedFirstInstruction);
     await panel.locator("#screenNameInput").fill("Journey Site Updated");
-    await editor.locator("#saveStepButton").click();
+    await panel.locator("#saveStepButton").click();
 
     await panel.locator("#addStepButton").click();
-    await editor.locator("#selectButton").click();
+    await panel.locator("#selectButton").click();
     await content.locator("#site-phone").click();
     await panel.locator("#screenNameInput").fill("Journey Site");
-    await editor.locator("#instructionInput").fill(thirdInstruction);
-    await editor.locator("#saveStepButton").click();
-    await expect(editor.locator("#stepsList .step-item")).toHaveCount(3);
+    await panel.locator("#instructionInput").fill(thirdInstruction);
+    await panel.locator("#saveStepButton").click();
+    await expect(panel.locator("#stepsList .step-item")).toHaveCount(3);
 
-    const thirdStep = editor.locator("#stepsList .step-item").filter({ hasText: thirdInstruction }).first();
+    const thirdStep = panel.locator("#stepsList .step-item").filter({ hasText: thirdInstruction }).first();
     const thirdStepDragHandle = thirdStep.locator(".step-item__drag-handle");
     await thirdStepDragHandle.focus();
     await thirdStepDragHandle.dispatchEvent("keydown", { key: "ArrowUp", bubbles: true });
-    await expect(editor.locator("#stepsList .step-item").nth(1)).toContainText(thirdInstruction);
+    await expect(panel.locator("#stepsList .step-item").nth(1)).toContainText(thirdInstruction);
 
-    const secondStep = editor.locator("#stepsList .step-item").filter({ hasText: secondInstruction }).first();
+    const secondStep = panel.locator("#stepsList .step-item").filter({ hasText: secondInstruction }).first();
     await secondStep.click();
     await panel.locator("#deleteEditedStepButton").click();
     await panel.locator("#confirmDeleteButton").click();
-    await expect(editor.locator("#stepsList .step-item")).toHaveCount(2);
+    await expect(panel.locator("#stepsList .step-item")).toHaveCount(2);
 
     // Change Guide metadata and learner visibility, save, close, and reopen again.
     await panel.locator("#guideNameInput").fill(updatedGuideName);
@@ -1942,9 +1942,9 @@ test("stage 6 full authoring lifecycle - new topic guide reopen edit steps previ
     await guideCard.click();
     await expect(panel.locator("#guideNameInput")).toHaveValue(updatedGuideName);
     await expect(panel.locator("#guideAvailableInput")).toBeChecked();
-    await expect(editor.locator("#stepsList .step-item")).toHaveCount(2);
-    await expect(editor.locator("#stepsList .step-item").nth(0)).toContainText(updatedFirstInstruction);
-    await expect(editor.locator("#stepsList .step-item").nth(1)).toContainText(thirdInstruction);
+    await expect(panel.locator("#stepsList .step-item")).toHaveCount(2);
+    await expect(panel.locator("#stepsList .step-item").nth(0)).toContainText(updatedFirstInstruction);
+    await expect(panel.locator("#stepsList .step-item").nth(1)).toContainText(thirdInstruction);
     await expect(panel.locator("#stepsList")).not.toContainText(secondInstruction);
 
     // Preview must consume the reopened, updated persisted Step order/content.
@@ -2158,7 +2158,7 @@ test("stage 6 GUI forms batch - step required state is preventive, local, semant
 
   // Step creation intentionally prevents invalid submission instead of producing
   // a post-click error: element selection + instruction are prerequisites.
-  await expect(editor.locator("#saveStepButton")).toBeDisabled();
+  await expect(panel.locator("#saveStepButton")).toBeDisabled();
   await expect(panel.locator("#stepEditor")).toBeVisible();
 
   const placement = await panel.evaluate(() => {
@@ -3016,7 +3016,7 @@ test("stage 4 grid editor - picker-authored grid selector survives row reorder",
   await panel.locator("#addStepButton").click();
   await expect(panel.locator("#stepEditor")).toBeVisible();
 
-  await editor.locator("#selectButton").click();
+  await panel.locator("#selectButton").click();
 
   const content = crm.frameLocator('iframe[name="TargetContent"]');
   const targetText = "בטיפול מומחה";
@@ -3027,7 +3027,7 @@ test("stage 4 grid editor - picker-authored grid selector survives row reorder",
   // GWTP_ELEMENT_SELECTED back to the editor.
   await targetCell.click();
 
-  const selector = editor.locator("#selectedSelector");
+  const selector = panel.locator("#selectedSelector");
   await expect(selector).toContainText("gwtp-grid:", { timeout: 10000 });
   const authoredSelector = (await selector.innerText()).trim();
   // The picker may choose either the table's unique stable ID or its unique stable
@@ -3092,7 +3092,7 @@ test("stage 6 browser-internal page - editor picker fails gracefully without Chr
     if (message.type() === "error") consoleErrors.push(message.text());
   });
 
-  await editor.locator("#selectButton").click();
+  await panel.locator("#selectButton").click();
   await expect(panel.locator("#elementPickerStatus")).toContainText(/browser-internal|פנימיים של הדפדפן/i);
   expect(consoleErrors.some((message) =>
     message.includes("Cannot access a chrome:// URL")
@@ -3113,7 +3113,7 @@ test("stage 6 editor missing selected element - localized error stays with eleme
   await guideCard.click();
   await expect(panel.locator("#stepsSection")).toBeVisible();
 
-  const stepCard = editor.locator("#stepsList .step-item").first();
+  const stepCard = panel.locator("#stepsList .step-item").first();
   await expect(stepCard).toBeVisible();
   await stepCard.click();
   await expect(panel.locator("#stepEditor")).toBeVisible();
@@ -3548,10 +3548,10 @@ test("stage 6 instruction-only step - editor UI persists, reopens and previews t
     await panel.locator("#instructionOnlyInput").check();
     await expect(panel.locator("#selectButton")).toBeHidden();
     await expect(panel.locator("#elementPickerStatus")).toHaveText("");
-    await editor.locator("#instructionInput").fill(instruction);
-    await editor.locator("#saveStepButton").click();
-    await expect(editor.locator("#stepsList .step-item")).toHaveCount(1);
-    await expect(editor.locator("#stepsList .step-item").first()).toContainText(instruction);
+    await panel.locator("#instructionInput").fill(instruction);
+    await panel.locator("#saveStepButton").click();
+    await expect(panel.locator("#stepsList .step-item")).toHaveCount(1);
+    await expect(panel.locator("#stepsList .step-item").first()).toContainText(instruction);
 
     // Saving the guide crosses the real UI -> extension service -> API -> DB path.
     await panel.locator("#saveGuideButton").click();
@@ -3559,8 +3559,8 @@ test("stage 6 instruction-only step - editor UI persists, reopens and previews t
 
     // Reopen from persisted backend data rather than trusting the in-memory draft.
     await findGuide().click();
-    await expect(editor.locator("#stepsList .step-item")).toHaveCount(1);
-    await editor.locator("#stepsList .step-item").first().click();
+    await expect(panel.locator("#stepsList .step-item")).toHaveCount(1);
+    await panel.locator("#stepsList .step-item").first().click();
     await expect(panel.locator("#instructionOnlyInput")).toBeChecked();
     await expect(panel.locator("#selectButton")).toBeHidden();
     await expect(panel.locator("#elementPickerStatus")).toHaveText("");
