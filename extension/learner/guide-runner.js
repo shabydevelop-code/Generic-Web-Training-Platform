@@ -371,7 +371,9 @@
     }
 
     try {
-      await window.windowsBridgeService.clearStep();
+      await window.windowsBridgeService.clearStep({
+        restorePreviousForeground: options.restorePreviousForeground === true
+      });
     } catch {}
 
     const renderVersion = ++learnerRenderVersion;
