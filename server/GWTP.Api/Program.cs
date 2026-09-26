@@ -1582,15 +1582,18 @@ static void ApplyDatabaseMigrations(string databasePath)
         migrationCommand.ExecuteNonQuery();
     }
 
-    using (var populateStartInstructionCommand = connection.CreateCommand())
+    ApplyOneTimeMigration(connection, "20260926_start_instruction_he_v1", () =>
     {
+        using var populateStartInstructionCommand = connection.CreateCommand();
         populateStartInstructionCommand.CommandText = """
             UPDATE Guides
-            SET StartInstruction = 'Open the relevant system and navigate to the starting screen.'
-            WHERE StartInstruction IS NULL OR TRIM(StartInstruction) = '';
+            SET StartInstruction = 'פתח את המערכת הרלוונטית ועבור למסך ההתחלה.'
+            WHERE StartInstruction IS NULL
+               OR TRIM(StartInstruction) = ''
+               OR StartInstruction = 'Open the relevant system and navigate to the starting screen.';
             """;
         populateStartInstructionCommand.ExecuteNonQuery();
-    }
+    });
 
     var hasLegacyStartUrl = false;
     using (var legacyColumnsCommand = connection.CreateCommand())
@@ -1733,7 +1736,7 @@ static void ApplyDatabaseMigrations(string databasePath)
                 """;
             guideCommand.Parameters.AddWithValue("$topicId", topicId);
             guideCommand.Parameters.AddWithValue("$name", guideName);
-            guideCommand.Parameters.AddWithValue("$startInstruction", "Open the Demo CRM and navigate to the starting screen.");
+            guideCommand.Parameters.AddWithValue("$startInstruction", "פתח את Demo CRM ועבור למסך ההתחלה.");
             guideId = Convert.ToInt64(guideCommand.ExecuteScalar());
         }
         else
@@ -2039,7 +2042,7 @@ static void EnsureDemoSiteGuide(string databasePath)
         """;
     guideCommand.Parameters.AddWithValue("$topicId", topicId);
     guideCommand.Parameters.AddWithValue("$name", guideName);
-    guideCommand.Parameters.AddWithValue("$startInstruction", "Open the Demo CRM and navigate to the starting screen.");
+    guideCommand.Parameters.AddWithValue("$startInstruction", "פתח את Demo CRM ועבור למסך ההתחלה.");
     var guideId = Convert.ToInt64(guideCommand.ExecuteScalar());
 
     for (var index = 0; index < steps.Length; index++)
