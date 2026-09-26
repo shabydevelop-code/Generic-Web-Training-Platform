@@ -32,6 +32,7 @@ public partial class MainWindow : Window
     private string? _authoredInstruction;
     private bool _authoredCanPrevious;
     private bool _authoredCanNext;
+    private IntPtr _preAuthoredWindowsForeground = IntPtr.Zero;
 
     public event Action<WindowsTargetDescriptor>? AuthoringTargetSelected;
     public event Action<int>? AuthoredNavigationRequested;
@@ -82,6 +83,14 @@ public partial class MainWindow : Window
 
     public bool ShowAuthoredStep(WindowsTargetDescriptor target, string? instruction, bool canPrevious, bool canNext)
     {
+        // Capture the foreground owner only when entering the Windows portion of
+        // a Hybrid Preview. Keep it across Windows→Windows navigation so the
+        // original browser window remains the return target.
+        if (!_authoredStepActive)
+        {
+            _preAuthoredWindowsForeground = GetForegroundWindow();
+        }
+
         CloseTrainingOverlay();
         var element = WindowsTargetResolver.Resolve(target);
         if (element is null)
@@ -176,13 +185,30 @@ public partial class MainWindow : Window
         }
     }
 
-    public void ClearAuthoredStep()
+    public void ClearAuthoredStep(bool restorePreviousForeground = false)
     {
+        var previousForeground = _preAuthoredWindowsForeground;
         _authoredStepActive = false;
         _authoredInstruction = null;
         _authoredCanPrevious = false;
         _authoredCanNext = false;
+        _preAuthoredWindowsForeground = IntPtr.Zero;
         CloseTrainingOverlay();
+
+        if (restorePreviousForeground &&
+            previousForeground != IntPtr.Zero &&
+            IsWindow(previousForeground))
+        {
+            if (IsIconic(previousForeground))
+                ShowWindow(previousForeground, SwRestore);
+
+            if (GetForegroundWindow() != previousForeground)
+            {
+                SetForegroundWindow(previousForeground);
+                DiagnosticLog.Write("AuthoredStep.PreviousForegroundRestored");
+            }
+        }
+
         DiagnosticLog.Write("AuthoredStep.Cleared");
     }
 
@@ -1172,6 +1198,10 @@ public partial class MainWindow : Window
         => string.IsNullOrWhiteSpace(value) ? "—" : value;
 
     private const int SwRestore = 9;
+
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool IsWindow(IntPtr windowHandle);
 
     [DllImport("user32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
