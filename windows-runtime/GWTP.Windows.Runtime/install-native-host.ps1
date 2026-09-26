@@ -8,10 +8,9 @@ $ErrorActionPreference = 'Stop'
 $hostName = 'com.gwtp.windows'
 $exePath = Join-Path $PSScriptRoot 'bin\Release\net8.0-windows\GWTP.Windows.Runtime.exe'
 
-if (-not (Test-Path $exePath)) {
-    Write-Host 'Building GWTP Windows Runtime...'
-    dotnet build $PSScriptRoot -c Release
-}
+Write-Host 'Building GWTP Windows Runtime (Release)...'
+dotnet build $PSScriptRoot -c Release
+if ($LASTEXITCODE -ne 0) { throw "GWTP Windows Runtime Release build failed with exit code $LASTEXITCODE." }
 if (-not (Test-Path $exePath)) { throw "Native host executable not found: $exePath" }
 
 $installDir = Join-Path $env:LOCALAPPDATA 'GWTP\NativeMessaging'
@@ -24,11 +23,11 @@ Set-Content -Path $manifestPath -Value $manifest -Encoding UTF8
 
 $regPath = "HKCU:\Software\Google\Chrome\NativeMessagingHosts\$hostName"
 New-Item -Path $regPath -Force | Out-Null
-Set-ItemProperty -Path $regPath -Name '(default)' -Value $manifestPath
+Set-Item -Path $regPath -Value $manifestPath
 
 $edgeRegPath = "HKCU:\Software\Microsoft\Edge\NativeMessagingHosts\$hostName"
 New-Item -Path $edgeRegPath -Force | Out-Null
-Set-ItemProperty -Path $edgeRegPath -Name '(default)' -Value $manifestPath
+Set-Item -Path $edgeRegPath -Value $manifestPath
 
 Write-Host "Installed $hostName for Chrome/Edge extension $ExtensionId"
 Write-Host "Manifest: $manifestPath"
