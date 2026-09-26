@@ -37,6 +37,32 @@
     return error?.message?.includes("Receiving end does not exist");
   }
 
+  async function ensureContentScript(tabId, frameId = 0) {
+    try {
+      const ready = await chrome.tabs.sendMessage(tabId, { type: "GWTP_CONTENT_READY" }, { frameId });
+      if (ready?.success === true) return;
+    } catch (error) {
+      if (!isMissingReceiverError(error)) throw error;
+    }
+
+    // A tab that was already open when the extension was installed/reloaded has
+    // no declarative content script yet. Inject the complete dependency chain
+    // once, then retry the original message. The content script itself is
+    // idempotent through __GWTP_CONTENT_READY__.
+    await normalizeRestrictedPageFailure(() => chrome.scripting.executeScript({
+      target: { tabId, frameIds: [frameId] },
+      files: [
+        "config/visual-config.js",
+        "content/dom/element-finder.js",
+        "content/dom/selector-builder.js",
+        "content/overlay/highlighter.js",
+        "content/overlay/element-picker.js",
+        "content/overlay/training-runner.js",
+        "content/content-script.js"
+      ]
+    }));
+  }
+
 
   async function sendToActivePage(message, options = {}) {
     const tab = await getActiveTab();
@@ -57,16 +83,18 @@
       }
     }
 
+    const frameId = options.frameId != null ? options.frameId : 0;
     try {
       return await normalizeRestrictedPageFailure(() =>
-        chrome.tabs.sendMessage(tab.id, message, options.frameId != null ? { frameId: options.frameId } : undefined)
+        chrome.tabs.sendMessage(tab.id, message, { frameId })
       );
     } catch (error) {
-      if (!isMissingReceiverError(error)) {
-        throw error;
-      }
+      if (!isMissingReceiverError(error)) throw error;
 
-      throw error;
+      await ensureContentScript(tab.id, frameId);
+      return normalizeRestrictedPageFailure(() =>
+        chrome.tabs.sendMessage(tab.id, message, { frameId })
+      );
     }
   }
 
