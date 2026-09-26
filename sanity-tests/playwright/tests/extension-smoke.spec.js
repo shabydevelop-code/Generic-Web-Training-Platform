@@ -3663,6 +3663,14 @@ test("stage 6 Windows step authoring - Editor selects and persists native target
     await editor.locator("#saveStepButton").click();
     await expect(editor.locator("#stepsList .step-item")).toHaveCount(2);
     await expect(editor.locator("#stepsList .step-item").nth(1)).toContainText("GWTPTestHost");
+    await expect(editor.locator("#stepsSaveStatus")).toHaveAttribute("data-type", "success");
+
+    const savedBeforeReopen = await editor.evaluate(async (guideId) => {
+      return window.apiService.request(`/api/guides/${guideId}`);
+    }, setup.guideId);
+    expect(savedBeforeReopen.steps).toHaveLength(2);
+    expect(savedBeforeReopen.steps[1].runtime).toBe("windows");
+    expect(savedBeforeReopen.steps[1].windowsTarget).toEqual(windowsTarget);
 
     await editor.locator("#backToGuidesButton").click();
     await editor.locator("#guidesList [data-guide-id]").filter({ hasText: name }).first().click();
