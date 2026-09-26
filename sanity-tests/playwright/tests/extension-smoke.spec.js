@@ -3511,6 +3511,18 @@ test("architecture guard - bubble fallback has no stale gap identifier", async (
 });
 
 
+test("architecture guard - Preview native navigation records adjacent-step intent before unload", async () => {
+  const runnerSource = await fs.promises.readFile(
+    path.join(EXTENSION_PATH, "content", "overlay", "training-runner.js"),
+    "utf8"
+  );
+
+  expect(runnerSource).not.toContain('navigation.mode !== "preview" &&');
+  expect(runnerSource).toContain('? chrome.runtime.sendMessage({ type: "GWTP_PREVIEW_PEEK_NEXT" })');
+  expect(runnerSource).toContain('type: "GWTP_TRAINING_PENDING_SET"');
+});
+
+
 test("architecture guard - instruction-only availability bypasses DOM target lookup", async () => {
   const guideRunnerSource = await fs.promises.readFile(
     path.join(EXTENSION_PATH, "learner", "guide-runner.js"),
