@@ -97,13 +97,6 @@ public partial class MainWindow : Window
         // respected and will only hide/re-attach guidance.
         ActivateAuthoredTargetWindow(element);
 
-        var bounds = element.Current.BoundingRectangle;
-        if (bounds.IsEmpty || bounds.Width <= 0 || bounds.Height <= 0)
-        {
-            DiagnosticLog.Write("AuthoredStep.InvalidBounds");
-            return false;
-        }
-
         _authoredStepActive = true;
         _authoredInstruction = instruction;
         _authoredCanPrevious = canPrevious;
@@ -115,10 +108,17 @@ public partial class MainWindow : Window
         _guidanceWindow.SetNavigationState(canPrevious, canNext);
         _guidanceWindow.ResetManualPosition();
 
-        if (_elementTracker!.IsTemporarilyHidden())
+        // Restore/foreground activation is asynchronous from UIA's point of view.
+        // A uniquely resolved target is a valid step even if its first bounds read
+        // still reflects the minimized window. The tracker is already subscribed
+        // to Win32/UIA lifecycle events and will render as soon as valid bounds are
+        // published, without polling.
+        var bounds = element.Current.BoundingRectangle;
+        if (_elementTracker!.IsTemporarilyHidden() ||
+            bounds.IsEmpty || bounds.Width <= 0 || bounds.Height <= 0)
         {
             OnTrackedElementTemporarilyHidden();
-            DiagnosticLog.Write("AuthoredStep.HiddenUntilVisible");
+            DiagnosticLog.Write("AuthoredStep.WaitingForVisibleBounds");
         }
         else
         {
