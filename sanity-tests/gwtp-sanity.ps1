@@ -33,7 +33,8 @@ Test-HttpGet "API health" "$ApiBaseUrl/api/health" {
 
 Test-HttpGet "Database health" "$ApiBaseUrl/api/health/database" {
     param($r)
-    $r.status -eq "ok" -and [int]$r.tableCount -gt 0
+    $r.status -eq "ok" -and [int]$r.tableCount -gt 0 -and
+    $r.guideStepRuntime -eq $true -and $r.windowsTargetPersistence -eq $true
 }
 
 try {
