@@ -2527,6 +2527,10 @@ topicSelect.addEventListener("change", () => {
 chrome.runtime.onMessage.addListener((message) => {
   if (message?.type === "GWTP_ELEMENT_PICKER_STARTED_BY_COMMAND") {
     if (!editingStepId && stepEditor.hidden) return;
+    if (stepRuntimeSelect.value === "windows") {
+      window.messagingService.sendToAllFrames({ type: "GWTP_CANCEL_ELEMENT_PICKER" }).catch(() => {});
+      return;
+    }
     setElementPickerActive(true);
     elementPickerStatus.textContent = window.i18nService.translate("selectionModeActive", window.i18nService.getLanguage());
     elementPickerStatus.dataset.type = "info";
@@ -2534,8 +2538,10 @@ chrome.runtime.onMessage.addListener((message) => {
   }
 
   if (message?.type === "GWTP_ELEMENT_SELECTED") {
+    if (stepRuntimeSelect.value === "windows") return;
     setElementPickerActive(false);
     const element = message.element;
+    currentWindowsTarget = null;
     currentSelectedElement = element;
     selectorInput.value = element.selector;
     selectedTag.textContent = `<${element.tagName}>${element.text ? ` — ${element.text}` : ""}`;
