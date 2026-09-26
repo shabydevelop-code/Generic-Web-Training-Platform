@@ -3511,6 +3511,18 @@ test("architecture guard - bubble fallback has no stale gap identifier", async (
 });
 
 
+test("architecture guard - Preview pending navigation is bound to its source step", async () => {
+  const sidepanelSource = await fs.promises.readFile(
+    path.join(EXTENSION_PATH, "sidepanel", "sidepanel.js"),
+    "utf8"
+  );
+
+  expect(sidepanelSource).toContain("let previewPendingFromStepIndex = null;");
+  expect(sidepanelSource).toContain("previewPendingFromStepIndex === previewSession.stepIndex");
+  expect(sidepanelSource).toContain("previewPendingFromStepIndex = previewSession.stepIndex;");
+});
+
+
 test("architecture guard - Preview native navigation records adjacent-step intent before unload", async () => {
   const runnerSource = await fs.promises.readFile(
     path.join(EXTENSION_PATH, "content", "overlay", "training-runner.js"),
