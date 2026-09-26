@@ -170,7 +170,7 @@ public partial class MainWindow : Window
                 DiagnosticLog.Write("AuthoredStep.TargetWindowRestored");
             }
 
-            if (GetForegroundWindow() != handle && SetForegroundWindow(handle))
+            if (GetForegroundWindow() != handle && TryActivateForegroundWindow(handle))
                 DiagnosticLog.Write("AuthoredStep.TargetWindowActivated");
         }
         catch (ElementNotAvailableException)
@@ -202,9 +202,9 @@ public partial class MainWindow : Window
             if (IsIconic(previousForeground))
                 ShowWindow(previousForeground, SwRestore);
 
-            if (GetForegroundWindow() != previousForeground)
+            if (GetForegroundWindow() != previousForeground &&
+                TryActivateForegroundWindow(previousForeground))
             {
-                SetForegroundWindow(previousForeground);
                 DiagnosticLog.Write("AuthoredStep.PreviousForegroundRestored");
             }
         }
@@ -1194,6 +1194,34 @@ public partial class MainWindow : Window
         }
     }
 
+    private static bool TryActivateForegroundWindow(IntPtr targetWindow)
+    {
+        if (targetWindow == IntPtr.Zero || !IsWindow(targetWindow)) return false;
+        if (GetForegroundWindow() == targetWindow) return true;
+
+        var foregroundWindow = GetForegroundWindow();
+        var foregroundThread = foregroundWindow == IntPtr.Zero
+            ? 0u
+            : GetWindowThreadProcessId(foregroundWindow, IntPtr.Zero);
+        var currentThread = GetCurrentThreadId();
+        var attached = false;
+
+        try
+        {
+            if (foregroundThread != 0 && foregroundThread != currentThread)
+                attached = AttachThreadInput(currentThread, foregroundThread, true);
+
+            BringWindowToTop(targetWindow);
+            SetForegroundWindow(targetWindow);
+            return GetForegroundWindow() == targetWindow;
+        }
+        finally
+        {
+            if (attached)
+                AttachThreadInput(currentThread, foregroundThread, false);
+        }
+    }
+
     private static string DisplayValue(string? value)
         => string.IsNullOrWhiteSpace(value) ? "—" : value;
 
@@ -1214,6 +1242,20 @@ public partial class MainWindow : Window
     [DllImport("user32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool SetForegroundWindow(IntPtr windowHandle);
+
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool BringWindowToTop(IntPtr windowHandle);
+
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool AttachThreadInput(uint idAttach, uint idAttachTo, bool attach);
+
+    [DllImport("user32.dll")]
+    private static extern uint GetWindowThreadProcessId(IntPtr windowHandle, IntPtr processId);
+
+    [DllImport("kernel32.dll")]
+    private static extern uint GetCurrentThreadId();
 
     [DllImport("user32.dll")]
     private static extern short GetAsyncKeyState(int virtualKey);
