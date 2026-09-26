@@ -56,6 +56,8 @@ async function requireHealthyStack(request) {
 async function openPanel() {
   const page = await context.newPage();
   await page.goto(`chrome-extension://${extensionId}/sidepanel/sidepanel.html`);
+  await expect(page.locator("html")).toHaveAttribute("lang", "he");
+  await expect(page.locator("html")).toHaveAttribute("dir", "rtl");
   await page.evaluate(async () => {
     localStorage.clear();
     await chrome.storage.local.clear();
