@@ -25,14 +25,23 @@ async function expectEditorPreviewMode(panel, active) {
   const exitButton = panel.locator("#exitPreviewButton");
   const progress = panel.locator("#previewProgress");
 
+  const editor = panel.locator("#guideEditorView");
+
   if (active) {
     await expect(previewButton).toBeHidden();
     await expect(exitButton).toBeVisible();
     await expect(progress).toBeVisible();
     await expect(progress).not.toHaveText("");
+    await expect(editor).toHaveClass(/preview-active/);
+    await expect(editor).toHaveAttribute("aria-readonly", "true");
+    await expect(panel.locator(".guide-details-card")).toHaveCSS("pointer-events", "none");
+    await expect(panel.locator("#stepsSection")).toHaveCSS("pointer-events", "none");
   } else {
     await expect(previewButton).toBeVisible();
     await expect(exitButton).toBeHidden();
+    await expect(editor).not.toHaveClass(/preview-active/);
+    await expect(editor).toHaveAttribute("aria-readonly", "false");
+    await expect(panel.locator(".guide-details-card")).not.toHaveCSS("pointer-events", "none");
   }
 }
 
