@@ -1434,6 +1434,11 @@ static bool IsValidStepTarget(CreateGuideStepRequest step)
 {
     if (string.IsNullOrWhiteSpace(step.Instruction)) return false;
 
+    if (!string.IsNullOrWhiteSpace(step.Runtime) &&
+        !string.Equals(step.Runtime, "web", StringComparison.OrdinalIgnoreCase) &&
+        !string.Equals(step.Runtime, "windows", StringComparison.OrdinalIgnoreCase))
+        return false;
+
     var runtime = NormalizeRuntime(step.Runtime);
     var targetType = NormalizeTargetType(step.TargetType);
 
@@ -1442,6 +1447,9 @@ static bool IsValidStepTarget(CreateGuideStepRequest step)
 
     if (runtime == "web")
         return !string.IsNullOrWhiteSpace(step.Selector) && step.WindowsTarget is null;
+
+    if (!string.IsNullOrWhiteSpace(step.Selector) || step.Frame is not null)
+        return false;
 
     if (step.WindowsTarget is null ||
         string.IsNullOrWhiteSpace(step.WindowsTarget.ProcessName) ||
