@@ -3511,6 +3511,27 @@ test("architecture guard - bubble fallback has no stale gap identifier", async (
 });
 
 
+test("architecture guard - Web native-navigation intent is removed when its step is cleared", async () => {
+  const source = await fs.promises.readFile(
+    path.join(EXTENSION_PATH, "content", "overlay", "training-runner.js"),
+    "utf8"
+  );
+  expect(source).toContain("let gwtpTrainingNavigationCleanup = null;");
+  expect(source).toContain("gwtpTrainingNavigationCleanup();");
+  expect(source).toContain('removeEventListener("pointerdown", persistActivationIntent)');
+  expect(source).toContain('removeEventListener("keydown", handleNavigationKeydown)');
+});
+
+test("architecture guard - Windows to Web Preview restores browser foreground", async () => {
+  const source = await fs.promises.readFile(
+    path.join(EXTENSION_PATH, "sidepanel", "sidepanel.js"),
+    "utf8"
+  );
+  expect(source).toContain('previousRuntime === "windows" && nextRuntime === "web"');
+  expect(source).toContain("chrome.windows.update(activeTab.windowId, { focused: true })");
+});
+
+
 test("architecture guard - Web messaging self-recovers when active tab has no content script", async () => {
   const messagingSource = await fs.promises.readFile(
     path.join(EXTENSION_PATH, "services", "messagingService.js"),
