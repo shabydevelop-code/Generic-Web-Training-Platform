@@ -20,7 +20,26 @@ async function confirmGuideStartInstruction(panel) {
   await expect(prompt).toBeHidden();
 }
 
+async function expectGuidePreviewPlacement(panel) {
+  const order = await panel.locator("#guideEditorView").evaluate((editor) => {
+    const directSections = [...editor.children].filter((element) => element.matches("section"));
+    return directSections.map((element) => {
+      if (element.classList.contains("guide-details-card")) return "details";
+      if (element.id === "previewGuideSection") return "preview";
+      if (element.id === "stepEditor") return "step-editor";
+      if (element.id === "stepsSection") return "steps";
+      return element.id || element.className;
+    });
+  });
+
+  expect(order.indexOf("details")).toBeLessThan(order.indexOf("preview"));
+  expect(order.indexOf("preview")).toBeLessThan(order.indexOf("step-editor"));
+  expect(order.indexOf("preview")).toBeLessThan(order.indexOf("steps"));
+}
+
 async function expectEditorPreviewMode(panel, active) {
+  await expectGuidePreviewPlacement(panel);
+
   const previewButton = panel.locator("#previewGuideButton");
   const exitButton = panel.locator("#exitPreviewButton");
   const progress = panel.locator("#previewProgress");
