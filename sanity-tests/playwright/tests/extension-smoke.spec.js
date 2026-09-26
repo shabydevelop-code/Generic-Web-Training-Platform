@@ -1060,8 +1060,12 @@ test("stage 5 management validation - guide identity and availability rules bloc
     const demoTopic = panel.locator("#topicSelect option").filter({ hasText: "Demo CRM" });
     await panel.locator("#topicSelect").selectOption(await demoTopic.getAttribute("value"));
     await panel.locator("#guideNameInput").fill(guideName);
+    const startInstruction = panel.locator("#guideStartInstructionInput");
+    await expect(startInstruction).not.toHaveValue("");
+    await expect(panel.locator("#addStepButton")).toBeEnabled();
+    await startInstruction.fill("");
     await expect(panel.locator("#addStepButton")).toBeDisabled();
-    await panel.locator("#guideStartInstructionInput").fill("Open the relevant system and navigate to the starting screen.");
+    await startInstruction.fill("Open the relevant system and navigate to the starting screen.");
     await expect(panel.locator("#addStepButton")).toBeEnabled();
 
     // Availability cannot be enabled for a guide that has no authored steps.
