@@ -236,10 +236,14 @@ internal static class Program
             {
                 var target = FindAllByAutomationId(hostWindow, "SharedContinue")[1];
                 var hwnd = new IntPtr(hostWindow.Current.NativeWindowHandle);
+                var minimizeStarted = Stopwatch.StartNew();
                 ShowWindow(hwnd, SwMinimize);
                 WaitUntil(() => TryFindRuntimeWindow(runtime.Id, "GWTP Guidance") is null &&
                                 TryFindRuntimeWindow(runtime.Id, "GWTP Highlight") is null,
-                    "Overlays remained visible while host was minimized.");
+                    "Overlays remained visible while host was minimized.",
+                    timeoutMs: 1000);
+                Require(minimizeStarted.ElapsedMilliseconds < 1000,
+                    $"Overlay hide latency was too high: {minimizeStarted.ElapsedMilliseconds} ms.");
                 ShowWindow(hwnd, SwRestore);
                 SetForegroundWindow(hwnd);
                 WaitUntil(() => IsOverlayAttached(runtime.Id, target),
