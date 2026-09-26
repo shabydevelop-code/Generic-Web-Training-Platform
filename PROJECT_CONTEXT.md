@@ -103,7 +103,7 @@ Database:
 - Guides do not own or launch a start URL/application. StartUrl is retired.
 - Every guide has a required StartInstruction shown before a new Start or Start Again. It prepares the learner to open/navigate to the relevant work environment.
 - The start instruction is guide metadata, not a progress step: it has no target/validation and Resume does not replay it.
-- Web-only, Windows-only, and mixed Web/Windows guides remain a target architecture requirement. Step-level runtime/Windows target identity will be introduced together so the model does not encode a partial Windows step.
+- Web-only, Windows-only, and mixed Web/Windows guides are supported by the shared step-level Runtime contract. Editor Preview must route every step by its own runtime rather than classifying execution from step 1 or from guide-level metadata.
 - Runtime transitions are environment-driven. A Web business action may launch a Windows application (or vice versa); GWTP waits for the next step's runtime/target instead of launching or replaying the business action itself.
 
 ### Shared guide-start execution contract
@@ -119,9 +119,9 @@ Database:
 - `TargetType` keeps its existing semantic meaning: `element` or `none`. It must never be reused as the runtime/platform discriminator.
 - A GuideStep has runtime-neutral learning fields (order, instruction, screen name, target type, validation) plus a runtime-specific target descriptor when `TargetType=element`.
 - Web element targeting remains Web-specific data: CSS selector plus frame identity. These fields must not become requirements for Windows steps.
-- Windows element targeting must use a Windows/UIA descriptor rather than overloading the Web selector. The current Windows runtime proves the initial identity ingredients (process name, AutomationId, Name, ControlType, current-session process scoping), but hierarchy/fallback identity still needs to be hardened before the persisted Windows target DTO/schema is finalized.
+- Windows element targeting uses the frozen Windows/UIA descriptor rather than overloading the Web selector. Persisted identity is ProcessName + top-level Window descriptor + Element descriptor + ordered meaningful ancestors; current SessionId is runtime scoping only.
 - Instruction-only steps (`TargetType=none`) require no element target. Their runtime still matters because it determines which runtime presents the guidance during a mixed guide.
-- Do not add a database migration merely to introduce a runtime field while the Windows target DTO is unresolved. Define the typed target contract first, then migrate DB/API/Editor/runtime coherently in one production-compatible slice.
+- Runtime and typed WindowsTarget persistence are already implemented. Future runtime work must preserve this shared contract rather than introduce guide-level platform state or a second Windows identity model.
 - Existing Web guides must migrate compatibly to runtime `web`; no editor-authored manual Guide.Platform field is planned.
 
 ## Production Windows Target Descriptor frozen (2026-09-26)
@@ -131,7 +131,7 @@ Database:
 - Element ControlType is required. AutomationId is the preferred stable discriminator; Name is a strict fallback only when that descriptor has no authored AutomationId. When AutomationId exists, Name is diagnostic metadata and a runtime Name change must not invalidate the target.
 - Do not persist PID, HWND, SessionId, bounds, RuntimeId or other transient process/window state. Current Windows SessionId remains runtime scoping only.
 - Resolution must be deterministic and fail safe: zero matches => unavailable/pending; multiple indistinguishable matches => ambiguous/pending; never select an arbitrary target.
-- The next implementation slice is now DB/API/Editor/runtime integration of the frozen shared GuideStep runtime + typed target contract, with compatible migration of existing Web steps to runtime `web`.
+- DB/API/Editor integration of the frozen shared GuideStep runtime + typed target contract is implemented; existing Web steps migrate compatibly to runtime `web`. Production execution must resolve persisted descriptors with these same deterministic matching rules.
 
 
 ## Shared step persistence implemented (2026-09-26)
@@ -142,7 +142,7 @@ Database:
 - Instruction-only steps remain targetless but still carry runtime.
 - The Editor's in-memory step model and save paths round-trip runtime/WindowsTarget so future Windows data is not erased by guide reorder/metadata saves before Windows authoring UI is added.
 - Database health exposes whether the two migration columns exist, and `gwtp-sanity.ps1` requires both.
-- Windows authoring UI and Windows execution handoff are not implemented by this persistence slice. The next slice is the Editor/Windows-runtime bridge and GUI authoring flow.
+- Windows authoring UI and Native Messaging handoff are implemented. Real authoring has been manually verified end to end: Editor -> Native Messaging -> Windows Runtime -> UIA picker -> persisted WindowsTarget -> API/SQLite -> reload. Production Editor Preview can render persisted Windows targets; broader learner execution remains separate work.
 
 
 ## Local API execution rule (2026-09-26)
@@ -174,3 +174,19 @@ Database:
   - `windows-runtime/run-sanity.ps1` — builds all three projects and runs the Windows GUI suite.
 - Browser extension, API, database contract, Windows runtime and both Web/Windows automated suites must evolve atomically in this repository.
 - The old Windows POC repository may be retained temporarily for history/reference until the consolidated Windows suite is verified, but it is not a source of truth.
+
+
+## Windows production execution and POC parity rule (2026-09-27)
+
+- The Windows POC is historical, but its verified behavioral lessons are production requirements. Do not reimplement production Windows behavior without first checking the corresponding proven POC lifecycle behavior and GUI tests.
+- Production Windows execution must use the persisted `WindowsTargetDescriptor`; the old POC `ElementIdentity` is not a production persistence/execution contract.
+- Editor Preview is runtime-aware per step. Hybrid Preview uses one shared Preview step index and can transition Web -> Windows -> Web. Web steps use the browser overlay; Windows steps use Native Messaging and the Windows GuidanceWindow. Switching runtimes must clear the previous runtime's overlay.
+- Windows GuidanceWindow Previous/Next events are forwarded through the persistent Native Messaging Preview port into the same Editor Preview state machine; do not maintain an independent Windows Preview step list.
+- Before Preview advances to a Windows element step, target availability is checked through the native runtime. Missing/ambiguous targets must not silently advance.
+- Windows target lifecycle must preserve the POC-tested event-driven semantics: target movement repositions overlays; minimize hides both highlight and guidance; Restore reattaches them; foreground loss hides overlays and returning to the host restores them; process/window disappearance must not cause arbitrary target selection.
+- A Windows step reached while its host window is already minimized/offscreen must start hidden. Never render UIA synthetic/stale bounds near a screen edge and then correct them later. The tracker should keep the step active and show the overlay only after a valid visible target state is observed.
+- Recreating GuidanceWindow after temporary hiding must preserve the authored instruction and Previous/Next state.
+- Do not add polling for Windows target lifecycle. Use UIA/WinEvent/process/window events and deterministic re-resolution.
+- Same-integrity UIA is the currently verified execution boundary: a Native Messaging host launched by a normal browser cannot inspect a higher-integrity/elevated target process. TestHost/runtime verification should therefore use a normal non-administrator PowerShell unless elevation support is intentionally being developed.
+- Browser Chrome/Edge UI is excluded from Windows authoring selection because Web guidance owns browser content. Shell/taskbar representations are separate Explorer UI and require their own policy if they are later restricted.
+- Current manual verification: persisted Windows authoring works end to end; a Windows step can render highlight + guidance in Editor Preview; Web -> Windows Hybrid Preview transition has been observed working. The production minimize-at-entry correction is implemented but remains locally unverified until the post-fix test is reported.
