@@ -37,7 +37,6 @@ CREATE TABLE IF NOT EXISTS GuideSteps (
     Instruction TEXT NOT NULL,
     ScreenName TEXT,
     FrameTarget TEXT,
-    RuntimePlatform TEXT NOT NULL DEFAULT 'web' CHECK (RuntimePlatform IN ('web', 'windows')),
     ValidationEngine TEXT,
     ValidationExpression TEXT,
     ValidationErrorMessage TEXT,
