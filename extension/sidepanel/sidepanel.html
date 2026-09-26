@@ -236,14 +236,6 @@
           </p>
         </header>
 
-        <div id="previewGuideSection" class="guide-preview-toolbar">
-          <button id="previewGuideButton" class="button guide-preview-button" type="button" data-i18n="previewGuideButton">Preview</button>
-          <div id="previewActiveControls" class="guide-preview-active" hidden>
-            <span id="previewProgress" class="guide-preview-active__status"></span>
-            <button id="exitPreviewButton" class="button guide-preview-exit-button" type="button" data-i18n="exitPreviewButton">Exit preview</button>
-          </div>
-        </div>
-
         <section class="card guide-details-card">
           <div class="form-field">
             <label for="topicSelect"><span data-i18n="topicLabel">Topic</span> <span class="required-marker" aria-hidden="true">*</span></label>
@@ -417,6 +409,15 @@
           <div id="stepsList" class="steps-list"></div>
           <p id="stepsFilterStatus" class="status" aria-live="polite"></p>
         </section>
+
+        <section id="previewGuideSection" class="card guide-preview-section">
+          <button id="previewGuideButton" class="button button--full guide-preview-button" type="button" data-i18n="previewGuideButton">Preview</button>
+          <div id="previewActiveControls" class="guide-preview-active" hidden>
+            <span id="previewProgress" class="guide-preview-active__status"></span>
+            <button id="exitPreviewButton" class="button button--full guide-preview-exit-button" type="button" data-i18n="exitPreviewButton">Exit preview</button>
+          </div>
+        </section>
+
         </div>
       </div>
 
