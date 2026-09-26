@@ -3511,6 +3511,24 @@ test("architecture guard - bubble fallback has no stale gap identifier", async (
 });
 
 
+test("architecture guard - Web messaging self-recovers when active tab has no content script", async () => {
+  const messagingSource = await fs.promises.readFile(
+    path.join(EXTENSION_PATH, "services", "messagingService.js"),
+    "utf8"
+  );
+  const contentSource = await fs.promises.readFile(
+    path.join(EXTENSION_PATH, "content", "content-script.js"),
+    "utf8"
+  );
+
+  expect(messagingSource).toContain("async function ensureContentScript");
+  expect(messagingSource).toContain('"GWTP_CONTENT_READY"');
+  expect(messagingSource).toContain('"content/content-script.js"');
+  expect(messagingSource).toMatch(/isMissingReceiverError[\s\S]*ensureContentScript\(tab\.id, frameId\)[\s\S]*chrome\.tabs\.sendMessage/);
+  expect(contentSource).toContain('message?.type === "GWTP_CONTENT_READY"');
+});
+
+
 test("architecture guard - restored Windows target does not fail Preview on transient empty bounds", async () => {
   const runtimeSource = await fs.promises.readFile(
     path.join(ROOT_PATH, "windows-runtime", "GWTP.Windows.Runtime", "MainWindow.xaml.cs"),
