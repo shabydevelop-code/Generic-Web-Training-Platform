@@ -332,9 +332,28 @@ async function moveWindowsPreview(direction) {
 
   if (!(await window.guideRunner.canShowStep(current))) return;
 
+  const previousRuntime = previewSession.steps[previewSession.stepIndex]?.runtime || "web";
+  const nextRuntime = current.step?.runtime || "web";
+
   previewSession.stepIndex = nextIndex;
   previewPendingDirection = null;
+  previewPendingFromStepIndex = null;
   updatePreviewUi();
+
+  // Windows→Web is an explicit cross-runtime handoff, symmetrical to the
+  // native runtime activating a Windows target on Web→Windows entry. Restore
+  // focus to the browser window before rendering the Web guidance.
+  if (previousRuntime === "windows" && nextRuntime === "web") {
+    try {
+      const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      if (activeTab?.windowId != null) {
+        await chrome.windows.update(activeTab.windowId, { focused: true });
+      }
+    } catch (error) {
+      console.info("GWTP browser focus handoff skipped:", error);
+    }
+  }
+
   await window.guideRunner.showCurrentStep(current);
 }
 
