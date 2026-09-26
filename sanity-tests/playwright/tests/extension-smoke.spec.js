@@ -1833,7 +1833,7 @@ test("stage 6 full authoring lifecycle - new topic guide reopen edit steps previ
     await guideCard.click();
     await expect(panel.locator("#guideNameInput")).toHaveValue(guideName);
     await expect(panel.locator("#topicSelect option:checked")).toHaveText(topicName);
-    await expect(panel.locator("#guideStartInstructionInput")).toHaveValue(SITE_URL + "/site.html");
+    await expect(panel.locator("#guideStartInstructionInput")).toHaveValue("Open the relevant system and navigate to the starting screen.");
     await expect(panel.locator("#stepsList .step-item")).toHaveCount(2);
     await panel.locator("#stepsList .step-item").first().click();
     await expect(panel.locator("#instructionInput")).toContainText(originalFirstInstruction);
