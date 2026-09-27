@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>CRM PeopleSoft - מסך 360</title>
+  <link rel="icon" type="image/png" href="/icons/icon48.png">
+  <link rel="stylesheet" href="peoplesoft_crm.css">
+
+  <style>
+    html, body { height: 100%; }
+    body { margin: 0; display: flex; flex-direction: column; overflow: hidden; }
+    .ps-header { flex: 0 0 auto; }
+    .ps-target-frame { flex: 1 1 auto; width: 100%; border: 0; display: block; background: #fff; }
+  </style>
+</head>
+<body>
+<header class="ps-header">
+    <div class="ps-header-top">
+      <div class="ps-brand">
+        <span>PeopleSoft Enterprise CRM</span>
+        <span class="ps-brand-badge">תמונת לקוח 360°</span>
+      </div>
+      <div class="ps-user-info">
+        <span>משתמש: <strong>יוסי מנהל (CRM_ADMIN)</strong></span>
+        <span class="ps-version-tag">גרסה 2.1.9</span>
+      </div>
+    </div>
+    <nav class="ps-nav" aria-label="ניווט ראשי">
+      <a href="site.html" class="ps-nav-link" id="nav-site">מסך אתר</a>
+      <a href="case.html" class="ps-nav-link" id="nav-case">מסך פניה</a>
+      <a href="leads.html" class="ps-nav-link" id="nav-leads">מסך לידים</a>
+      <a href="customer360.html" class="ps-nav-link active" id="nav-360">מסך 360</a>
+    </nav>
+  </header>
+  <iframe id="ptifrmtgtframe" name="TargetContent" class="ps-target-frame" src="customer360_content.html" title="Main Content"></iframe>
+</body>
+</html>
