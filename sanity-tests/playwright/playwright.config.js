@@ -7,6 +7,14 @@ module.exports = defineConfig({
   fullyParallel: false,
   workers: 1,
   reporter: [["list"], ["html", { outputFolder: "playwright-report", open: "never" }]],
+  webServer: {
+    command: "dotnet run --project ../../site/server/DemoCRM.Api/DemoCRM.Api.csproj",
+    url: "http://localhost:5100/site.html",
+    reuseExistingServer: true,
+    timeout: 120000,
+    stdout: "pipe",
+    stderr: "pipe"
+  },
   use: {
     trace: "retain-on-failure",
     screenshot: "only-on-failure"
