@@ -969,6 +969,15 @@ public partial class MainWindow : Window
                     }
                 }
 
+                // Re-check the window identity immediately before collecting candidates.
+                // A same-process top-level window can be restored/activated while UIA is
+                // enumerating the desktop. Never allow descendants from a window that no
+                // longer matches the authored top-level identity into the candidate set.
+                if (identity.Window is not null && !MatchesWindowIdentity(window, identity.Window))
+                {
+                    continue;
+                }
+
                 if (MatchesLeafIdentity(window, identity))
                 {
                     sessionCandidates.Add(window);
