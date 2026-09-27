@@ -12,7 +12,7 @@ module.exports = defineConfig({
     url: "http://localhost:5100/site.html",
     reuseExistingServer: true,
     timeout: 120000,
-    stdout: "pipe",
+    stdout: "ignore",
     stderr: "pipe"
   },
   use: {
