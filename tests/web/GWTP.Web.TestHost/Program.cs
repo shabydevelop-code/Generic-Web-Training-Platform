@@ -36,7 +36,7 @@ app.UseStaticFiles(new StaticFileOptions
     FileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(siteRoot)
 });
 
-var extensionIconsPath = Path.GetFullPath(Path.Combine(app.Environment.ContentRootPath, "..", "..", "extension", "icons"));
+var extensionIconsPath = Path.GetFullPath(Path.Combine(app.Environment.ContentRootPath, "..", "..", "..", "extension", "icons"));
 app.UseStaticFiles(new StaticFileOptions
 {
     FileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(extensionIconsPath),
