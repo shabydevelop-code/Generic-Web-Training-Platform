@@ -67,7 +67,7 @@ Server-backed host behaviors such as save/reload, postback-like navigation, fram
 
 - `tests/web/GWTP.Web.TestHost/wwwroot/gwtp-test-fixture.html` is the lightweight fixture for generic Extension UI, authoring, validation and learner-runtime scenarios. It intentionally has no CRM API calls, postbacks, frames or business behavior.
 - `tests/web/GWTP.Web.TestHost/wwwroot/dynamic-app.html` owns modern-web behavior such as SPA changes, DOM replacement, dynamic frames and real navigation.
-- Demo CRM pages are reserved for business-system integration coverage.
+- The customer-facing Demo application under `site/` is not part of automated test infrastructure. Equivalent server-backed integration behaviors required by automated tests belong in the standalone Web Test Host.
 
 ## Duplication rules
 
@@ -77,15 +77,15 @@ A test should not use Demo CRM merely because a convenient seeded element or gui
 
 Long setup flows should not repeatedly re-test earlier capabilities just to reach the assertion under test. Shared fixture/setup helpers may establish prerequisite state directly when that prerequisite already has dedicated coverage.
 
-## Refactor order
+## Current ownership
 
-1. Keep genuine Demo CRM integration tests unchanged: server save/reload, Site -> Case, postback/frame reload and server-side Grid.
-2. Move generic Guide/Step CRUD, Preview and validation scenarios to `gwtp-test-fixture.html`.
-3. Move generic learner lifecycle/resilience scenarios to the deterministic fixture where they do not depend on CRM behavior.
-4. Keep SPA/DOM/dynamic-frame/native-navigation coverage on `dynamic-app.html`.
-5. Move accessibility and visual assertions away from Demo CRM unless the target-page integration itself is what is being asserted.
-6. Only after migration, remove redundant setup paths and re-evaluate the total test count.
+1. Generic Guide/Step CRUD, Preview and validation scenarios belong to `gwtp-test-fixture.html`.
+2. Generic learner lifecycle/resilience scenarios use deterministic Web Test Host fixtures.
+3. SPA/DOM/dynamic-frame/native-navigation coverage belongs to `dynamic-app.html`.
+4. Server-backed save/reload, postback/frame reload and Grid behavior are represented inside the standalone Web Test Host.
+5. Accessibility and visual assertions should use deterministic fixtures unless host-system integration itself is the behavior under test.
+6. The customer-facing Demo application under `site/` remains available for demonstrations and manual product scenarios, not as the automated suite's execution dependency.
 
 ## Refactor policy
 
-Refactor incrementally. Preserve coverage first; reduce runtime/count only after ownership is clear. After each slice, run the affected tests, then the complete Playwright regression. Demo CRM tests that prove genuine integration behavior remain end-to-end.
+Refactor incrementally. Preserve coverage first; reduce runtime/count only after ownership is clear. After each slice, run the affected tests, then the complete Playwright regression. Host-system integration tests remain end-to-end against the standalone Web Test Host.
