@@ -1,6 +1,6 @@
 # GWTP Current Status
 
-Last updated: 2026-09-22
+Last updated: 2026-09-27
 
 ### Windows Service database location
 - The installed Windows Service uses `C:\\ProgramData\\GWTP\\Data\\GWTP.db` through `GWTP_DATA_PATH`; it does not use the repository `database/GWTP.db`.
@@ -134,7 +134,7 @@ Reset was verified to delete both guide and step progress as intended.
 - This is the first step toward running the API as an independently managed, always-on central service rather than a console process manually started by the extension user.
 - The API now supports a service-safe `GWTP_DATA_PATH`; when omitted, normal repository-based development behavior is preserved.
 - `scripts/server/install-service.bat` publishes the API to `%ProgramData%\\GWTP\\Api`, copies the initial SQLite/schema data to `%ProgramData%\\GWTP\\Data` without overwriting existing service data, registers an automatic Windows Service, and binds it to `127.0.0.1:5000`.
-- `unscripts/server/install-service.bat` removes the service while preserving its database data.
+- `scripts/server/uninstall-service.bat` removes the service while preserving its database data.
 - The local Windows Service deployment was installed and verified successfully: `/api/health` returned `GWTP.Api / ok`, and the browser extension successfully connected and operated through the service-backed API/database without `dotnet run`.
 - `scripts/server/deploy-service.bat` provides the normal backend update path after Git changes: publish to a staging directory, stop the installed service, replace the published API files, restart the service, and require a successful `/api/health` response. Persistent service data under `%ProgramData%\\GWTP\\Data` is not replaced by deployment.
 
@@ -687,6 +687,6 @@ Later accessibility phases must add their own concrete regression checks to this
 - **Test tree centralized and Web/Windows layouts aligned (2026-09-27):** all automated test infrastructure now lives under `tests/`. Web uses `tests/web/GWTP.Web.GuiTests` + `tests/web/GWTP.Web.TestHost`; Windows uses `tests/windows/GWTP.Windows.GuiTests` + `tests/windows/GWTP.Windows.TestHost`; shared API/database sanity is under `tests/api/run-sanity.ps1`. Production `GWTP.Windows.Runtime` remains under `windows-runtime/` and is built by the centralized Windows runner. Legacy `sanity-tests/` and Windows test projects previously mixed into `windows-runtime/` were removed. Paths in Playwright and Windows GUI runner were updated for the new repository layout. Local Web and Windows full-suite verification after the move is pending.
 
 
-- **Operational scripts organized (2026-09-27):** root-level BAT launch/deployment files were moved under `scripts/`. API development/service operations now live in `scripts/server/` (`start-server.bat`, `install-service.bat`, `deploy-service.bat`, `uninstall-service.bat`); the customer-facing Demo launcher is `scripts/demo/start-demo.bat`. Each moved launcher resolves the repository root explicitly before invoking product projects, so behavior is independent of the script's new nested location. Root-level legacy BAT files were removed.
+- **Operational scripts organized (2026-09-27):** repository-root BAT files were retired. Service operations are centralized under `scripts/server/` with `install-service.bat`, `deploy-service.bat`, and `uninstall-service.bat`. The obsolete manual API launcher was removed because the supported API execution model is the installed `GWTP.Api` Windows Service, avoiding a competing process on port 5000. The customer-facing Demo launcher is `scripts/demo/start-demo.bat`.
 
-- **Manual API launcher retired (2026-09-27):** `scripts/server/start-server.bat` was removed. The supported API execution model is the installed Windows Service `GWTP.Api`; service lifecycle/deployment remains under `scripts/server/install-service.bat`, `deploy-service.bat`, and `uninstall-service.bat`. This avoids accidental parallel `dotnet run` instances competing with the service on port 5000.
+- **Repository cleanup synchronized locally (2026-09-27):** after the centralized test-tree and operational-script migrations, the developer completed `git pull`. Legacy tracked `sanity-tests/` content is absent from `main`; any former local remnants were generated Playwright artifacts/dependencies rather than repository test source. The intended top-level separation is now product code (`extension/`, `server/`, `windows-runtime/`, `database/`), customer Demo (`site/`), automated tests (`tests/`), and operational/maintenance tooling (`scripts/`).
