@@ -4,6 +4,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 $root = Split-Path -Parent $MyInvocation.MyCommand.Path
+$repoRoot = Split-Path -Parent (Split-Path -Parent $root)
 
 Write-Host "Building GWTP Windows Runtime..."
 dotnet build (Join-Path $root "GWTP.Windows.Runtime\GWTP.Windows.Runtime.csproj")
