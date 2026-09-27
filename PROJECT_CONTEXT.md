@@ -221,3 +221,10 @@ Database:
 - Production runtime code must remain outside `tests/`; `windows-runtime/GWTP.Windows.Runtime/` is production code.
 - Web and Windows test architecture should remain structurally symmetric where their runtime differences permit: a GUI suite plus a dedicated Test Host.
 - The old `sanity-tests/` layout and Windows test projects under `windows-runtime/` are retired and must not be recreated.
+
+## Automated-test data isolation rule (2026-09-27)
+
+- Automated tests that create temporary Guides/Topics must delete them and treat cleanup failure as a test failure; cleanup must never silently ignore unsuccessful API DELETE responses.
+- Timestamped fixture namespaces such as `GWTP Validation Rules <timestamp>`, `GWTP Learner Navigation <timestamp>`, and `Windows Authoring <timestamp>` are test-only data and must not be treated as product/demo content.
+- Legacy leaked fixtures are removed by the one-time migration `20260927_remove_legacy_test_guides` when the deployed API starts.
+- `תרגול מלא - Demo CRM` is customer-facing Demo content and is intentionally retained; automated tests should use the standalone Web Test Host rather than depend on it.
