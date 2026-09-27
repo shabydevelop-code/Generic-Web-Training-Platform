@@ -33,7 +33,8 @@ Main capabilities include element selection/highlighting, guide steps, Write/Cli
 Backend: .NET API + SQLite.
 Local API: `http://localhost:5000`.
 Database:
-- Repository: `database/schema.sql` defines fresh-database structure; no working `GWTP.db` is tracked.
+- The repository `database/` directory is intentionally retained as the source-controlled database-definition area. It contains `schema.sql` and documentation only; it is not a runtime data directory.
+- `database/schema.sql` defines the structure of a fresh database; no working `GWTP.db` is tracked.
 - Installed Windows Service: `C:\\ProgramData\\GWTP\\Data\\GWTP.db`, supplied through `GWTP_DATA_PATH`.
 - Fresh installation creates the persistent DB from `schema.sql` and then applies versioned migrations.
 - The extension never owns or accesses the SQLite file directly.
