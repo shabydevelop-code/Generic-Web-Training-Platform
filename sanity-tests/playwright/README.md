@@ -1,6 +1,6 @@
 # Stage 3 - Playwright browser/extension sanity
 
-This stage launches Chromium with the unpacked GWTP extension and performs browser-level smoke checks against the installed GWTP API and a self-managed local Demo CRM test host.
+This stage launches Chromium with the unpacked GWTP extension and performs browser-level smoke checks against the installed GWTP API and a self-managed standalone GWTP Web Test Host.
 
 ## Prerequisites
 
@@ -23,7 +23,7 @@ npx playwright install chromium
 npm test
 ```
 
-`npm test` starts the Demo CRM host automatically when port 5100 is not already serving it and tears down the process when the Playwright run finishes. There is no requirement to run `start-site-server.bat` before the Web suite. The installed GWTP API on port 5000 remains an external prerequisite.
+`npm test` starts the GWTP Web Test Host automatically when port 5100 is not already serving it and tears down the process when the Playwright run finishes. There is no requirement to run `start-site-server.bat` before the Web suite. The installed GWTP API on port 5000 remains an external prerequisite.
 
 The initial Stage 3 suite verifies API availability, loads the unpacked extension in Chromium, opens its Side Panel document, and verifies role-specific UI for the dedicated `sanity.learner`, `sanity.editor`, and `sanity.admin` fixtures.
 
@@ -47,10 +47,17 @@ a DOM E2E assertion.
 ### Real Side Panel release smoke check
 
 1. Load/reload the unpacked extension from `extension/`.
-2. Open Demo CRM in the active tab.
+2. Open the Web Test Host in the active tab.
 3. Click the GWTP extension action and confirm Chrome opens GWTP in its Side Panel.
 4. Confirm login and the role-specific view fit the real panel without horizontal clipping.
 5. Start a learner guide and confirm the guidance appears on the active Demo CRM tab.
 6. Close and reopen the Side Panel and confirm the saved learner state is offered correctly.
 
 Keep this smoke check outside customer deployment artifacts; `sanity-tests/` is development/QA only.
+
+
+## Standalone Web Test Host
+
+The automated Web runtime suite owns a dedicated test application under `sanity-tests/web-test-host`.
+Its pages, server behavior and SQLite data are test fixtures and do not depend on the product Demo CRM under `site/`.
+Playwright starts `GWTP.Web.TestHost` automatically on port 5100. The host intentionally covers browser/runtime behaviors such as multi-page navigation, full reload/postback-like flows, dynamic DOM, frames, Grid rerender/sorting and server-backed form state.
