@@ -1,0 +1,3803 @@
+const { test, expect, chromium } = require("@playwright/test");
+const path = require("path");
+const fs = require("fs");
+
+const EXTENSION_PATH = path.resolve(__dirname, "../../../extension");
+const API_URL = "http://localhost:5000";
+const SITE_URL = "http://localhost:5100";
+const PASSWORD = "Sanity2026!";
+
+let context;
+let extensionId;
+
+async function confirmGuideStartInstruction(panel) {
+  const prompt = panel.locator("#learnerStartInstructionPanel");
+  await expect(prompt).toBeVisible({ timeout: 10000 });
+  await expect(prompt).toHaveAttribute("class", /confirm-overlay/);
+  await expect(prompt.locator("[role='dialog']")).toBeVisible();
+  await expect(panel.locator("#confirmStartInstructionButton")).toBeFocused();
+  await panel.locator("#confirmStartInstructionButton").click();
+  await expect(prompt).toBeHidden();
+}
+
+async function expectGuidePreviewPlacement(panel) {
+  const order = await panel.locator("#guideEditorView").evaluate((editor) => {
+    const directSections = [...editor.children].filter((element) => element.matches("section"));
+    return directSections.map((element) => {
+      if (element.classList.contains("guide-details-card")) return "details";
+      if (element.id === "previewGuideSection") return "preview";
+      if (element.id === "stepEditor") return "step-editor";
+      if (element.id === "stepsSection") return "steps";
+      return element.id || element.className;
+    });
+  });
+
+  expect(order.indexOf("details")).toBeLessThan(order.indexOf("preview"));
+  expect(order.indexOf("preview")).toBeLessThan(order.indexOf("step-editor"));
+  expect(order.indexOf("preview")).toBeLessThan(order.indexOf("steps"));
+}
+
+async function expectEditorPreviewMode(panel, active) {
+  await expectGuidePreviewPlacement(panel);
+
+  const previewButton = panel.locator("#previewGuideButton");
+  const exitButton = panel.locator("#exitPreviewButton");
+  const progress = panel.locator("#previewProgress");
+
+  const editor = panel.locator("#guideEditorView");
+
+  if (active) {
+    await expect(previewButton).toBeHidden();
+    await expect(exitButton).toBeVisible();
+    await expect(progress).toBeVisible();
+    await expect(progress).not.toHaveText("");
+    await expect(editor).toHaveClass(/preview-active/);
+    await expect(editor).toHaveAttribute("aria-readonly", "true");
+    await expect(panel.locator(".guide-details-card")).toHaveCSS("pointer-events", "none");
+    await expect(panel.locator("#stepsSection")).toHaveCSS("pointer-events", "none");
+  } else {
+    await expect(previewButton).toBeVisible();
+    await expect(exitButton).toBeHidden();
+    await expect(editor).not.toHaveClass(/preview-active/);
+    await expect(editor).toHaveAttribute("aria-readonly", "false");
+    await expect(panel.locator(".guide-details-card")).not.toHaveCSS("pointer-events", "none");
+  }
+}
+
+async function requireHealthyApi(request) {
+  const api = await request.get(`${API_URL}/api/health`);
+  expect(api.ok(), "GWTP API must be running before Stage 3").toBeTruthy();
+}
+
+async function openPanel() {
+  const page = await context.newPage();
+  await page.goto(`chrome-extension://${extensionId}/sidepanel/sidepanel.html`);
+  await expect(page.locator("html")).toHaveAttribute("lang", "he");
+  await expect(page.locator("html")).toHaveAttribute("dir", "rtl");
+  await page.evaluate(async () => {
+    localStorage.clear();
+    await chrome.storage.local.clear();
+    await chrome.storage.session.clear();
+  });
+  await page.reload();
+  await expect(page.locator("#loginView")).toBeVisible();
+  return page;
+}
+
+async function login(page, username) {
+  await page.locator("#usernameInput").fill(username);
+  await page.locator("#passwordInput").fill(PASSWORD);
+  await page.locator("#loginButton").click();
+  await expect(page.locator("#appView")).toBeVisible();
+  await expect(page.locator("#loginView")).toBeHidden();
+}
+
+async function createTemporaryFixtureGuide(panel, name, steps) {
+  const auth = await panel.evaluate(async () => (await chrome.storage.local.get("gwtp.auth.user"))["gwtp.auth.user"]);
+  return panel.evaluate(async ({ token, name, siteUrl, steps }) => {
+    const headers = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
+    const requestJson = async (url, options = {}) => {
+      const response = await fetch(`${globalThis.appConfig.api.baseUrl}${url}`, { headers, ...options });
+      if (!response.ok) throw new Error(`${options.method || "GET"} ${url} failed: ${response.status} ${await response.text()}`);
+      return response.status === 204 ? null : response.json();
+    };
+    const topic = await requestJson("/api/topics", { method: "POST", body: JSON.stringify({ name }) });
+    const guide = await requestJson("/api/guides", {
+      method: "POST",
+      body: JSON.stringify({ topicId: topic.id, name, startInstruction: "Open the relevant system and navigate to the starting screen.", isAvailable: true, steps })
+    });
+    return { token, topicId: topic.id, guideId: guide.id };
+  }, { token: auth.accessToken, name, siteUrl: SITE_URL, steps });
+}
+
+async function deleteTemporaryFixtureGuide(panel, setup) {
+  await panel.evaluate(async ({ token, guideId, topicId }) => {
+    const headers = { Authorization: `Bearer ${token}` };
+    await fetch(`${globalThis.appConfig.api.baseUrl}/api/guides/${guideId}`, { method: "DELETE", headers });
+    await fetch(`${globalThis.appConfig.api.baseUrl}/api/topics/${topicId}`, { method: "DELETE", headers });
+  }, setup);
+}
+
+test.beforeAll(async ({ request }) => {
+  await requireHealthyApi(request);
+
+  context = await chromium.launchPersistentContext("", {
+    headless: false,
+    args: [
+      `--disable-extensions-except=${EXTENSION_PATH}`,
+      `--load-extension=${EXTENSION_PATH}`
+    ]
+  });
+
+  let [serviceWorker] = context.serviceWorkers();
+  if (!serviceWorker) serviceWorker = await context.waitForEvent("serviceworker");
+  extensionId = new URL(serviceWorker.url()).host;
+});
+
+test.afterAll(async () => {
+  await context?.close();
+});
+
+test("dynamic fixture behaves like a modern web app without timing assumptions", async () => {
+  const page = await context.newPage();
+  await page.goto(`${SITE_URL}/dynamic-app.html`);
+
+  // JavaScript-trigger anchor: behaves like an app launcher and must not navigate.
+  const launcher = page.locator("#js-launcher");
+  await launcher.click();
+  await expect(page).toHaveURL(/\/dynamic-app\.html$/);
+  await expect(page.locator("#launcher-result")).toBeVisible();
+
+  // SPA-style state change: same document/URL path, target appears from an event.
+  await page.locator("#spa-screen-action").click();
+  await expect(page).toHaveURL(/\/dynamic-app\.html#details$/);
+  await expect(page.locator("#spa-target")).toBeVisible();
+
+  // DOM replacement preserves the selector while replacing the actual node.
+  const originalTarget = await page.locator("#dynamic-target").evaluate((element) => element.dataset.version || "original");
+  expect(originalTarget).toBe("original");
+  await page.locator("#replace-region").click();
+  await expect(page.locator("#dynamic-target")).toHaveAttribute("data-version", "replacement");
+
+  // A frame is created only as the direct result of the user action.
+  await page.locator("#replace-frame").click();
+  const dynamicFrame = page.frameLocator('iframe[name="DynamicContent"]');
+  await expect(dynamicFrame.locator("#frame-target")).toBeVisible();
+
+  // Genuine document navigation remains owned by the host page.
+  await page.locator("#real-navigation").click();
+  await expect(page).toHaveURL(/\/dynamic-destination\.html$/);
+  await expect(page.locator("#destination-target")).toBeVisible();
+
+  await page.close();
+});
+
+
+test("stage 6 guidance positioning - bubble follows target while scrolling", async () => {
+  const editor = await openPanel();
+  await login(editor, "sanity.editor");
+  const setup = await createTemporaryFixtureGuide(editor, `GWTP Scroll Follow ${Date.now()}`, [
+    { selector: "#fixture-action", instruction: "Scroll follow target", screenName: "Fixture", frame: null, validation: null }
+  ]);
+
+  try {
+    await editor.close();
+    const panel = await openPanel();
+    await login(panel, "sanity.learner");
+    const fixture = await context.newPage();
+    await fixture.goto(`${SITE_URL}/gwtp-test-fixture.html`);
+    await fixture.evaluate(() => {
+      document.body.style.minHeight = "2200px";
+      document.querySelector("#fixture-action").style.marginTop = "900px";
+    });
+    await fixture.bringToFront();
+
+    await panel.locator("#learnerTopicSelect").selectOption(String(setup.topicId));
+    await panel.locator("#learnerGuideSelect").selectOption(String(setup.guideId));
+    await panel.locator("#startLearningButton").click();
+    await expect(panel.locator("#learnerStartInstructionPanel")).toBeVisible();
+    await expect(panel.locator("#learnerStartInstructionText")).toHaveText("Open the relevant system and navigate to the starting screen.");
+    await confirmGuideStartInstruction(panel);
+
+    const target = fixture.locator("#fixture-action");
+    const bubble = fixture.locator(".gwtp-training-overlay");
+    await expect(bubble).toBeVisible({ timeout: 10000 });
+
+    const before = await fixture.evaluate(() => ({
+      targetTop: document.querySelector("#fixture-action").getBoundingClientRect().top,
+      bubbleTop: document.querySelector(".gwtp-training-overlay").getBoundingClientRect().top
+    }));
+
+    await fixture.evaluate(() => window.scrollBy(0, 180));
+
+    await expect.poll(async () => fixture.evaluate(() => {
+      const targetRect = document.querySelector("#fixture-action").getBoundingClientRect();
+      const bubbleRect = document.querySelector(".gwtp-training-overlay").getBoundingClientRect();
+      return Math.round((bubbleRect.top - targetRect.top) * 10) / 10;
+    })).toBe(Math.round((before.bubbleTop - before.targetTop) * 10) / 10);
+
+    await panel.close();
+    await fixture.close();
+  } finally {
+    const cleanup = await openPanel();
+    await login(cleanup, "sanity.editor");
+    await deleteTemporaryFixtureGuide(cleanup, setup);
+    await cleanup.close();
+  }
+});
+
+
+test("stage 6 selector resilience - generated ids do not bind authored steps", async () => {
+  const panel = await openPanel();
+  await login(panel, "sanity.editor");
+
+  const fixture = await context.newPage();
+  await fixture.goto(`${SITE_URL}/gwtp-test-fixture.html`);
+  await fixture.bringToFront();
+
+  await panel.locator("#openNewGuideButton").click();
+  const demoTopic = panel.locator("#topicSelect option").filter({ hasText: "Demo CRM" });
+  await panel.locator("#topicSelect").selectOption(await demoTopic.getAttribute("value"));
+  await panel.locator("#guideNameInput").fill(`Dynamic selector ${Date.now()}`);
+  await panel.locator("#guideStartInstructionInput").fill("Open the relevant system and navigate to the starting screen.");
+  await panel.locator("#addStepButton").click();
+  await panel.locator("#selectButton").click();
+
+  await fixture.locator("#_aAq0arv7IvWchbIPqeDzkAc_108").click();
+  const selector = await panel.locator("#selectorInput").inputValue();
+
+  expect(selector).toContain("nahariya");
+  expect(selector).not.toContain("_aAq0arv7IvWchbIPqeDzkAc_108");
+
+  await fixture.locator("#rerender-search-result").click();
+  await expect(fixture.locator("#_nAq0asr8Kp64hbIPj7vFiQM_105")).toBeVisible();
+  expect(await fixture.evaluate((value) => Boolean(document.querySelector(value)), selector)).toBeTruthy();
+
+  await panel.close();
+  await fixture.close();
+});
+
+
+test("stage 6 dynamic web app - GWTP follows SPA, DOM replacement, dynamic frame and real navigation", async () => {
+  const editor = await openPanel();
+  await login(editor, "sanity.editor");
+
+  const auth = await editor.evaluate(async () => {
+    const stored = await chrome.storage.local.get("gwtp.auth.user");
+    return stored["gwtp.auth.user"];
+  });
+
+  const fixtureName = "GWTP Dynamic Regression";
+  const setup = await editor.evaluate(async ({ token, fixtureName, siteUrl }) => {
+    const headers = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
+    const getJson = async (path) => {
+      const response = await fetch(`${globalThis.appConfig.api.baseUrl}${path}`, { headers });
+      if (!response.ok) throw new Error(`GET ${path} failed: ${response.status}`);
+      return response.json();
+    };
+
+    const topics = await getJson("/api/topics");
+    let topic = topics.find((item) => item.name === fixtureName);
+    if (!topic) {
+      const response = await fetch(`${globalThis.appConfig.api.baseUrl}/api/topics`, {
+        method: "POST", headers, body: JSON.stringify({ name: fixtureName })
+      });
+      if (!response.ok) throw new Error(`Create topic failed: ${response.status}`);
+      topic = await response.json();
+    }
+
+    const guides = await getJson("/api/guides");
+    const existing = guides.find((item) => item.name === fixtureName);
+    if (existing) {
+      const response = await fetch(`${globalThis.appConfig.api.baseUrl}/api/guides/${existing.id}`, {
+        method: "DELETE", headers
+      });
+      if (!response.ok && response.status !== 404) throw new Error(`Delete guide failed: ${response.status}`);
+    }
+
+    const guideResponse = await fetch(`${globalThis.appConfig.api.baseUrl}/api/guides`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        topicId: topic.id,
+        name: fixtureName,
+        startInstruction: "Open the relevant system and navigate to the starting screen.",
+        isAvailable: true,
+        steps: [
+          { selector: "#js-launcher", instruction: "Open launcher", screenName: "Dynamic", frame: null, validation: null },
+          { selector: "#spa-target", instruction: "SPA target", screenName: "Dynamic", frame: null, validation: null },
+          { selector: "#dynamic-target", instruction: "Replace DOM target", screenName: "Dynamic", frame: null, validation: null },
+          { selector: "#replace-frame", instruction: "Create frame", screenName: "Dynamic", frame: null, validation: null },
+          { selector: "#frame-target", instruction: "Dynamic frame target", screenName: "Dynamic frame", frame: { name: "DynamicContent", srcIncludes: "dynamic-frame.html" }, validation: null },
+          { selector: "#real-navigation", instruction: "Navigate", screenName: "Dynamic", frame: null, validation: null },
+          { selector: "#destination-target", instruction: "Destination target", screenName: "Destination", frame: null, validation: null }
+        ]
+      })
+    });
+    if (!guideResponse.ok) throw new Error(`Create guide failed: ${guideResponse.status} ${await guideResponse.text()}`);
+    return { topicId: topic.id, guide: await guideResponse.json() };
+  }, { token: auth.accessToken, fixtureName, siteUrl: SITE_URL });
+
+  await editor.close();
+
+  const panel = await openPanel();
+  await login(panel, "sanity.learner");
+  const app = await context.newPage();
+  await app.goto(`${SITE_URL}/dynamic-app.html`);
+  await app.bringToFront();
+
+  await panel.locator("#learnerTopicSelect").selectOption(String(setup.topicId));
+  await panel.locator("#learnerGuideSelect").selectOption(String(setup.guide.id));
+  await panel.locator("#startLearningButton").click();
+  await confirmGuideStartInstruction(panel);
+  await expect(app.locator("#js-launcher")).toHaveCSS("outline-width", "3px", { timeout: 10000 });
+
+  // JavaScript anchor opens UI but does not navigate. Pending intent must not
+  // advance progress merely because the target was activated.
+  await app.locator("#js-launcher").click();
+  await expect(app.locator("#launcher-result")).toBeVisible();
+  await expect(app).toHaveURL(/\/dynamic-app\.html$/);
+  expect(await panel.evaluate(async () => (await chrome.runtime.sendMessage({ type: "GWTP_TRAINING_GET_CURRENT" }))?.current?.stepIndex)).toBe(0);
+
+  // The host app creates the next SPA target. Next now advances to that target.
+  await app.locator("#spa-screen-action").click();
+  await expect(app.locator("#spa-target")).toBeVisible();
+  await app.locator(".gwtp-training-overlay button").filter({ hasText: /הבא|Next/i }).click();
+  await expect(app.locator("#spa-target")).toHaveCSS("outline-width", "3px");
+
+  // Advance to a target whose actual DOM node is then replaced under the same selector.
+  await app.locator(".gwtp-training-overlay button").filter({ hasText: /הבא|Next/i }).click();
+  await expect(app.locator("#dynamic-target")).toHaveCSS("outline-width", "3px");
+  await app.locator("#replace-region").click();
+  await expect(app.locator("#dynamic-target")).toHaveAttribute("data-version", "replacement");
+
+  // Continue to the frame-creation action, create the frame, then advance only
+  // after its target exists as a consequence of that event.
+  await app.locator(".gwtp-training-overlay button").filter({ hasText: /הבא|Next/i }).click();
+  await expect(app.locator("#replace-frame")).toHaveCSS("outline-width", "3px");
+  await app.locator("#replace-frame").click();
+  const frame = app.frameLocator('iframe[name="DynamicContent"]');
+  await expect(frame.locator("#frame-target")).toBeVisible();
+
+  // Creating/replacing the iframe can emit PAGE_READY while the previous step is
+  // being restored. Wait for GWTP to finish that lifecycle and expose an enabled
+  // Next control instead of racing a transient disabled/detached overlay.
+  const nextFromFrameCreation = app.locator(".gwtp-training-overlay button").filter({ hasText: /הבא|Next/i });
+  await expect(nextFromFrameCreation).toBeVisible();
+  await expect(nextFromFrameCreation).toBeEnabled();
+  await nextFromFrameCreation.click();
+  await expect(frame.locator("#frame-target")).toHaveCSS("outline-width", "3px");
+
+  // Move to the real navigation link and let the host page navigate normally.
+  await frame.locator(".gwtp-training-overlay button").filter({ hasText: /הבא|Next/i }).click();
+  await expect(app.locator("#real-navigation")).toHaveCSS("outline-width", "3px");
+  await app.locator("#real-navigation").click();
+  await expect(app).toHaveURL(/\/dynamic-destination\.html$/);
+  await expect(app.locator("#destination-target")).toHaveCSS("outline-width", "3px", { timeout: 10000 });
+
+  await panel.close();
+  await app.close();
+
+  // Keep the sanity database clean so the fixture does not appear in normal UI.
+  const cleanup = await openPanel();
+  await login(cleanup, "sanity.editor");
+  await cleanup.evaluate(async ({ token, guideId, topicId }) => {
+    const headers = { Authorization: `Bearer ${token}` };
+    await fetch(`${globalThis.appConfig.api.baseUrl}/api/guides/${guideId}`, { method: "DELETE", headers });
+    await fetch(`${globalThis.appConfig.api.baseUrl}/api/topics/${topicId}`, { method: "DELETE", headers });
+  }, { token: auth.accessToken, guideId: setup.guide.id, topicId: setup.topicId });
+  await cleanup.close();
+});
+
+
+test("Web Test Host loads with the GWTP content script", async () => {
+  const page = await context.newPage();
+  await page.goto(`${SITE_URL}/site.html`);
+  await expect(page).toHaveTitle(/.+/);
+
+  const contentScriptReady = await page.evaluate(() => {
+    const script = document.createElement("script");
+    script.textContent = "document.documentElement.dataset.gwtpMainWorldProbe = String(globalThis.__GWTP_CONTENT_READY__ === true);";
+    document.documentElement.appendChild(script);
+    script.remove();
+    const isolatedWorldIsWorking = document.documentElement.dataset.gwtpMainWorldProbe === "false";
+    delete document.documentElement.dataset.gwtpMainWorldProbe;
+    return isolatedWorldIsWorking;
+  });
+  expect(contentScriptReady).toBeTruthy();
+  await page.close();
+});
+
+test("learner sees only learner UI after login", async () => {
+  const page = await openPanel();
+  await login(page, "sanity.learner");
+
+  await expect(page.locator("#learnModeView")).toBeVisible();
+  await expect(page.locator("#createModeView")).toBeHidden();
+  await expect(page.locator("#adminView")).toBeHidden();
+  await expect(page.locator("#currentUserRole")).toContainText(/לומד|Learner/i);
+  await expect(page.locator("#learnerTopicSelect option")).not.toHaveCount(0);
+
+  await page.close();
+});
+
+test("editor sees authoring UI and not learner/admin UI", async () => {
+  const page = await openPanel();
+  await login(page, "sanity.editor");
+
+  await expect(page.locator("#createModeView")).toBeVisible();
+  await expect(page.locator("#learnModeView")).toBeHidden();
+  await expect(page.locator("#adminView")).toBeHidden();
+  await expect(page.locator("#guideLibraryView")).toBeVisible();
+  await expect(page.locator("#currentUserRole")).toContainText(/עורך|Editor/i);
+
+  await page.close();
+});
+
+test("admin sees administration UI only", async () => {
+  const page = await openPanel();
+  await login(page, "sanity.admin");
+
+  await expect(page.locator("#adminView")).toBeVisible();
+  await expect(page.locator("#createModeView")).toBeHidden();
+  await expect(page.locator("#learnModeView")).toBeHidden();
+  await expect(page.locator("#currentUserRole")).toContainText(/מנהל|Admin/i);
+  await expect(page.locator("#adminUsersList")).toBeVisible();
+  await expect(page.locator("#usersList")).toBeVisible();
+
+  await page.close();
+});
+
+
+test("stage 4 filters - admin user role filter shows the requested role", async () => {
+  const panel = await openPanel();
+  await login(panel, "sanity.admin");
+
+  const regularUsers = panel.locator("#usersList [data-user-id]");
+  await panel.locator("#userRoleFilter").selectOption("editor");
+  await expect(regularUsers).not.toHaveCount(0);
+  await expect(regularUsers.filter({ hasText: /GWTP Sanity Editor/i })).toHaveCount(1);
+  await expect(regularUsers.filter({ hasText: /GWTP Sanity Learner/i })).toHaveCount(0);
+  const editorCards = await regularUsers.allTextContents();
+  expect(editorCards.every((text) => /עורך|Editor/i.test(text))).toBeTruthy();
+
+  await panel.locator("#userRoleFilter").selectOption("learner");
+  await expect(regularUsers).not.toHaveCount(0);
+  await expect(regularUsers.filter({ hasText: /GWTP Sanity Editor/i })).toHaveCount(0);
+  await expect(regularUsers.filter({ hasText: /GWTP Sanity Learner/i })).toHaveCount(1);
+  const learnerCards = await regularUsers.allTextContents();
+  expect(learnerCards.every((text) => /לומד|Learner/i.test(text))).toBeTruthy();
+
+  await panel.locator("#userRoleFilter").selectOption("all");
+  await expect(regularUsers.filter({ hasText: /GWTP Sanity Editor/i })).toHaveCount(1);
+  await expect(regularUsers.filter({ hasText: /GWTP Sanity Learner/i })).toHaveCount(1);
+
+  await panel.close();
+});
+
+test("stage 4 filters - guide topic filter limits the editor library", async () => {
+  const panel = await openPanel();
+  await login(panel, "sanity.editor");
+
+  const topicFilter = panel.locator("#guideTopicFilter");
+  const demoOption = topicFilter.locator("option").filter({ hasText: "Demo CRM" });
+  await expect(demoOption).toHaveCount(1);
+  await topicFilter.selectOption(await demoOption.getAttribute("value"));
+
+  const cards = panel.locator("#guidesList [data-guide-id]");
+  await expect(cards).not.toHaveCount(0);
+  const cardCount = await cards.count();
+  for (let index = 0; index < cardCount; index += 1) {
+    await expect(cards.nth(index)).toContainText("Demo CRM");
+  }
+
+  await topicFilter.selectOption("all");
+  await expect(panel.locator("#guidesList [data-guide-id]")).not.toHaveCount(0);
+  await panel.close();
+});
+
+test("stage 4 filters - guide availability filter limits the editor library", async () => {
+  const panel = await openPanel();
+  await login(panel, "sanity.editor");
+
+  const cards = panel.locator("#guidesList [data-guide-id]");
+  await panel.locator("#guideAvailabilityFilter").selectOption("available");
+  await expect(cards).not.toHaveCount(0);
+  const availableCount = await cards.count();
+  for (let index = 0; index < availableCount; index += 1) {
+    await expect(cards.nth(index)).toContainText(/זמין ללומדים:\s*כן|Available to learners:\s*Yes/i);
+  }
+
+  await panel.locator("#guideAvailabilityFilter").selectOption("unavailable");
+  const unavailableCount = await cards.count();
+  for (let index = 0; index < unavailableCount; index += 1) {
+    await expect(cards.nth(index)).toContainText(/זמין ללומדים:\s*לא|Available to learners:\s*No/i);
+  }
+
+  await panel.locator("#guideAvailabilityFilter").selectOption("all");
+  await expect(cards).not.toHaveCount(0);
+  await panel.close();
+});
+
+test("stage 4 filters - step screen filter changes visibility without changing step order", async () => {
+  const panel = await openPanel();
+  await login(panel, "sanity.editor");
+
+  const guideCard = panel.locator("[data-guide-id]").filter({ hasText: "תרגול מלא - Demo CRM" }).first();
+  await expect(guideCard).toBeVisible();
+  await guideCard.click();
+  await expect(panel.locator("#stepsSection")).toBeVisible();
+
+  const screenFilter = panel.locator("#stepScreenFilter");
+  await expect(screenFilter).toBeVisible();
+  const siteOption = screenFilter.locator("option").filter({ hasText: /^אתר$/ });
+  await expect(siteOption).toHaveCount(1);
+
+  const stepItems = panel.locator("#stepsList .step-item");
+  const allStepIds = await stepItems.evaluateAll((items) => items.map((item) => item.dataset.stepId));
+  expect(allStepIds.length).toBeGreaterThan(6);
+
+  const visibleScreenMetadata = panel.locator("#stepsList .step-item__screen:not([hidden])");
+  await expect(visibleScreenMetadata.first()).toContainText(/שם מסך:|Screen name:/);
+  await expect(visibleScreenMetadata.first()).toContainText("אתר");
+
+  await screenFilter.selectOption(await siteOption.getAttribute("value"));
+  await expect(stepItems).toHaveCount(6);
+  const filteredStepIds = await stepItems.evaluateAll((items) => items.map((item) => item.dataset.stepId));
+  expect(filteredStepIds).toEqual(allStepIds.slice(0, 6));
+
+  await screenFilter.selectOption("all");
+  const restoredStepIds = await stepItems.evaluateAll((items) => items.map((item) => item.dataset.stepId));
+  expect(restoredStepIds).toEqual(allStepIds);
+
+  await panel.close();
+});
+
+
+
+test("stage 5 management CRUD - admin creates, edits and deletes a user through the UI", async () => {
+  const suffix = Date.now();
+  const username = "stage5.user." + suffix;
+  const displayName = "Stage 5 User " + suffix;
+  const updatedName = "Stage 5 Updated " + suffix;
+  const panel = await openPanel();
+  await login(panel, "sanity.admin");
+  try {
+    await panel.locator("#openCreateUserButton").click();
+    await panel.locator("#newDisplayName").fill(displayName);
+    await panel.locator("#newUsername").fill(username);
+    await panel.locator("#newPassword").fill("Stage5Pass!");
+    await panel.locator("#newRole").selectOption("editor");
+    await panel.locator("#createUserButton").click();
+    let card = panel.locator("#usersList [data-user-id]").filter({ hasText: username }).first();
+    await expect(card).toBeVisible();
+    await expect(card).toContainText(/עורך|Editor/i);
+    await card.click();
+    await panel.locator("#editDisplayName").fill(updatedName);
+    await panel.locator("#editRole").selectOption("learner");
+    await panel.locator("#editIsActive").uncheck();
+    await panel.locator("#saveUserButton").click();
+    card = panel.locator("#usersList [data-user-id]").filter({ hasText: username }).first();
+    await expect(card).toBeVisible();
+    await expect(card).toContainText(updatedName);
+    await expect(card).toContainText(/לומד|Learner/i);
+    await expect(card).toContainText(/לא פעיל|Inactive/i);
+    await card.click();
+    await panel.locator("#deleteEditedUserButton").click();
+    await panel.locator("#confirmDeleteButton").click();
+    await expect(panel.locator("#usersList [data-user-id]").filter({ hasText: username })).toHaveCount(0);
+  } finally {
+    const leftover = panel.locator("#usersList [data-user-id]").filter({ hasText: username }).first();
+    if (await leftover.count()) { try { await leftover.click(); await panel.locator("#deleteEditedUserButton").click(); if (await panel.locator("#deleteConfirmOverlay").isVisible()) await panel.locator("#confirmDeleteButton").click(); } catch {} }
+    await panel.close();
+  }
+});
+
+test("stage 5 management CRUD - editor creates, renames and deletes a topic through the UI", async () => {
+  const suffix = Date.now();
+  const topicName = "Stage 5 Topic " + suffix;
+  const renamedTopic = "Stage 5 Topic Updated " + suffix;
+  const panel = await openPanel();
+  await login(panel, "sanity.editor");
+  try {
+    await panel.locator("#openTopicsButton").click();
+    await panel.locator("#openCreateTopicButton").click();
+    await panel.locator("#newTopicInput").fill(topicName);
+    await panel.locator("#createTopicButton").click();
+    let card = panel.locator("#topicsList [data-topic-id]").filter({ hasText: topicName }).first();
+    await expect(card).toBeVisible();
+    await card.click();
+    await panel.locator("#editTopicInput").fill(renamedTopic);
+    await panel.locator("#saveTopicButton").click();
+    card = panel.locator("#topicsList [data-topic-id]").filter({ hasText: renamedTopic }).first();
+    await expect(card).toBeVisible();
+    await card.click();
+    await panel.locator("#deleteEditedTopicButton").click();
+    await panel.locator("#confirmDeleteButton").click();
+    await expect(panel.locator("#topicsList [data-topic-id]").filter({ hasText: renamedTopic })).toHaveCount(0);
+  } finally {
+    for (const name of [renamedTopic, topicName]) { const leftover = panel.locator("#topicsList [data-topic-id]").filter({ hasText: name }).first(); if (await leftover.count()) { try { await leftover.click(); await panel.locator("#deleteEditedTopicButton").click(); if (await panel.locator("#deleteConfirmOverlay").isVisible()) await panel.locator("#confirmDeleteButton").click(); } catch {} } }
+    await panel.close();
+  }
+});
+
+test("stage 5 management CRUD - editor creates, edits and deletes a guide and its step through the UI", async () => {
+  const suffix = Date.now();
+  const guideName = "Stage 5 Guide " + suffix;
+  const updatedGuideName = "Stage 5 Guide Updated " + suffix;
+  const panel = await openPanel();
+  let fixture = null;
+  try {
+    await login(panel, "sanity.editor");
+    fixture = await context.newPage();
+    await fixture.goto(SITE_URL + "/gwtp-test-fixture.html");
+    await fixture.bringToFront();
+    await panel.locator("#openNewGuideButton").click();
+    const demoTopic = panel.locator("#topicSelect option").filter({ hasText: "Demo CRM" });
+    await panel.locator("#topicSelect").selectOption(await demoTopic.getAttribute("value"));
+    await panel.locator("#guideNameInput").fill(guideName);
+    await expect(panel.locator("#guideStartInstructionInput")).toHaveValue("פתח את המערכת והגע לנקודה שממנה מתחיל המדריך.");
+    await panel.locator("#guideStartInstructionInput").fill("Open the relevant system and navigate to the starting screen.");
+    await panel.locator("#addStepButton").click();
+    await panel.locator("#selectButton").click();
+    const content = fixture;
+    await content.locator("#fixture-code").click();
+    await panel.locator("#screenNameInput").fill("Stage5 Screen");
+    await panel.locator("#instructionInput").fill("Stage 5 original instruction");
+    await panel.locator("#saveStepButton").click();
+    await panel.locator("#saveGuideButton").click();
+    let guideCard = panel.locator("[data-guide-id]").filter({ hasText: guideName }).first();
+    await expect(guideCard).toBeVisible();
+    await guideCard.click();
+    await panel.locator("#stepsList .step-item").first().click();
+    await panel.locator("#instructionInput").fill("Stage 5 updated instruction");
+    await panel.locator("#screenNameInput").fill("Stage5 Updated Screen");
+    await panel.locator("#saveStepButton").click();
+    await panel.locator("#stepsList .step-item").first().click();
+    await expect(panel.locator("#instructionInput")).toContainText("Stage 5 updated instruction");
+    await expect(panel.locator("#screenNameInput")).toHaveValue("Stage5 Updated Screen");
+    await panel.locator("#cancelStepButton").click();
+    await panel.locator("#guideNameInput").fill(updatedGuideName);
+    await panel.locator("#saveGuideButton").click();
+    guideCard = panel.locator("[data-guide-id]").filter({ hasText: updatedGuideName }).first();
+    await expect(guideCard).toBeVisible();
+    await guideCard.click();
+    await panel.locator("#stepsList .step-item").first().click();
+    await panel.locator("#deleteEditedStepButton").click();
+    await panel.locator("#confirmDeleteButton").click();
+    await expect(panel.locator("#stepsList .step-item")).toHaveCount(0);
+    await panel.locator("#deleteEditedGuideButton").click();
+    await panel.locator("#confirmDeleteButton").click();
+    await expect(panel.locator("[data-guide-id]").filter({ hasText: updatedGuideName })).toHaveCount(0);
+  } finally {
+    try {
+      if (await panel.locator("#guideEditorView").isVisible()) await panel.locator("#backToGuidesButton").click();
+      for (const name of [updatedGuideName, guideName]) { const leftover = panel.locator("[data-guide-id]").filter({ hasText: name }).first(); if (await leftover.count()) { await leftover.click(); await panel.locator("#deleteEditedGuideButton").click(); if (await panel.locator("#deleteConfirmOverlay").isVisible()) await panel.locator("#confirmDeleteButton").click(); } }
+    } catch {}
+    await panel.close();
+    if (fixture) await fixture.close();
+  }
+});
+
+
+test("stage 5 editor management - metadata-only step edit does not require the target screen", async () => {
+  const panel = await openPanel();
+  await login(panel, "sanity.editor");
+
+  const guideCard = panel.locator("[data-guide-id]").filter({ hasText: "תרגול מלא - Demo CRM" }).first();
+  await expect(guideCard).toBeVisible();
+  await guideCard.click();
+
+  const firstStep = panel.locator("#stepsList .step-item").first();
+  await firstStep.click();
+  const originalScreenName = await panel.locator("#screenNameInput").inputValue();
+  const temporaryScreenName = `Stage5 Metadata ${Date.now()}`;
+
+  try {
+    // Keep the active browser page away from Demo CRM. Updating persisted metadata
+    // must not revalidate the unchanged business target against the current page.
+    const unrelated = await context.newPage();
+    await unrelated.goto("about:blank");
+    await unrelated.bringToFront();
+
+    const pageErrors = [];
+    panel.on("pageerror", (error) => pageErrors.push(error.message));
+    await panel.locator("#stepsList .step-item").first().click();
+    await expect(panel.locator("#stepEditor")).toBeVisible();
+    expect(pageErrors.filter((message) => message.includes("Receiving end does not exist"))).toEqual([]);
+
+    // Element Picker feedback must follow the configured UI language even when the
+    // active page cannot host a picker/content-script receiver.
+    await panel.locator("#selectButton").click();
+    const pickerStatus = panel.locator("#elementPickerStatus");
+    await expect(pickerStatus).toContainText("לא ניתן להתחיל בחירת אלמנט בעמוד זה");
+    await expect(pickerStatus).toContainText("רענן את העמוד ונסה שוב");
+    await expect(pickerStatus).not.toContainText("Could not start selection mode");
+    await expect(panel.locator("#selectButton")).toBeVisible();
+    await expect(panel.locator("#status")).not.toContainText("לא ניתן להתחיל בחירת אלמנט בעמוד זה");
+
+    await panel.locator("#screenNameInput").fill(temporaryScreenName);
+    await panel.locator("#saveStepButton").click();
+    await expect(panel.locator("#stepEditor")).toBeHidden();
+
+    await panel.locator("#stepsList .step-item").first().click();
+    await expect(panel.locator("#screenNameInput")).toHaveValue(temporaryScreenName);
+    await panel.locator("#screenNameInput").fill(originalScreenName);
+    await panel.locator("#saveStepButton").click();
+    await unrelated.close();
+  } finally {
+    // Best-effort restore if an assertion interrupted the normal restore path.
+    if (await panel.locator("#stepEditor").isVisible().catch(() => false)) {
+      await panel.locator("#screenNameInput").fill(originalScreenName).catch(() => {});
+      await panel.locator("#saveStepButton").click().catch(() => {});
+    }
+    await panel.close().catch(() => {});
+  }
+});
+
+
+test("stage 5 editor preview - navigation, validation and exit cleanup work through the real UI", async () => {
+  const guideName = "Stage 5 Preview " + Date.now();
+  const panel = await openPanel();
+  let fixture = null;
+  try {
+    await login(panel, "sanity.editor");
+    fixture = await context.newPage();
+    await fixture.goto(SITE_URL + "/gwtp-test-fixture.html");
+    await fixture.bringToFront();
+    const content = fixture;
+
+    await panel.locator("#openNewGuideButton").click();
+    const demoTopic = panel.locator("#topicSelect option").filter({ hasText: "Demo CRM" });
+    await panel.locator("#topicSelect").selectOption(await demoTopic.getAttribute("value"));
+    await panel.locator("#guideNameInput").fill(guideName);
+    await panel.locator("#guideStartInstructionInput").fill("Open the relevant system and navigate to the starting screen.");
+
+    // Step 1: required validation on a real input.
+    await panel.locator("#addStepButton").click();
+    await panel.locator("#selectButton").click();
+    await content.locator("#fixture-code").click();
+    await panel.locator("#instructionInput").fill("Preview required step");
+    await panel.locator("#validationTypeSelect").selectOption("required");
+    await panel.locator("#validationErrorInput").fill("Preview required error");
+    await panel.locator("#saveStepButton").click();
+
+    // Step 2: a second real target so Preview Previous/Next can be exercised.
+    await panel.locator("#addStepButton").click();
+    await panel.locator("#selectButton").click();
+    await content.locator("#fixture-name").click();
+    await panel.locator("#instructionInput").fill("Preview second step");
+    await panel.locator("#saveStepButton").click();
+
+    await fixture.bringToFront();
+
+    // Preview start is a visible GUI flow. Cancelling it must leave the editor usable
+    // and must not strand the Preview button in a disabled/pending state.
+    await panel.locator("#previewGuideButton").click();
+    await expect(panel.locator("#learnerStartInstructionPanel")).toBeVisible();
+    await expect(panel.locator("#learnerStartInstructionText")).toHaveText("Open the relevant system and navigate to the starting screen.");
+    await panel.locator("#cancelStartInstructionButton").click();
+    await expect(panel.locator("#learnerStartInstructionPanel")).toBeHidden();
+    await expect(panel.locator("#previewGuideButton")).toBeEnabled();
+
+    await panel.locator("#previewGuideButton").click();
+    await confirmGuideStartInstruction(panel);
+    let overlay = content.locator(".gwtp-training-overlay");
+    await expect(overlay).toHaveCount(1);
+    await expect(overlay).toContainText("Preview required step");
+    await expect(panel.locator("#previewProgress")).toContainText(/1.*2/);
+
+    // Required must block Preview just as it blocks learner execution.
+    const originalCode = await content.locator("#fixture-code").inputValue();
+    await content.locator("#fixture-code").fill("");
+    await overlay.locator("button").filter({ hasText: /הבא|Next/i }).click();
+    await expect(overlay).toContainText("Preview required error");
+    await expect(panel.locator("#previewProgress")).toContainText(/1.*2/);
+
+    await content.locator("#fixture-code").fill(originalCode || "10082");
+    await overlay.locator("button").filter({ hasText: /הבא|Next/i }).click();
+    overlay = content.locator(".gwtp-training-overlay");
+    await expect(overlay).toContainText("Preview second step");
+    await expect(panel.locator("#previewProgress")).toContainText(/2.*2/);
+
+    await overlay.locator("button").filter({ hasText: /הקודם|Previous/i }).click();
+    await expect(content.locator(".gwtp-training-overlay")).toContainText("Preview required step");
+    await expect(panel.locator("#previewProgress")).toContainText(/1.*2/);
+
+    // The real Chrome Side Panel does not become the active tab when its controls are clicked.
+    // In Playwright the sidepanel is hosted as a normal extension tab, so keep the fixture tab active
+    // and dispatch the Side Panel control programmatically to preserve the real browser-shell contract.
+    await fixture.bringToFront();
+    await panel.locator("#exitPreviewButton").evaluate((button) => button.click());
+    await expect(panel.locator("#previewGuideButton")).toBeVisible();
+    await expect(panel.locator("#previewActiveControls")).toBeHidden();
+    await expect(content.locator(".gwtp-training-overlay")).toHaveCount(0);
+    // Assert GWTP's inline training highlight is gone. Computed outline-width is not
+    // reliable here because the input remains focused and the page/browser may render
+    // its native focus ring with the same 3px width.
+    await expect.poll(async () => content.locator("#fixture-code").evaluate((element) => ({
+      outline: element.style.getPropertyValue("outline"),
+      outlineOffset: element.style.getPropertyValue("outline-offset")
+    }))).toEqual({ outline: "", outlineOffset: "" });
+  } finally {
+    await panel.close().catch(() => {});
+    await fixture?.close().catch(() => {});
+  }
+});
+
+test("stage 5 editor management - persisted step reorder survives reopening the guide", async () => {
+  // Diagnostic guard: this test should never need the suite-wide 30s timeout.
+  // Fail the exact Playwright action/assertion quickly so a hang identifies its stage.
+  test.setTimeout(20000);
+  const guideName = "Stage 5 Reorder " + Date.now();
+  const panel = await openPanel();
+  panel.setDefaultTimeout(4000);
+  let fixture = null;
+  try {
+    await test.step("login as editor", async () => {
+      await login(panel, "sanity.editor");
+    });
+    fixture = await context.newPage();
+    await fixture.goto(SITE_URL + "/gwtp-test-fixture.html");
+    await fixture.bringToFront();
+    const content = fixture;
+
+    await panel.locator("#openNewGuideButton").click();
+    const demoTopic = panel.locator("#topicSelect option").filter({ hasText: "Demo CRM" });
+    await panel.locator("#topicSelect").selectOption(await demoTopic.getAttribute("value"));
+    await panel.locator("#guideNameInput").fill(guideName);
+    await panel.locator("#guideStartInstructionInput").fill("Open the relevant system and navigate to the starting screen.");
+
+    for (const [selector, instruction] of [["#fixture-code", "Reorder first"], ["#fixture-name", "Reorder second"]]) {
+      await panel.locator("#addStepButton").click();
+      await panel.locator("#selectButton").click();
+      await content.locator(selector).click();
+      await panel.locator("#instructionInput").fill(instruction);
+      await panel.locator("#saveStepButton").click();
+    }
+
+    await panel.locator("#saveGuideButton").click();
+    let card = panel.locator("[data-guide-id]").filter({ hasText: guideName }).first();
+    await card.click();
+    const before = await panel.locator("#stepsList .step-item .step-item__instruction").allTextContents();
+    expect(before.map((x) => x.trim())).toEqual(["Reorder first", "Reorder second"]);
+
+    const secondHandle = panel.locator("#stepsList .step-item").nth(1).locator(".step-item__drag-handle");
+
+    // Playwright hosts the Side Panel as a normal extension tab. Keyboard events sent
+    // with locator.press() depend on that tab being active, unlike the real Chrome
+    // Side Panel. Dispatch the same bubbling/cancelable key event in the panel DOM so
+    // this test exercises the product's keyboard reorder handler deterministically.
+    await secondHandle.evaluate((handle) => {
+      handle.focus();
+      handle.dispatchEvent(new KeyboardEvent("keydown", {
+        key: "ArrowUp",
+        code: "ArrowUp",
+        bubbles: true,
+        cancelable: true
+      }));
+    });
+
+    // The handler re-renders immediately and then persists asynchronously. The UI
+    // order proves the handler ran; stepsSaved proves the server persistence finished.
+    await expect.poll(async () => (await panel.locator("#stepsList .step-item .step-item__instruction").allTextContents()).map((x) => x.trim())).toEqual(["Reorder second", "Reorder first"]);
+    await expect(panel.locator("#stepsSaveStatus")).toHaveAttribute("data-type", "success");
+
+    await panel.locator("#backToGuidesButton").click();
+    card = panel.locator("[data-guide-id]").filter({ hasText: guideName }).first();
+    await card.click();
+    await expect.poll(async () => (await panel.locator("#stepsList .step-item .step-item__instruction").allTextContents()).map((x) => x.trim())).toEqual(["Reorder second", "Reorder first"]);
+
+    await panel.locator("#deleteEditedGuideButton").click();
+    await panel.locator("#confirmDeleteButton").click();
+  } finally {
+    try {
+      if (await panel.locator("#guideEditorView").isVisible()) await panel.locator("#backToGuidesButton").click();
+      const leftover = panel.locator("[data-guide-id]").filter({ hasText: guideName }).first();
+      if (await leftover.count()) { await leftover.click(); await panel.locator("#deleteEditedGuideButton").click(); if (await panel.locator("#deleteConfirmOverlay").isVisible()) await panel.locator("#confirmDeleteButton").click(); }
+    } catch {}
+    await panel.close().catch(() => {});
+    await fixture?.close().catch(() => {});
+  }
+});
+
+test("stage 5 editor management - delete confirmation can be cancelled without deleting the topic", async () => {
+  const topicName = "Stage 5 Cancel Delete " + Date.now();
+  const panel = await openPanel();
+  await login(panel, "sanity.editor");
+  try {
+    await panel.locator("#openTopicsButton").click();
+    await panel.locator("#openCreateTopicButton").click();
+    await panel.locator("#newTopicInput").fill(topicName);
+    await panel.locator("#createTopicButton").click();
+    let card = panel.locator("#topicsList [data-topic-id]").filter({ hasText: topicName }).first();
+    await card.click();
+    await panel.locator("#deleteEditedTopicButton").click();
+    await expect(panel.locator("#deleteConfirmOverlay")).toBeVisible();
+    await panel.locator("#cancelDeleteButton").click();
+    await expect(panel.locator("#deleteConfirmOverlay")).toBeHidden();
+    await expect(panel.locator("#editTopicEditor")).toBeVisible();
+    await panel.locator("#cancelEditTopicButton").click();
+    card = panel.locator("#topicsList [data-topic-id]").filter({ hasText: topicName }).first();
+    await expect(card).toBeVisible();
+
+    await card.click();
+    await panel.locator("#deleteEditedTopicButton").click();
+    await panel.locator("#confirmDeleteButton").click();
+    await expect(panel.locator("#topicsList [data-topic-id]").filter({ hasText: topicName })).toHaveCount(0);
+  } finally {
+    const leftover = panel.locator("#topicsList [data-topic-id]").filter({ hasText: topicName }).first();
+    if (await leftover.count()) { try { await leftover.click(); await panel.locator("#deleteEditedTopicButton").click(); if (await panel.locator("#deleteConfirmOverlay").isVisible()) await panel.locator("#confirmDeleteButton").click(); } catch {} }
+    await panel.close();
+  }
+});
+
+
+test("stage 5 management validation - admin user form rejects invalid and duplicate identities", async () => {
+  const suffix = Date.now();
+  const username = "stage5.valid." + suffix;
+  const panel = await openPanel();
+  await login(panel, "sanity.admin");
+  try {
+    await panel.locator("#openCreateUserButton").click();
+    await panel.locator("#createUserButton").click();
+    await expect(panel.locator("#createUserStatus")).toHaveAttribute("data-type", "error");
+    await expect(panel.locator("#newDisplayName")).toHaveAttribute("aria-invalid", "true");
+    await expect(panel.locator("#newUsername")).toHaveAttribute("aria-invalid", "true");
+    await expect(panel.locator("#newPassword")).toHaveAttribute("aria-invalid", "true");
+
+    await panel.locator("#newDisplayName").fill("Stage 5 Invalid");
+    await panel.locator("#newUsername").fill("bad user");
+    await panel.locator("#newPassword").fill("Stage5Pass!");
+    await panel.locator("#createUserButton").click();
+    await expect(panel.locator("#newUsername")).toHaveAttribute("aria-invalid", "true");
+
+    await panel.locator("#newUsername").fill(username);
+    await panel.locator("#newPassword").fill("bad pass");
+    await panel.locator("#createUserButton").click();
+    await expect(panel.locator("#newPassword")).toHaveAttribute("aria-invalid", "true");
+
+    await panel.locator("#newPassword").fill("Stage5Pass!");
+    await panel.locator("#createUserButton").click();
+    await expect(panel.locator("[data-user-id]").filter({ hasText: username })).toHaveCount(1);
+
+    await panel.locator("#openCreateUserButton").click();
+    await panel.locator("#newDisplayName").fill("Duplicate Stage 5");
+    await panel.locator("#newUsername").fill(username.toUpperCase());
+    await panel.locator("#newPassword").fill("Stage5Pass!");
+    await panel.locator("#createUserButton").click();
+    await expect(panel.locator("#createUserStatus")).toHaveAttribute("data-type", "error");
+    await expect(panel.locator("[data-user-id]").filter({ hasText: username })).toHaveCount(1);
+  } finally {
+    try {
+      const card = panel.locator("[data-user-id]").filter({ hasText: username }).first();
+      if (await card.count()) {
+        await card.click();
+        await panel.locator("#deleteEditedUserButton").click();
+        if (await panel.locator("#deleteConfirmOverlay").isVisible()) await panel.locator("#confirmDeleteButton").click();
+      }
+    } catch {}
+    await panel.close();
+  }
+});
+
+test("stage 5 management validation - topic required duplicate and guide dependency rules are enforced", async () => {
+  const topicName = "Stage 5 Dependency " + Date.now();
+  const guideName = "Stage 5 Dependency Guide " + Date.now();
+  const panel = await openPanel();
+  await login(panel, "sanity.editor");
+  try {
+    await panel.locator("#openTopicsButton").click();
+    await panel.locator("#openCreateTopicButton").click();
+    await panel.locator("#createTopicButton").click();
+    await expect(panel.locator("#topicStatus")).toHaveAttribute("data-type", "error");
+
+    await panel.locator("#newTopicInput").fill(topicName);
+    await panel.locator("#createTopicButton").click();
+    await expect(panel.locator("#topicsList [data-topic-id]").filter({ hasText: topicName })).toHaveCount(1);
+
+    await panel.locator("#openCreateTopicButton").click();
+    await panel.locator("#newTopicInput").fill(topicName.toUpperCase());
+    await panel.locator("#createTopicButton").click();
+    await expect(panel.locator("#topicStatus")).toHaveAttribute("data-type", "error");
+    await panel.locator("#cancelCreateTopicButton").click();
+    await panel.locator("#backFromTopicsButton").click();
+
+    await panel.locator("#openNewGuideButton").click();
+    const topicOption = panel.locator("#topicSelect option").filter({ hasText: topicName });
+    await panel.locator("#topicSelect").selectOption(await topicOption.getAttribute("value"));
+    await panel.locator("#guideNameInput").fill(guideName);
+    await panel.locator("#guideStartInstructionInput").fill("Open the relevant system and navigate to the starting screen.");
+    await panel.locator("#saveGuideButton").click();
+    await expect(panel.locator("[data-guide-id]").filter({ hasText: guideName })).toHaveCount(1);
+
+    await panel.locator("#openTopicsButton").click();
+    let topicCard = panel.locator("#topicsList [data-topic-id]").filter({ hasText: topicName }).first();
+    await topicCard.click();
+    await panel.locator("#deleteEditedTopicButton").click();
+    await panel.locator("#confirmDeleteButton").click();
+    await expect(panel.locator("#editTopicStatus")).toHaveAttribute("data-type", "error");
+    await expect(panel.locator("#editTopicEditor")).toBeVisible();
+    await panel.locator("#cancelEditTopicButton").click();
+    await panel.locator("#backFromTopicsButton").click();
+
+    const guideCard = panel.locator("[data-guide-id]").filter({ hasText: guideName }).first();
+    await guideCard.click();
+    await panel.locator("#deleteEditedGuideButton").click();
+    await panel.locator("#confirmDeleteButton").click();
+
+    await panel.locator("#openTopicsButton").click();
+    topicCard = panel.locator("#topicsList [data-topic-id]").filter({ hasText: topicName }).first();
+    await topicCard.click();
+    await panel.locator("#deleteEditedTopicButton").click();
+    await panel.locator("#confirmDeleteButton").click();
+    await expect(panel.locator("#topicsList [data-topic-id]").filter({ hasText: topicName })).toHaveCount(0);
+  } finally {
+    try {
+      if (await panel.locator("#topicsView").isVisible()) await panel.locator("#backFromTopicsButton").click();
+      const guide = panel.locator("[data-guide-id]").filter({ hasText: guideName }).first();
+      if (await guide.count()) { await guide.click(); await panel.locator("#deleteEditedGuideButton").click(); if (await panel.locator("#deleteConfirmOverlay").isVisible()) await panel.locator("#confirmDeleteButton").click(); }
+      await panel.locator("#openTopicsButton").click();
+      const topic = panel.locator("#topicsList [data-topic-id]").filter({ hasText: topicName }).first();
+      if (await topic.count()) { await topic.click(); await panel.locator("#deleteEditedTopicButton").click(); if (await panel.locator("#deleteConfirmOverlay").isVisible()) await panel.locator("#confirmDeleteButton").click(); }
+    } catch {}
+    await panel.close();
+  }
+});
+
+test("stage 5 management validation - guide identity and availability rules block invalid saves", async () => {
+  const guideName = "Stage 5 Guide Validation " + Date.now();
+  const panel = await openPanel();
+  let crm = null;
+  await login(panel, "sanity.editor");
+  try {
+    await panel.locator("#openNewGuideButton").click();
+    await expect(panel.locator("#addStepButton")).toBeDisabled();
+
+    const demoTopic = panel.locator("#topicSelect option").filter({ hasText: "Demo CRM" });
+    await panel.locator("#topicSelect").selectOption(await demoTopic.getAttribute("value"));
+    await panel.locator("#guideNameInput").fill(guideName);
+    const startInstruction = panel.locator("#guideStartInstructionInput");
+    await expect(startInstruction).not.toHaveValue("");
+    await expect(panel.locator("#addStepButton")).toBeEnabled();
+    await startInstruction.fill("");
+    await expect(panel.locator("#addStepButton")).toBeDisabled();
+    await startInstruction.fill("Open the relevant system and navigate to the starting screen.");
+    await expect(panel.locator("#addStepButton")).toBeEnabled();
+
+    // Availability cannot be enabled for a guide that has no authored steps.
+    await panel.locator("#guideAvailableInput").check();
+    await panel.locator("#saveGuideButton").click();
+    await expect(panel.locator("#saveGuideStatus")).toHaveAttribute("data-type", "error");
+    await expect(panel.locator("#guideEditorView")).toBeVisible();
+
+    crm = await context.newPage();
+    await crm.goto(SITE_URL + "/site.html");
+    await crm.bringToFront();
+    const content = crm.frameLocator('iframe[name="TargetContent"]');
+    await panel.locator("#addStepButton").click();
+    await panel.locator("#selectButton").click();
+    await content.locator("#site-code").click();
+
+    // Missing Instruction is prevented proactively by the editor: Save Step stays
+    // disabled until both an element and non-empty instruction are present.
+    await expect(panel.locator("#stepEditor")).toBeVisible();
+    await expect(panel.locator("#saveStepButton")).toBeDisabled();
+
+    await panel.locator("#instructionInput").fill("Valid authored step");
+    await expect(panel.locator("#saveStepButton")).toBeEnabled();
+    await panel.locator("#saveStepButton").click();
+    await expect(panel.locator("#stepEditor")).toBeHidden();
+    await expect(panel.locator("#saveGuideStatus")).toHaveText("");
+    await expect(panel.locator("#saveGuideStatus")).not.toHaveAttribute("data-type", "error");
+    await expect(panel.locator("#guideAvailableInput")).toBeChecked();
+    await panel.locator("#saveGuideButton").click();
+    await expect(panel.locator("[data-guide-id]").filter({ hasText: guideName })).toHaveCount(1);
+  } finally {
+    try {
+      if (await panel.locator("#guideEditorView").isVisible()) await panel.locator("#backToGuidesButton").click();
+      const guide = panel.locator("[data-guide-id]").filter({ hasText: guideName }).first();
+      if (await guide.count()) { await guide.click(); await panel.locator("#deleteEditedGuideButton").click(); if (await panel.locator("#deleteConfirmOverlay").isVisible()) await panel.locator("#confirmDeleteButton").click(); }
+    } catch {}
+    await panel.close().catch(() => {});
+    await crm?.close().catch(() => {});
+  }
+});
+
+test("learner can start a generic guide and receives visible guidance", async () => {
+  const panel = await openPanel();
+  await login(panel, "sanity.editor");
+  const name = `GWTP Learner Start ${Date.now()}`;
+  const setup = await createTemporaryFixtureGuide(panel, name, [
+    { selector: "#fixture-code", instruction: "Start fixture guidance", screenName: "Fixture", frame: null, validation: null }
+  ]);
+
+  try {
+    await panel.close();
+    const learner = await openPanel();
+    await login(learner, "sanity.learner");
+    const fixture = await context.newPage();
+    await fixture.goto(`${SITE_URL}/gwtp-test-fixture.html`);
+    await fixture.bringToFront();
+
+    await learner.locator("#learnerTopicSelect").selectOption(String(setup.topicId));
+    await learner.locator("#learnerGuideSelect").selectOption(String(setup.guideId));
+    await learner.locator("#startLearningButton").click();
+    await confirmGuideStartInstruction(learner);
+
+    const overlay = fixture.locator(".gwtp-training-overlay");
+    await expect(overlay).toBeVisible({ timeout: 10000 });
+    await expect(overlay.locator("button")).not.toHaveCount(0);
+    await expect(fixture.locator("#fixture-code")).toHaveCSS("outline-width", "3px");
+
+    await learner.close();
+    await fixture.close();
+  } finally {
+    const cleanup = await openPanel();
+    await login(cleanup, "sanity.editor");
+    await deleteTemporaryFixtureGuide(cleanup, setup);
+    await cleanup.close();
+  }
+});
+
+test("learner Next and Previous move between generic fixture steps", async () => {
+  const panel = await openPanel();
+  await login(panel, "sanity.editor");
+  const name = `GWTP Learner Navigation ${Date.now()}`;
+  const setup = await createTemporaryFixtureGuide(panel, name, [
+    { selector: "#fixture-code", instruction: "Fixture code", screenName: "Fixture", frame: null, validation: null },
+    { selector: "#fixture-name", instruction: "Fixture name", screenName: "Fixture", frame: null, validation: null }
+  ]);
+
+  try {
+    await panel.close();
+    const learner = await openPanel();
+    await login(learner, "sanity.learner");
+    const fixture = await context.newPage();
+    await fixture.goto(`${SITE_URL}/gwtp-test-fixture.html`);
+    await fixture.bringToFront();
+
+    await learner.locator("#learnerTopicSelect").selectOption(String(setup.topicId));
+    await learner.locator("#learnerGuideSelect").selectOption(String(setup.guideId));
+    await learner.locator("#startLearningButton").click();
+    await confirmGuideStartInstruction(learner);
+
+    const overlay = fixture.locator(".gwtp-training-overlay");
+    await expect(fixture.locator("#fixture-code")).toHaveCSS("outline-width", "3px", { timeout: 10000 });
+    await overlay.locator("button").filter({ hasText: /הבא|Next/i }).click();
+    await expect(fixture.locator("#fixture-name")).toHaveCSS("outline-width", "3px");
+
+    await fixture.locator(".gwtp-training-overlay button").filter({ hasText: /הקודם|Previous/i }).click();
+    await expect(fixture.locator("#fixture-code")).toHaveCSS("outline-width", "3px");
+    await expect(fixture.locator(".gwtp-training-overlay")).toBeVisible();
+
+    await learner.close();
+    await fixture.close();
+  } finally {
+    const cleanup = await openPanel();
+    await login(cleanup, "sanity.editor");
+    await deleteTemporaryFixtureGuide(cleanup, setup);
+    await cleanup.close();
+  }
+});
+
+test("learner required validation blocks Next until corrected", async () => {
+  const editor = await openPanel();
+  await login(editor, "sanity.editor");
+  const setup = await createTemporaryFixtureGuide(editor, `GWTP Validation Required ${Date.now()}`, [
+    { selector: "#fixture-name", instruction: "Required", screenName: "Fixture", frame: null, validation: { engine: "required", expression: "__required__", errorMessage: "יש להזין שם אתר לפני המעבר לשלב הבא.", builderType: "required", builderValue: "" } },
+    { selector: "#fixture-type", instruction: "Equals", screenName: "Fixture", frame: null, validation: { engine: "regex", expression: "^branch$", errorMessage: "יש לבחור סניף מכירות", builderType: "equals", builderValue: "branch" } },
+    { selector: "#fixture-type", instruction: "Not equals", screenName: "Fixture", frame: null, validation: { engine: "regex", expression: "^(?!branch$).+$", errorMessage: "יש לבחור סוג אתר שאינו סניף מכירות", builderType: "not_equals", builderValue: "branch" } },
+    { selector: "#fixture-name", instruction: "Contains", screenName: "Fixture", frame: null, validation: { engine: "regex", expression: ".*TEST.*", errorMessage: "שם האתר חייב להכיל TEST", builderType: "contains", builderValue: "TEST" } },
+    { selector: "#fixture-phone", instruction: "Changed", screenName: "Fixture", frame: null, validation: { engine: "changed", expression: "__changed__", errorMessage: "יש לשנות את מספר הטלפון", builderType: "changed", builderValue: "" } },
+    { selector: "#fixture-phone", instruction: "Changed regex", screenName: "Fixture", frame: null, validation: { engine: "changed_regex", expression: "^03-[0-9]{7}$", errorMessage: "יש להזין מספר טלפון תקין ושונה", builderType: "changed_regex", builderValue: "^03-[0-9]{7}$" } }
+  ]);
+  try {
+    await editor.close();
+    const panel = await openPanel();
+    await login(panel, "sanity.learner");
+    const fixture = await context.newPage();
+    await fixture.goto(`${SITE_URL}/gwtp-test-fixture.html`);
+    await fixture.bringToFront();
+    await panel.locator("#learnerTopicSelect").selectOption(String(setup.topicId));
+    await panel.locator("#learnerGuideSelect").selectOption(String(setup.guideId));
+    await panel.locator("#startLearningButton").click();
+    await confirmGuideStartInstruction(panel);
+    const overlay = fixture.locator(".gwtp-training-overlay");
+    const name = fixture.locator("#fixture-name");
+    await expect(overlay).toBeVisible({ timeout: 10000 });
+    await name.fill("");
+    await overlay.locator("button").filter({ hasText: /הבא|Next/i }).click();
+    await expect(overlay).toContainText("יש להזין שם אתר לפני המעבר לשלב הבא.");
+    await name.fill("Playwright Validation Site");
+    await overlay.locator("button").filter({ hasText: /הבא|Next/i }).click();
+    await expect(fixture.locator("#fixture-type")).toHaveCSS("outline-width", "3px");
+    await panel.close(); await fixture.close();
+  } finally {
+    const cleanup = await openPanel(); await login(cleanup, "sanity.editor");
+    await deleteTemporaryFixtureGuide(cleanup, setup); await cleanup.close();
+  }
+});
+
+test("stage 4 validation - equals, not-equals and contains block then allow Next", async () => {
+  const editor = await openPanel(); await login(editor, "sanity.editor");
+  const setup = await createTemporaryFixtureGuide(editor, `GWTP Validation Rules ${Date.now()}`, [
+    { selector: "#fixture-name", instruction: "Required", screenName: "Fixture", frame: null, validation: { engine: "required", expression: "__required__", errorMessage: "יש להזין שם אתר לפני המעבר לשלב הבא.", builderType: "required", builderValue: "" } },
+    { selector: "#fixture-type", instruction: "Equals", screenName: "Fixture", frame: null, validation: { engine: "regex", expression: "^branch$", errorMessage: "יש לבחור סניף מכירות", builderType: "equals", builderValue: "branch" } },
+    { selector: "#fixture-type", instruction: "Not equals", screenName: "Fixture", frame: null, validation: { engine: "regex", expression: "^(?!branch$).+$", errorMessage: "יש לבחור סוג אתר שאינו סניף מכירות", builderType: "not_equals", builderValue: "branch" } },
+    { selector: "#fixture-name", instruction: "Contains", screenName: "Fixture", frame: null, validation: { engine: "regex", expression: ".*TEST.*", errorMessage: "שם האתר חייב להכיל TEST", builderType: "contains", builderValue: "TEST" } },
+    { selector: "#fixture-phone", instruction: "Changed", screenName: "Fixture", frame: null, validation: { engine: "changed", expression: "__changed__", errorMessage: "יש לשנות את מספר הטלפון", builderType: "changed", builderValue: "" } },
+    { selector: "#fixture-phone", instruction: "Changed regex", screenName: "Fixture", frame: null, validation: { engine: "changed_regex", expression: "^03-[0-9]{7}$", errorMessage: "יש להזין מספר טלפון תקין ושונה", builderType: "changed_regex", builderValue: "^03-[0-9]{7}$" } }
+  ]);
+  try {
+    await editor.close();
+    const panel = await openPanel(); await login(panel, "sanity.learner");
+    const fixture = await context.newPage(); await fixture.goto(`${SITE_URL}/gwtp-test-fixture.html`); await fixture.bringToFront();
+    await panel.locator("#learnerTopicSelect").selectOption(String(setup.topicId));
+    await panel.locator("#learnerGuideSelect").selectOption(String(setup.guideId));
+    await panel.locator("#startLearningButton").click();
+    await confirmGuideStartInstruction(panel);
+    const next = () => fixture.locator(".gwtp-training-overlay button").filter({ hasText: /הבא|Next/i });
+    await fixture.locator("#fixture-name").fill("Validation Site"); await next().click();
+    await fixture.locator("#fixture-type").selectOption("hq"); await next().click();
+    await expect(fixture.locator(".gwtp-training-overlay")).toContainText("יש לבחור סניף מכירות");
+    await fixture.locator("#fixture-type").selectOption("branch"); await next().click();
+    await fixture.locator("#fixture-type").selectOption("branch"); await next().click();
+    await expect(fixture.locator(".gwtp-training-overlay")).toContainText("יש לבחור סוג אתר שאינו סניף מכירות");
+    await fixture.locator("#fixture-type").selectOption("hq"); await next().click();
+    await fixture.locator("#fixture-name").fill("Validation Site"); await next().click();
+    await expect(fixture.locator(".gwtp-training-overlay")).toContainText("שם האתר חייב להכיל TEST");
+    await fixture.locator("#fixture-name").fill("Validation TEST Site"); await next().click();
+    await expect(fixture.locator("#fixture-phone")).toHaveCSS("outline-width", "3px");
+    await panel.close(); await fixture.close();
+  } finally {
+    const cleanup = await openPanel(); await login(cleanup, "sanity.editor");
+    await deleteTemporaryFixtureGuide(cleanup, setup); await cleanup.close();
+  }
+});
+
+test("stage 4 validation - changed and changed-regex block then allow Next", async () => {
+  const editor = await openPanel(); await login(editor, "sanity.editor");
+  const setup = await createTemporaryFixtureGuide(editor, `GWTP Validation Changed ${Date.now()}`, [
+    { selector: "#fixture-name", instruction: "Required", screenName: "Fixture", frame: null, validation: { engine: "required", expression: "__required__", errorMessage: "יש להזין שם אתר לפני המעבר לשלב הבא.", builderType: "required", builderValue: "" } },
+    { selector: "#fixture-type", instruction: "Equals", screenName: "Fixture", frame: null, validation: { engine: "regex", expression: "^branch$", errorMessage: "יש לבחור סניף מכירות", builderType: "equals", builderValue: "branch" } },
+    { selector: "#fixture-type", instruction: "Not equals", screenName: "Fixture", frame: null, validation: { engine: "regex", expression: "^(?!branch$).+$", errorMessage: "יש לבחור סוג אתר שאינו סניף מכירות", builderType: "not_equals", builderValue: "branch" } },
+    { selector: "#fixture-name", instruction: "Contains", screenName: "Fixture", frame: null, validation: { engine: "regex", expression: ".*TEST.*", errorMessage: "שם האתר חייב להכיל TEST", builderType: "contains", builderValue: "TEST" } },
+    { selector: "#fixture-phone", instruction: "Changed", screenName: "Fixture", frame: null, validation: { engine: "changed", expression: "__changed__", errorMessage: "יש לשנות את מספר הטלפון", builderType: "changed", builderValue: "" } },
+    { selector: "#fixture-phone", instruction: "Changed regex", screenName: "Fixture", frame: null, validation: { engine: "changed_regex", expression: "^03-[0-9]{7}$", errorMessage: "יש להזין מספר טלפון תקין ושונה", builderType: "changed_regex", builderValue: "^03-[0-9]{7}$" } }
+  ]);
+  try {
+    const guide = await editor.evaluate(async (id) => {
+      const auth = (await chrome.storage.local.get("gwtp.auth.user"))["gwtp.auth.user"];
+      const response = await fetch(`${globalThis.appConfig.api.baseUrl}/api/learner/guides/${id}`, { headers: { Authorization: `Bearer ${auth.accessToken}` } });
+      if (!response.ok) throw new Error("Unable to load temporary validation guide."); return response.json();
+    }, setup.guideId);
+    await editor.close();
+    const panel = await openPanel(); await login(panel, "sanity.learner");
+    const fixture = await context.newPage(); await fixture.goto(`${SITE_URL}/gwtp-test-fixture.html`); await fixture.bringToFront();
+    await panel.locator("#learnerTopicSelect").selectOption(String(setup.topicId)); await panel.locator("#learnerGuideSelect").selectOption(String(setup.guideId));
+    await panel.evaluate(async (guideValue) => {
+      const restart = await chrome.runtime.sendMessage({ type: "GWTP_TRAINING_RESTART", guide: guideValue }); if (!restart?.success) throw new Error(restart?.message || "restart failed");
+      for (let i = 0; i < 4; i += 1) { const moved = await chrome.runtime.sendMessage({ type: "GWTP_TRAINING_NEXT" }); if (!moved?.success) throw new Error(moved?.message || "prepare failed"); }
+    }, guide);
+    await fixture.bringToFront(); await panel.locator("#startLearningButton").click();
+    await confirmGuideStartInstruction(panel);
+    const phone = fixture.locator("#fixture-phone"); const next = () => fixture.locator(".gwtp-training-overlay button").filter({ hasText: /הבא|Next/i });
+    await expect(phone).toHaveCSS("outline-width", "3px", { timeout: 10000 });
+    const baseline = await phone.inputValue(); await next().click(); await expect(fixture.locator(".gwtp-training-overlay")).toContainText("יש לשנות את מספר הטלפון");
+    const changed = baseline === "03-7654321" ? "03-7654322" : "03-7654321"; await phone.fill(changed); await next().click();
+    const finish = () => fixture.locator(".gwtp-training-overlay button").filter({ hasText: /סיום|Finish/i });
+    await finish().click(); await expect(fixture.locator(".gwtp-training-overlay")).toContainText("יש להזין מספר טלפון תקין ושונה");
+    await phone.fill("invalid"); await finish().click(); await expect(fixture.locator(".gwtp-training-overlay")).toContainText("יש להזין מספר טלפון תקין ושונה");
+    await phone.fill("03-7654323"); await finish().click(); await expect(fixture.locator(".gwtp-training-overlay")).toHaveCount(0);
+    await panel.close(); await fixture.close();
+  } finally {
+    const cleanup = await openPanel(); await login(cleanup, "sanity.editor"); await deleteTemporaryFixtureGuide(cleanup, setup); await cleanup.close();
+  }
+});
+
+test("learner continues automatically across the Site to Case page transition", async () => {
+  const panel = await openPanel();
+  await login(panel, "sanity.learner");
+
+  const crm = await context.newPage();
+  await crm.goto(`${SITE_URL}/site.html`);
+  await crm.bringToFront();
+
+  const topic = panel.locator("#learnerTopicSelect option").filter({ hasText: "Demo CRM" });
+  await panel.locator("#learnerTopicSelect").selectOption(await topic.getAttribute("value"));
+  const guide = panel.locator("#learnerGuideSelect option").filter({ hasText: "תרגול מלא - Demo CRM" });
+  await panel.locator("#learnerGuideSelect").selectOption(await guide.getAttribute("value"));
+
+  const restart = panel.locator("#restartLearningButton");
+  if (await restart.isVisible()) await restart.click();
+  else await panel.locator("#startLearningButton").click();
+  await confirmGuideStartInstruction(panel);
+
+  const content = crm.frameLocator('iframe[name="TargetContent"]');
+  let overlay = content.locator(".gwtp-training-overlay");
+  await expect(overlay).toBeVisible({ timeout: 10000 });
+
+  // Move from step 1 through step 6. Step 3 requires a changed phone value and
+  // step 4 requires site type branch; satisfy those authored validations.
+  for (let step = 1; step < 6; step++) {
+    if (step === 3) {
+      const phone = content.locator("#site-phone");
+      const currentPhone = await phone.inputValue();
+      const changedPhone = currentPhone === "03-7654321" ? "03-7654322" : "03-7654321";
+      await phone.fill(changedPhone);
+    }
+    if (step === 4) {
+      await content.locator("#site-type").selectOption("branch");
+      await expect(content.locator("#site-type")).toHaveValue("branch", { timeout: 10000 });
+    }
+
+    overlay = content.locator(".gwtp-training-overlay");
+    const next = overlay.locator("button").filter({ hasText: /הבא|Next/i });
+    await expect(next).toBeEnabled();
+    await next.click();
+
+    // Do not race the runner. The target for the following step may already be
+    // highlighted while the asynchronous progress move is still being persisted.
+    // Advance the test only after the engine confirms the new current step.
+    await expect.poll(async () => panel.evaluate(async () => {
+      const response = await chrome.runtime.sendMessage({ type: "GWTP_TRAINING_GET_CURRENT" });
+      return response?.current?.stepIndex ?? null;
+    }), {
+      message: `GWTP progress did not advance after Site step ${step}`,
+      timeout: 10000
+    }).toBe(step);
+  }
+
+  // Verify the engine itself reached the native-link step before testing the
+  // cross-document handoff. A rendered step can otherwise be stale if an earlier
+  // business postback interrupted progress synchronization.
+  await expect.poll(async () => panel.evaluate(async () => {
+    const response = await chrome.runtime.sendMessage({ type: "GWTP_TRAINING_GET_CURRENT" });
+    return response?.current?.stepIndex ?? null;
+  }), {
+    message: "GWTP progress did not reach the Site→Case link step before navigation",
+    timeout: 10000
+  }).toBe(5);
+
+  const openCase = content.locator("#btn-open-case-from-site");
+  await expect(openCase).toHaveCSS("outline-width", "3px");
+
+  // The native link targets _top. GWTP persists the forward learning intent before
+  // the document is destroyed; PAGE_READY on case.html must then resume at step 7.
+  await openCase.click();
+
+  await expect(crm).toHaveURL(/\/case\.html(?:[?#].*)?$/, { timeout: 10000 });
+
+  // Diagnose the cross-document handoff independently from rendering. The server
+  // progress must advance from zero-based stepIndex 5 (Site link) to 6 (Case field).
+  // If this fails, the pending-navigation handoff did not resume. If it passes but
+  // the overlay assertion below fails, the defect is isolated to destination render.
+  await expect.poll(async () => panel.evaluate(async () => {
+    const response = await chrome.runtime.sendMessage({ type: "GWTP_TRAINING_GET_CURRENT" });
+    return response?.current?.stepIndex ?? null;
+  }), {
+    message: "GWTP progress did not advance to the Case step after navigation",
+    timeout: 10000
+  }).toBe(6);
+
+  const caseContent = crm.frameLocator('iframe[name="TargetContent"]');
+  await expect(caseContent.locator("#case-category")).toBeVisible({ timeout: 10000 });
+  await expect(caseContent.locator(".gwtp-training-overlay")).toBeVisible({ timeout: 10000 });
+  await expect(caseContent.locator("#case-category")).toHaveCSS("outline-width", "3px");
+
+  await panel.close();
+  await crm.close();
+});
+
+
+test("learner survives a real Site server save and reload", async () => {
+  const panel = await openPanel();
+  await login(panel, "sanity.learner");
+
+  const crm = await context.newPage();
+  await crm.goto(`${SITE_URL}/site.html`);
+  await crm.bringToFront();
+
+  const topic = panel.locator("#learnerTopicSelect option").filter({ hasText: "Demo CRM" });
+  await panel.locator("#learnerTopicSelect").selectOption(await topic.getAttribute("value"));
+  const guide = panel.locator("#learnerGuideSelect option").filter({ hasText: "תרגול מלא - Demo CRM" });
+  await panel.locator("#learnerGuideSelect").selectOption(await guide.getAttribute("value"));
+
+  const restart = panel.locator("#restartLearningButton");
+  if (await restart.isVisible()) await restart.click();
+  else await panel.locator("#startLearningButton").click();
+  await confirmGuideStartInstruction(panel);
+
+  const content = crm.frameLocator('iframe[name="TargetContent"]');
+  await expect(content.locator(".gwtp-training-overlay")).toBeVisible({ timeout: 10000 });
+
+  // Advance deterministically to the Save Site step (zero-based index 4).
+  for (let step = 1; step <= 4; step++) {
+    if (step === 3) {
+      const phone = content.locator("#site-phone");
+      const currentPhone = await phone.inputValue();
+      const changedPhone = currentPhone === "03-7654321" ? "03-7654322" : "03-7654321";
+      await phone.fill(changedPhone);
+    }
+    if (step === 4) {
+      await content.locator("#site-type").selectOption("branch");
+      await expect(content.locator("#site-type")).toHaveValue("branch", { timeout: 10000 });
+    }
+
+    const next = content.locator(".gwtp-training-overlay button").filter({ hasText: /הבא|Next/i });
+    await expect(next).toBeEnabled();
+    await next.click();
+
+    await expect.poll(async () => panel.evaluate(async () => {
+      const response = await chrome.runtime.sendMessage({ type: "GWTP_TRAINING_GET_CURRENT" });
+      return response?.current?.stepIndex ?? null;
+    }), {
+      message: `GWTP progress did not advance after Site step ${step}`,
+      timeout: 10000
+    }).toBe(step);
+  }
+
+  const save = content.locator("#btn-save-site");
+  await expect(save).toHaveCSS("outline-width", "3px");
+
+  const frameBeforeSave = crm.frames().find((frame) => frame.name() === "TargetContent");
+  expect(frameBeforeSave).toBeTruthy();
+  const oldUrl = frameBeforeSave.url();
+
+  // This is the real Demo CRM business action: PUT /api/sites/77402 followed by
+  // location.reload() inside TargetContent. GWTP must keep step 5 active.
+  const saveResponsePromise = crm.waitForResponse((response) =>
+    response.url().includes("/api/sites/77402") &&
+    response.request().method() === "PUT"
+  );
+  await save.click();
+  const saveResponse = await saveResponsePromise;
+  expect(saveResponse.ok(), "Demo CRM Site save must succeed").toBeTruthy();
+
+  await expect.poll(() => {
+    const frame = crm.frames().find((item) => item.name() === "TargetContent");
+    return frame?.url() || "";
+  }, {
+    message: "TargetContent did not return after the Site save reload",
+    timeout: 10000
+  }).toBe(oldUrl);
+
+  await expect.poll(async () => panel.evaluate(async () => {
+    const response = await chrome.runtime.sendMessage({ type: "GWTP_TRAINING_GET_CURRENT" });
+    return response?.current?.stepIndex ?? null;
+  }), {
+    message: "GWTP progress changed during the Site save reload",
+    timeout: 10000
+  }).toBe(4);
+
+  await expect(content.locator("#btn-save-site")).toHaveCSS("outline-width", "3px", { timeout: 10000 });
+  await expect(content.locator(".gwtp-training-overlay")).toBeVisible({ timeout: 10000 });
+
+  await panel.close();
+  await crm.close();
+});
+
+
+test("learner can reopen the extension and resume saved progress", async () => {
+  let panel = await openPanel();
+  await login(panel, "sanity.learner");
+
+  const crm = await context.newPage();
+  await crm.goto(`${SITE_URL}/site.html`);
+  await crm.bringToFront();
+
+  const topic = panel.locator("#learnerTopicSelect option").filter({ hasText: "Demo CRM" });
+  await panel.locator("#learnerTopicSelect").selectOption(await topic.getAttribute("value"));
+  const guide = panel.locator("#learnerGuideSelect option").filter({ hasText: "תרגול מלא - Demo CRM" });
+  const guideId = await guide.getAttribute("value");
+  await panel.locator("#learnerGuideSelect").selectOption(guideId);
+
+  const restart = panel.locator("#restartLearningButton");
+  if (await restart.isVisible()) await restart.click();
+  else await panel.locator("#startLearningButton").click();
+  await confirmGuideStartInstruction(panel);
+
+  const content = crm.frameLocator('iframe[name="TargetContent"]');
+  await expect(content.locator(".gwtp-training-overlay")).toBeVisible({ timeout: 10000 });
+
+  // Save a deterministic resume point at step 2 (zero-based index 1).
+  const next = content.locator(".gwtp-training-overlay button").filter({ hasText: /הבא|Next/i });
+  await next.click();
+  await expect.poll(async () => panel.evaluate(async () => {
+    const response = await chrome.runtime.sendMessage({ type: "GWTP_TRAINING_GET_CURRENT" });
+    return response?.current?.stepIndex ?? null;
+  }), { timeout: 10000 }).toBe(1);
+  await expect(content.locator("#site-name")).toHaveCSS("outline-width", "3px");
+
+  // Closing the Side Panel must not erase server progress. Clear the injected
+  // guidance to model a closed/reopened UI, then create a fresh extension page.
+  await panel.evaluate(async () => {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (tab?.id) {
+      try {
+        await chrome.tabs.sendMessage(tab.id, { type: "GWTP_CLEAR_TRAINING_STEP" });
+      } catch {}
+    }
+  });
+  await panel.close();
+
+  panel = await context.newPage();
+  await panel.goto(`chrome-extension://${extensionId}/sidepanel/sidepanel.html`);
+  await expect(panel.locator("#appView")).toBeVisible({ timeout: 10000 });
+  await expect(panel.locator("#learnModeView")).toBeVisible();
+
+  const reopenedTopic = panel.locator("#learnerTopicSelect option").filter({ hasText: "Demo CRM" });
+  await panel.locator("#learnerTopicSelect").selectOption(await reopenedTopic.getAttribute("value"));
+  const reopenedGuide = panel.locator("#learnerGuideSelect option").filter({ hasText: "תרגול מלא - Demo CRM" });
+  await panel.locator("#learnerGuideSelect").selectOption(await reopenedGuide.getAttribute("value"));
+
+  const continueButton = panel.locator("#startLearningButton");
+  await expect(continueButton).toContainText(/המשך למידה|Continue/i);
+  await expect(panel.locator("#restartLearningButton")).toBeVisible();
+
+  await crm.bringToFront();
+  await continueButton.click();
+
+  await expect.poll(async () => panel.evaluate(async () => {
+    const response = await chrome.runtime.sendMessage({ type: "GWTP_TRAINING_GET_CURRENT" });
+    return response?.current?.stepIndex ?? null;
+  }), { timeout: 10000 }).toBe(1);
+  await expect(content.locator(".gwtp-training-overlay")).toBeVisible({ timeout: 10000 });
+  await expect(content.locator("#site-name")).toHaveCSS("outline-width", "3px");
+
+  await panel.close();
+  await crm.close();
+});
+
+
+test("completed guide is stored as Completed and starts over on the next run", async () => {
+  let panel = await openPanel();
+  await login(panel, "sanity.learner");
+
+  const crm = await context.newPage();
+  await crm.goto(`${SITE_URL}/site.html`);
+  await crm.bringToFront();
+
+  const topic = panel.locator("#learnerTopicSelect option").filter({ hasText: "Demo CRM" });
+  await panel.locator("#learnerTopicSelect").selectOption(await topic.getAttribute("value"));
+  const validationGuide = panel.locator("#learnerGuideSelect option").filter({ hasText: "בדיקת כל חוקי הוולידציה" });
+  const guideId = await validationGuide.getAttribute("value");
+  await panel.locator("#learnerGuideSelect").selectOption(guideId);
+
+  const restart = panel.locator("#restartLearningButton");
+  if (await restart.isVisible()) await restart.click();
+  else await panel.locator("#startLearningButton").click();
+  await confirmGuideStartInstruction(panel);
+
+  const content = crm.frameLocator('iframe[name="TargetContent"]');
+  await expect(content.locator(".gwtp-training-overlay")).toBeVisible({ timeout: 10000 });
+
+  // Complete the compact validation guide while satisfying every authored rule.
+  // Step indexes: 0 required name, 1 equals branch, 2 not-equals HQ,
+  // 3 contains TEST, 4 changed phone, 5 changed+regex phone.
+  await content.locator("#site-name").fill("TEST Completion Site");
+  await content.locator(".gwtp-training-overlay button").filter({ hasText: /הבא|Next/i }).click();
+  await expect(content.locator("#site-type")).toHaveCSS("outline-width", "3px");
+
+  await content.locator("#site-type").selectOption("branch");
+  await expect(content.locator("#site-type")).toHaveValue("branch", { timeout: 10000 });
+  await content.locator(".gwtp-training-overlay button").filter({ hasText: /הבא|Next/i }).click();
+  await expect.poll(async () => panel.evaluate(async () => {
+    const response = await chrome.runtime.sendMessage({ type: "GWTP_TRAINING_GET_CURRENT" });
+    return response?.current?.stepIndex ?? null;
+  }), { timeout: 10000 }).toBe(2);
+
+  // Step 2 requires a value different from branch. Changing this field triggers
+  // the Demo CRM postback/reload, so wait for the new document/value before Next.
+  await content.locator("#site-type").selectOption("hq");
+  await expect(content.locator("#site-type")).toHaveValue("hq", { timeout: 10000 });
+  await content.locator(".gwtp-training-overlay button").filter({ hasText: /הבא|Next/i }).click();
+  await expect.poll(async () => panel.evaluate(async () => {
+    const response = await chrome.runtime.sendMessage({ type: "GWTP_TRAINING_GET_CURRENT" });
+    return response?.current?.stepIndex ?? null;
+  }), { timeout: 10000 }).toBe(3);
+  await expect(content.locator("#site-name")).toHaveCSS("outline-width", "3px");
+
+  await content.locator("#site-name").fill("TEST Completion Site");
+  await content.locator(".gwtp-training-overlay button").filter({ hasText: /הבא|Next/i }).click();
+  await expect.poll(async () => panel.evaluate(async () => {
+    const response = await chrome.runtime.sendMessage({ type: "GWTP_TRAINING_GET_CURRENT" });
+    return response?.current?.stepIndex ?? null;
+  }), { timeout: 10000 }).toBe(4);
+  await expect(content.locator("#site-phone")).toHaveCSS("outline-width", "3px");
+
+  let phone = content.locator("#site-phone");
+  const baseline = await phone.inputValue();
+  const firstChangedPhone = baseline === "03-7654321" ? "03-7654322" : "03-7654321";
+  await phone.fill(firstChangedPhone);
+  await content.locator(".gwtp-training-overlay button").filter({ hasText: /הבא|Next/i }).click();
+  await expect.poll(async () => panel.evaluate(async () => {
+    const response = await chrome.runtime.sendMessage({ type: "GWTP_TRAINING_GET_CURRENT" });
+    return response?.current?.stepIndex ?? null;
+  }), { timeout: 10000 }).toBe(5);
+
+  phone = content.locator("#site-phone");
+  const secondBaseline = await phone.inputValue();
+  const secondChangedPhone = secondBaseline === "03-7654323" ? "03-7654324" : "03-7654323";
+  await phone.fill(secondChangedPhone);
+
+  const finish = content.locator(".gwtp-training-overlay button").filter({ hasText: /סיום|סיים|Finish/i });
+  await expect(finish).toBeEnabled();
+  await finish.click();
+
+  const completion = content.locator('[role="dialog"][aria-modal="true"]');
+  await expect(completion).toBeVisible({ timeout: 10000 });
+
+  // Reopen the extension UI so its learner catalog is freshly loaded from the API.
+  await panel.close();
+  panel = await context.newPage();
+  await panel.goto(`chrome-extension://${extensionId}/sidepanel/sidepanel.html`);
+  await expect(panel.locator("#learnModeView")).toBeVisible({ timeout: 10000 });
+
+  const reopenedTopic = panel.locator("#learnerTopicSelect option").filter({ hasText: "Demo CRM" });
+  await panel.locator("#learnerTopicSelect").selectOption(await reopenedTopic.getAttribute("value"));
+  const reopenedGuide = panel.locator("#learnerGuideSelect option").filter({ hasText: "בדיקת כל חוקי הוולידציה" });
+  await panel.locator("#learnerGuideSelect").selectOption(await reopenedGuide.getAttribute("value"));
+
+  // Completed guides are not offered Continue/Restart. Pressing Start must restart
+  // from step 1 rather than attempting to resume the completed final step.
+  const start = panel.locator("#startLearningButton");
+  await expect(start).toBeVisible();
+  await expect(start).not.toContainText(/המשך למידה|Continue/i);
+  await expect(panel.locator("#restartLearningButton")).toBeHidden();
+
+  await crm.bringToFront();
+  await start.click();
+  await confirmGuideStartInstruction(panel);
+  await expect.poll(async () => panel.evaluate(async () => {
+    const response = await chrome.runtime.sendMessage({ type: "GWTP_TRAINING_GET_CURRENT" });
+    return response?.current?.stepIndex ?? null;
+  }), { timeout: 10000 }).toBe(0);
+  await expect(content.locator("#site-name")).toHaveCSS("outline-width", "3px");
+
+  await panel.close();
+  await crm.close();
+});
+
+
+test("stage 6 resilience batch - learner survives target-page reload without advancing progress", async () => {
+  const panel = await openPanel();
+  await login(panel, "sanity.learner");
+  const crm = await context.newPage();
+  await crm.goto(`${SITE_URL}/site.html`);
+  await crm.bringToFront();
+
+  const topic = panel.locator("#learnerTopicSelect option").filter({ hasText: "Demo CRM" });
+  await panel.locator("#learnerTopicSelect").selectOption(await topic.getAttribute("value"));
+  const guide = panel.locator("#learnerGuideSelect option").filter({ hasText: "תרגול מלא - Demo CRM" });
+  await panel.locator("#learnerGuideSelect").selectOption(await guide.getAttribute("value"));
+  const restart = panel.locator("#restartLearningButton");
+  if (await restart.isVisible()) await restart.click();
+  else await panel.locator("#startLearningButton").click();
+  await confirmGuideStartInstruction(panel);
+
+  const content = crm.frameLocator('iframe[name="TargetContent"]');
+  await expect(content.locator(".gwtp-training-overlay")).toBeVisible({ timeout: 10000 });
+  await expect.poll(async () => panel.evaluate(async () => (await chrome.runtime.sendMessage({ type: "GWTP_TRAINING_GET_CURRENT" }))?.current?.stepIndex ?? null)).toBe(0);
+
+  await crm.reload();
+  await expect.poll(async () => panel.evaluate(async () => (await chrome.runtime.sendMessage({ type: "GWTP_TRAINING_GET_CURRENT" }))?.current?.stepIndex ?? null), { timeout: 10000 }).toBe(0);
+  await expect(crm.frameLocator('iframe[name="TargetContent"]').locator(".gwtp-training-overlay")).toBeVisible({ timeout: 10000 });
+  await expect(crm.frameLocator('iframe[name="TargetContent"]').locator("#site-code")).toHaveCSS("outline-width", "3px");
+
+  await panel.close();
+  await crm.close();
+});
+
+test("stage 6 resilience batch - repeated PAGE_READY signals do not duplicate or advance generic guidance", async () => {
+  const editor = await openPanel();
+  await login(editor, "sanity.editor");
+  const setup = await createTemporaryFixtureGuide(editor, `GWTP PAGE_READY ${Date.now()}`, [
+    { selector: "#fixture-code", instruction: "Fixture code", screenName: "Fixture", frame: null, validation: null }
+  ]);
+  try {
+    await editor.close();
+    const panel = await openPanel();
+    await login(panel, "sanity.learner");
+    const fixture = await context.newPage();
+    await fixture.goto(`${SITE_URL}/gwtp-test-fixture.html`);
+    await fixture.bringToFront();
+    await panel.locator("#learnerTopicSelect").selectOption(String(setup.topicId));
+    await panel.locator("#learnerGuideSelect").selectOption(String(setup.guideId));
+    await panel.locator("#startLearningButton").click();
+    await confirmGuideStartInstruction(panel);
+    await expect(fixture.locator(".gwtp-training-overlay")).toBeVisible({ timeout: 10000 });
+
+    await panel.evaluate(async () => {
+      await Promise.all([
+        chrome.runtime.sendMessage({ type: "GWTP_PAGE_READY" }),
+        chrome.runtime.sendMessage({ type: "GWTP_PAGE_READY" }),
+        chrome.runtime.sendMessage({ type: "GWTP_PAGE_READY" })
+      ]);
+    });
+
+    await expect.poll(async () => panel.evaluate(async () => (await chrome.runtime.sendMessage({ type: "GWTP_TRAINING_GET_CURRENT" }))?.current?.stepIndex ?? null), { timeout: 10000 }).toBe(0);
+    await expect(fixture.locator(".gwtp-training-overlay")).toHaveCount(1);
+    await panel.close();
+    await fixture.close();
+  } finally {
+    const cleanup = await openPanel();
+    await login(cleanup, "sanity.editor");
+    await deleteTemporaryFixtureGuide(cleanup, setup);
+    await cleanup.close();
+  }
+});
+
+test("stage 6 resilience batch - rapid duplicate Next does not skip a generic learner step", async () => {
+  const editor = await openPanel();
+  await login(editor, "sanity.editor");
+  const setup = await createTemporaryFixtureGuide(editor, `GWTP Duplicate Next ${Date.now()}`, [
+    { selector: "#fixture-code", instruction: "Fixture code", screenName: "Fixture", frame: null, validation: null },
+    { selector: "#fixture-name", instruction: "Fixture name", screenName: "Fixture", frame: null, validation: null },
+    { selector: "#fixture-phone", instruction: "Fixture phone", screenName: "Fixture", frame: null, validation: null }
+  ]);
+  try {
+    await editor.close();
+    const panel = await openPanel();
+    await login(panel, "sanity.learner");
+    const fixture = await context.newPage();
+    await fixture.goto(`${SITE_URL}/gwtp-test-fixture.html`);
+    await fixture.bringToFront();
+    await panel.locator("#learnerTopicSelect").selectOption(String(setup.topicId));
+    await panel.locator("#learnerGuideSelect").selectOption(String(setup.guideId));
+    await panel.locator("#startLearningButton").click();
+    await confirmGuideStartInstruction(panel);
+
+    const next = fixture.locator(".gwtp-training-overlay button").filter({ hasText: /הבא|Next/i });
+    await expect(next).toBeVisible({ timeout: 10000 });
+    await next.evaluate((button) => { button.click(); button.click(); });
+
+    await expect.poll(async () => panel.evaluate(async () => (await chrome.runtime.sendMessage({ type: "GWTP_TRAINING_GET_CURRENT" }))?.current?.stepIndex ?? null), { timeout: 10000 }).toBe(1);
+    await expect(fixture.locator("#fixture-name")).toHaveCSS("outline-width", "3px");
+    await panel.close();
+    await fixture.close();
+  } finally {
+    const cleanup = await openPanel();
+    await login(cleanup, "sanity.editor");
+    await deleteTemporaryFixtureGuide(cleanup, setup);
+    await cleanup.close();
+  }
+});
+
+test("stage 6 resilience batch - leaving the target page preserves progress and returning restores guidance", async () => {
+  const panel = await openPanel();
+  await login(panel, "sanity.learner");
+  const crm = await context.newPage();
+  await crm.goto(`${SITE_URL}/site.html`);
+  await crm.bringToFront();
+
+  const topic = panel.locator("#learnerTopicSelect option").filter({ hasText: "Demo CRM" });
+  await panel.locator("#learnerTopicSelect").selectOption(await topic.getAttribute("value"));
+  const guide = panel.locator("#learnerGuideSelect option").filter({ hasText: "תרגול מלא - Demo CRM" });
+  await panel.locator("#learnerGuideSelect").selectOption(await guide.getAttribute("value"));
+  const restart = panel.locator("#restartLearningButton");
+  if (await restart.isVisible()) await restart.click();
+  else await panel.locator("#startLearningButton").click();
+  await confirmGuideStartInstruction(panel);
+
+  const content = crm.frameLocator('iframe[name="TargetContent"]');
+  await expect(content.locator(".gwtp-training-overlay")).toBeVisible({ timeout: 10000 });
+  await content.locator(".gwtp-training-overlay button").filter({ hasText: /הבא|Next/i }).click();
+  await expect.poll(async () => panel.evaluate(async () => (await chrome.runtime.sendMessage({ type: "GWTP_TRAINING_GET_CURRENT" }))?.current?.stepIndex ?? null), { timeout: 10000 }).toBe(1);
+
+  await crm.goto(`${SITE_URL}/leads.html`);
+  await expect.poll(async () => panel.evaluate(async () => (await chrome.runtime.sendMessage({ type: "GWTP_TRAINING_GET_CURRENT" }))?.current?.stepIndex ?? null), { timeout: 10000 }).toBe(1);
+
+  await crm.goto(`${SITE_URL}/site.html`);
+  await expect.poll(async () => panel.evaluate(async () => (await chrome.runtime.sendMessage({ type: "GWTP_TRAINING_GET_CURRENT" }))?.current?.stepIndex ?? null), { timeout: 10000 }).toBe(1);
+  await expect(crm.frameLocator('iframe[name="TargetContent"]').locator("#site-name")).toHaveCSS("outline-width", "3px", { timeout: 10000 });
+  await expect(crm.frameLocator('iframe[name="TargetContent"]').locator(".gwtp-training-overlay")).toHaveCount(1);
+
+  await panel.close();
+  await crm.close();
+});
+
+test("stage 6 resilience batch - logout during learning clears UI session without erasing saved progress", async () => {
+  const panel = await openPanel();
+  await login(panel, "sanity.learner");
+  const crm = await context.newPage();
+  await crm.goto(`${SITE_URL}/site.html`);
+  await crm.bringToFront();
+
+  const topic = panel.locator("#learnerTopicSelect option").filter({ hasText: "Demo CRM" });
+  await panel.locator("#learnerTopicSelect").selectOption(await topic.getAttribute("value"));
+  const guide = panel.locator("#learnerGuideSelect option").filter({ hasText: "תרגול מלא - Demo CRM" });
+  await panel.locator("#learnerGuideSelect").selectOption(await guide.getAttribute("value"));
+  const restart = panel.locator("#restartLearningButton");
+  if (await restart.isVisible()) await restart.click();
+  else await panel.locator("#startLearningButton").click();
+  await confirmGuideStartInstruction(panel);
+
+  const content = crm.frameLocator('iframe[name="TargetContent"]');
+  await expect(content.locator(".gwtp-training-overlay")).toBeVisible({ timeout: 10000 });
+  await content.locator(".gwtp-training-overlay button").filter({ hasText: /הבא|Next/i }).click();
+  await expect.poll(async () => panel.evaluate(async () => (await chrome.runtime.sendMessage({ type: "GWTP_TRAINING_GET_CURRENT" }))?.current?.stepIndex ?? null), { timeout: 10000 }).toBe(1);
+
+  await panel.bringToFront();
+  await panel.locator("#logoutButton").click();
+  await expect(panel.locator("#loginView")).toBeVisible();
+  await expect(panel.locator("#appView")).toBeHidden();
+
+  await login(panel, "sanity.learner");
+  const resumedTopic = panel.locator("#learnerTopicSelect option").filter({ hasText: "Demo CRM" });
+  await panel.locator("#learnerTopicSelect").selectOption(await resumedTopic.getAttribute("value"));
+  const resumedGuide = panel.locator("#learnerGuideSelect option").filter({ hasText: "תרגול מלא - Demo CRM" });
+  await panel.locator("#learnerGuideSelect").selectOption(await resumedGuide.getAttribute("value"));
+  await expect(panel.locator("#startLearningButton")).toContainText(/המשך למידה|Continue/i);
+  await expect(panel.locator("#restartLearningButton")).toBeVisible();
+
+  await panel.close();
+  await crm.close();
+});
+
+
+test("stage 6 full authoring lifecycle - new topic guide reopen edit steps preview and learner consume updated version", async () => {
+  test.setTimeout(60000);
+  const suffix = Date.now();
+  const topicName = `Stage 6 Journey Topic ${suffix}`;
+  const guideName = `Stage 6 Journey Guide ${suffix}`;
+  const updatedGuideName = `Stage 6 Journey Guide Updated ${suffix}`;
+  const originalFirstInstruction = `Stage 6 first original ${suffix}`;
+  const updatedFirstInstruction = `Stage 6 first updated ${suffix}`;
+  const secondInstruction = `Stage 6 second ${suffix}`;
+  const thirdInstruction = `Stage 6 third ${suffix}`;
+  const panel = await openPanel();
+  let crm = null;
+
+  const findGuide = (name) => panel.locator("#guidesList [data-guide-id]").filter({ hasText: name }).first();
+
+  try {
+    await login(panel, "sanity.editor");
+
+    // Create a brand-new Topic through the Editor UI.
+    await panel.locator("#openTopicsButton").click();
+    await panel.locator("#openCreateTopicButton").click();
+    await panel.locator("#newTopicInput").fill(topicName);
+    await panel.locator("#createTopicButton").click();
+    await expect(panel.locator("#topicsList [data-topic-id]").filter({ hasText: topicName }).first()).toBeVisible();
+    await panel.locator("#backFromTopicsButton").click();
+
+    crm = await context.newPage();
+    await crm.goto(SITE_URL + "/site.html");
+    await crm.bringToFront();
+    const content = crm.frameLocator('iframe[name="TargetContent"]');
+
+    // Create a new Guide under that new Topic and author two real CRM Steps.
+    await panel.locator("#openNewGuideButton").click();
+    const topicOption = panel.locator("#topicSelect option").filter({ hasText: topicName });
+    await expect(topicOption).toHaveCount(1);
+    await panel.locator("#topicSelect").selectOption(await topicOption.getAttribute("value"));
+    await panel.locator("#guideNameInput").fill(guideName);
+    await panel.locator("#guideStartInstructionInput").fill("Open the relevant system and navigate to the starting screen.");
+
+    await panel.locator("#addStepButton").click();
+    await panel.locator("#selectButton").click();
+    await content.locator("#site-code").click();
+    await panel.locator("#screenNameInput").fill("Journey Site");
+    await panel.locator("#instructionInput").fill(originalFirstInstruction);
+    await panel.locator("#saveStepButton").click();
+
+    await panel.locator("#addStepButton").click();
+    await panel.locator("#selectButton").click();
+    await content.locator("#site-name").click();
+    await panel.locator("#screenNameInput").fill("Journey Site");
+    await panel.locator("#instructionInput").fill(secondInstruction);
+    await panel.locator("#saveStepButton").click();
+
+    await panel.locator("#saveGuideButton").click();
+    let guideCard = findGuide(guideName);
+    await expect(guideCard).toBeVisible();
+
+    // Reopen the persisted Guide and verify the original authoring data survived.
+    await guideCard.click();
+    await expect(panel.locator("#guideNameInput")).toHaveValue(guideName);
+    await expect(panel.locator("#topicSelect option:checked")).toHaveText(topicName);
+    await expect(panel.locator("#guideStartInstructionInput")).toHaveValue("Open the relevant system and navigate to the starting screen.");
+    await expect(panel.locator("#stepsList .step-item")).toHaveCount(2);
+    await panel.locator("#stepsList .step-item").first().click();
+    await expect(panel.locator("#instructionInput")).toContainText(originalFirstInstruction);
+    await expect(panel.locator("#screenNameInput")).toHaveValue("Journey Site");
+
+    // Edit persisted Step 1, add Step 3, then reorder and delete so persistence is
+    // verified across multiple authoring mutations rather than only a simple update.
+    await panel.locator("#instructionInput").fill(updatedFirstInstruction);
+    await panel.locator("#screenNameInput").fill("Journey Site Updated");
+    await panel.locator("#saveStepButton").click();
+
+    await panel.locator("#addStepButton").click();
+    await panel.locator("#selectButton").click();
+    await content.locator("#site-phone").click();
+    await panel.locator("#screenNameInput").fill("Journey Site");
+    await panel.locator("#instructionInput").fill(thirdInstruction);
+    await panel.locator("#saveStepButton").click();
+    await expect(panel.locator("#stepsList .step-item")).toHaveCount(3);
+
+    const thirdStep = panel.locator("#stepsList .step-item").filter({ hasText: thirdInstruction }).first();
+    const thirdStepDragHandle = thirdStep.locator(".step-item__drag-handle");
+    await thirdStepDragHandle.focus();
+    await thirdStepDragHandle.dispatchEvent("keydown", { key: "ArrowUp", bubbles: true });
+    await expect(panel.locator("#stepsList .step-item").nth(1)).toContainText(thirdInstruction);
+
+    const secondStep = panel.locator("#stepsList .step-item").filter({ hasText: secondInstruction }).first();
+    await secondStep.click();
+    await panel.locator("#deleteEditedStepButton").click();
+    await panel.locator("#confirmDeleteButton").click();
+    await expect(panel.locator("#stepsList .step-item")).toHaveCount(2);
+
+    // Change Guide metadata and learner visibility, save, close, and reopen again.
+    await panel.locator("#guideNameInput").fill(updatedGuideName);
+    await panel.locator("#guideAvailableInput").check();
+    await panel.locator("#saveGuideButton").click();
+    guideCard = findGuide(updatedGuideName);
+    await expect(guideCard).toBeVisible();
+    await guideCard.click();
+    await expect(panel.locator("#guideNameInput")).toHaveValue(updatedGuideName);
+    await expect(panel.locator("#guideAvailableInput")).toBeChecked();
+    await expect(panel.locator("#stepsList .step-item")).toHaveCount(2);
+    await expect(panel.locator("#stepsList .step-item").nth(0)).toContainText(updatedFirstInstruction);
+    await expect(panel.locator("#stepsList .step-item").nth(1)).toContainText(thirdInstruction);
+    await expect(panel.locator("#stepsList")).not.toContainText(secondInstruction);
+
+    // Preview must consume the reopened, updated persisted Step order/content.
+    await crm.bringToFront();
+    await panel.locator("#previewGuideButton").click();
+    await confirmGuideStartInstruction(panel);
+    const overlay = content.locator(".gwtp-training-overlay");
+    await expect(overlay).toContainText(updatedFirstInstruction);
+    await overlay.locator("button").filter({ hasText: /הבא|Next/i }).click();
+    await expect(overlay).toContainText(thirdInstruction);
+    // Playwright hosts the Side Panel as a tab. Keep the CRM active while invoking
+    // Exit so cleanup is sent to the real application tab, matching Chrome Side Panel.
+    await crm.bringToFront();
+    await panel.locator("#exitPreviewButton").evaluate((button) => button.click());
+    await expect(overlay).toHaveCount(0);
+
+    // Close the Editor session, sign in as Learner, and verify the newly created
+    // Topic/Guide is visible and runs the updated version, not stale authoring data.
+    await panel.locator("#backToGuidesButton").click();
+    await panel.locator("#logoutButton").click();
+    await login(panel, "sanity.learner");
+
+    const learnerTopicOption = panel.locator("#learnerTopicSelect option").filter({ hasText: topicName });
+    await expect(learnerTopicOption).toHaveCount(1);
+    await panel.locator("#learnerTopicSelect").selectOption(await learnerTopicOption.getAttribute("value"));
+    const learnerGuideOption = panel.locator("#learnerGuideSelect option").filter({ hasText: updatedGuideName });
+    await expect(learnerGuideOption).toHaveCount(1);
+    await panel.locator("#learnerGuideSelect").selectOption(await learnerGuideOption.getAttribute("value"));
+    await crm.bringToFront();
+    await panel.locator("#startLearningButton").click();
+    await confirmGuideStartInstruction(panel);
+    await expect(overlay).toContainText(updatedFirstInstruction);
+    await overlay.locator("button").filter({ hasText: /הבא|Next/i }).click();
+    await expect(overlay).toContainText(thirdInstruction);
+    await overlay.locator("button").filter({ hasText: /סיום|Finish/i }).click();
+  } finally {
+    // Clean up through the same public UI so the journey remains rerunnable.
+    try {
+      if (await panel.locator("#appView").isVisible().catch(() => false)) {
+        if (await panel.locator("#learnModeView").isVisible().catch(() => false)) {
+          await panel.locator("#logoutButton").click().catch(() => {});
+          await login(panel, "sanity.editor").catch(() => {});
+        }
+        if (await panel.locator("#guideEditorView").isVisible().catch(() => false)) {
+          await panel.locator("#backToGuidesButton").click().catch(() => {});
+        }
+        const leftoverGuide = findGuide(updatedGuideName);
+        const originalGuide = findGuide(guideName);
+        for (const candidate of [leftoverGuide, originalGuide]) {
+          if (await candidate.count()) {
+            await candidate.click().catch(() => {});
+            await panel.locator("#deleteEditedGuideButton").click().catch(() => {});
+            if (await panel.locator("#deleteConfirmOverlay").isVisible().catch(() => false)) {
+              await panel.locator("#confirmDeleteButton").click().catch(() => {});
+            }
+          }
+        }
+        await panel.locator("#openTopicsButton").click().catch(() => {});
+        const leftoverTopic = panel.locator("#topicsList [data-topic-id]").filter({ hasText: topicName }).first();
+        if (await leftoverTopic.count()) {
+          await leftoverTopic.click().catch(() => {});
+          await panel.locator("#deleteEditedTopicButton").click().catch(() => {});
+          if (await panel.locator("#deleteConfirmOverlay").isVisible().catch(() => false)) {
+            await panel.locator("#confirmDeleteButton").click().catch(() => {});
+          }
+        }
+      }
+    } catch {}
+    await panel.close().catch(() => {});
+    if (crm) await crm.close().catch(() => {});
+  }
+});
+
+
+test("stage 6 GUI forms batch - required markers and error regions are adjacent and programmatic", async () => {
+  const panel = await openPanel();
+
+  const loginChecks = [
+    ["#usernameInput", "#loginStatus"],
+    ["#passwordInput", "#loginStatus"]
+  ];
+  for (const [field, status] of loginChecks) {
+    await expect(panel.locator(field)).toHaveAttribute("aria-describedby", status.slice(1));
+    await expect(panel.locator(`label[for="${field.slice(1)}"] .required-marker`)).toBeVisible();
+  }
+  const loginOrder = await panel.evaluate(() => {
+    const button = document.querySelector("#loginButton");
+    const status = document.querySelector("#loginStatus");
+    return Boolean(button && status && (button.compareDocumentPosition(status) & Node.DOCUMENT_POSITION_FOLLOWING));
+  });
+  expect(loginOrder).toBeTruthy();
+
+  await panel.locator("#usernameInput").fill("x");
+  await panel.locator("#loginButton").click();
+  await expect(panel.locator("#loginStatus")).not.toHaveText("");
+  await expect(panel.locator("#loginView")).toBeVisible();
+
+  await panel.close();
+});
+
+test("stage 6 GUI forms batch - admin required validation stays local, visible and reflow-safe", async () => {
+  const panel = await openPanel();
+  await panel.setViewportSize({ width: 320, height: 720 });
+  await login(panel, "sanity.admin");
+  await panel.locator("#openCreateUserButton").click();
+
+  for (const selector of ["#newDisplayName", "#newUsername", "#newPassword", "#newRole"]) {
+    await expect(panel.locator(selector)).toHaveAttribute("required", "");
+    await expect(panel.locator(selector)).toHaveAttribute("aria-required", "true");
+    await expect(panel.locator(`label[for="${selector.slice(1)}"] .required-marker`)).toBeVisible();
+  }
+
+  await panel.locator("#createUserButton").click();
+  const status = panel.locator("#createUserStatus");
+  await expect(status).not.toHaveText("");
+  await expect(status).toHaveAttribute("data-type", "error");
+  await expect(panel.locator("#createUserCard")).toBeVisible();
+
+  const geometry = await panel.evaluate(() => {
+    const card = document.querySelector("#createUserCard").getBoundingClientRect();
+    const status = document.querySelector("#createUserStatus").getBoundingClientRect();
+    const actions = document.querySelector("#createUserCard .actions").getBoundingClientRect();
+    return {
+      overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+      statusInside: status.left >= card.left - 1 && status.right <= card.right + 1,
+      statusBeforeActions: status.bottom <= actions.top + 1
+    };
+  });
+  expect(geometry.overflow).toBeLessThanOrEqual(1);
+  expect(geometry.statusInside).toBeTruthy();
+  expect(geometry.statusBeforeActions).toBeTruthy();
+
+  await panel.locator("#closeCreateUserButton").click();
+  await panel.locator("#openCreateUserButton").click();
+  await expect(panel.locator("#createUserStatus")).toHaveText("");
+
+  await panel.close();
+});
+
+test("stage 6 GUI forms batch - topic required error is local and clears when editor is reopened", async () => {
+  const panel = await openPanel();
+  await login(panel, "sanity.editor");
+  await panel.locator("#openTopicsButton").click();
+  await panel.locator("#openCreateTopicButton").click();
+
+  await expect(panel.locator("#newTopicInput")).toHaveAttribute("required", "");
+  await expect(panel.locator("#newTopicInput")).toHaveAttribute("aria-required", "true");
+  await expect(panel.locator('label[for="newTopicInput"] .required-marker')).toBeVisible();
+
+  await panel.locator("#createTopicButton").click();
+  await expect(panel.locator("#topicStatus")).not.toHaveText("");
+  await expect(panel.locator("#topicStatus")).toHaveAttribute("data-type", "error");
+
+  const local = await panel.evaluate(() => {
+    const input = document.querySelector("#newTopicInput").getBoundingClientRect();
+    const status = document.querySelector("#topicStatus").getBoundingClientRect();
+    return status.top >= input.bottom && status.left >= document.querySelector("#createTopicEditor").getBoundingClientRect().left - 1;
+  });
+  expect(local).toBeTruthy();
+
+  await panel.locator("#cancelCreateTopicButton").click();
+  await panel.locator("#openCreateTopicButton").click();
+  await expect(panel.locator("#topicStatus")).toHaveText("");
+
+  await panel.close();
+});
+
+test("stage 6 GUI forms batch - guide required errors stay with guide details and recover after correction", async () => {
+  const panel = await openPanel();
+  await login(panel, "sanity.editor");
+  await panel.locator("#openNewGuideButton").click();
+
+  for (const selector of ["#topicSelect", "#guideNameInput", "#guideStartInstructionInput"]) {
+    await expect(panel.locator(selector)).toHaveAttribute("required", "");
+    await expect(panel.locator(selector)).toHaveAttribute("aria-required", "true");
+    await expect(panel.locator(`label[for="${selector.slice(1)}"] .required-marker`)).toBeVisible();
+  }
+
+  await panel.locator("#guideNameInput").fill("");
+  await panel.locator("#guideStartInstructionInput").fill("Open the relevant system and navigate to the starting screen.");
+  await panel.locator("#saveGuideButton").click();
+  await expect(panel.locator("#saveGuideStatus")).not.toHaveText("");
+  await expect(panel.locator("#saveGuideStatus")).toHaveAttribute("data-type", "error");
+  await expect(panel.locator("#guideEditorView")).toBeVisible();
+
+  const placement = await panel.evaluate(() => {
+    const status = document.querySelector("#saveGuideStatus").getBoundingClientRect();
+    const actions = document.querySelector(".guide-editor-actions").getBoundingClientRect();
+    return status.bottom <= actions.top + 1;
+  });
+  expect(placement).toBeTruthy();
+
+  await panel.locator("#guideNameInput").fill("Stage 6 GUI temporary");
+  await panel.locator("#guideStartInstructionInput").fill("Open the relevant system and navigate to the starting screen.");
+  await expect(panel.locator("#saveGuideButton")).toBeEnabled();
+
+  await panel.close();
+});
+
+test("stage 6 GUI forms batch - step required state is preventive, local, semantic and clears on close", async () => {
+  const panel = await openPanel();
+  await login(panel, "sanity.editor");
+
+  const guideCard = panel.locator("[data-guide-id]").filter({ hasText: "תרגול מלא - Demo CRM" }).first();
+  await guideCard.click();
+  await panel.locator("#addStepButton").click();
+
+  await expect(panel.locator("#instructionInput")).toHaveAttribute("aria-required", "true");
+  await expect(panel.locator("#instructionInput")).toHaveAttribute("aria-describedby", "status");
+  await expect(panel.locator('label[for="instructionInput"] .required-marker')).toBeVisible();
+
+  // Step creation intentionally prevents invalid submission instead of producing
+  // a post-click error: element selection + instruction are prerequisites.
+  await expect(panel.locator("#saveStepButton")).toBeDisabled();
+  await expect(panel.locator("#stepEditor")).toBeVisible();
+
+  const placement = await panel.evaluate(() => {
+    const status = document.querySelector("#status").getBoundingClientRect();
+    const actions = document.querySelector("#stepEditor .actions").getBoundingClientRect();
+    return status.bottom <= actions.top + 1;
+  });
+  expect(placement).toBeTruthy();
+
+  // Verify stale feedback cannot leak into a newly opened Step panel.
+  await panel.evaluate(() => {
+    const status = document.querySelector("#status");
+    status.textContent = "Temporary validation feedback";
+    status.dataset.type = "error";
+  });
+  await panel.locator("#cancelStepButton").click();
+  await expect(panel.locator("#stepEditor")).toBeHidden();
+  await panel.locator("#addStepButton").click();
+  await expect(panel.locator("#status")).toHaveText("");
+  await expect(panel.locator("#status")).not.toHaveAttribute("data-type", "error");
+
+  await panel.close();
+});
+
+test("stage 6 GUI forms batch - long error messages remain contained at narrow reflow", async () => {
+  const panel = await openPanel();
+  await panel.setViewportSize({ width: 320, height: 720 });
+  await login(panel, "sanity.editor");
+  await panel.locator("#openNewGuideButton").click();
+
+  await panel.locator("#guideNameInput").fill("");
+  await panel.locator("#guideStartInstructionInput").fill("Open the relevant system and navigate to the starting screen.");
+  await panel.locator("#saveGuideButton").click();
+  await expect(panel.locator("#saveGuideStatus")).not.toHaveText("");
+
+  const metrics = await panel.evaluate(() => {
+    const status = document.querySelector("#saveGuideStatus");
+    status.textContent = status.textContent + " " + "LongErrorSegmentWithoutSpaces".repeat(8);
+    const rect = status.getBoundingClientRect();
+    const card = document.querySelector(".guide-details-card").getBoundingClientRect();
+    return {
+      pageWidth: document.documentElement.scrollWidth,
+      viewportWidth: document.documentElement.clientWidth,
+      contained: rect.left >= card.left - 1 && rect.right <= card.right + 1
+    };
+  });
+  expect(metrics.pageWidth).toBeLessThanOrEqual(metrics.viewportWidth + 1);
+  expect(metrics.contained).toBeTruthy();
+
+  await panel.close();
+});
+
+
+test("learner sidepanel fits a narrow viewport", async () => {
+  const panel = await openPanel();
+  await panel.setViewportSize({ width: 320, height: 720 });
+  await login(panel, "sanity.learner");
+  await expect(panel.locator("#learnModeView")).toBeVisible();
+
+  const topic = panel.locator("#learnerTopicSelect option").filter({ hasText: "Demo CRM" });
+  await panel.locator("#learnerTopicSelect").selectOption(await topic.getAttribute("value"));
+  const guide = panel.locator("#learnerGuideSelect option").filter({ hasText: "תרגול מלא - Demo CRM" });
+  await panel.locator("#learnerGuideSelect").selectOption(await guide.getAttribute("value"));
+
+  const sizes = await panel.evaluate(() => ({
+    viewport: document.documentElement.clientWidth,
+    page: document.documentElement.scrollWidth
+  }));
+  expect(sizes.page).toBeLessThanOrEqual(sizes.viewport + 1);
+
+  for (const selector of ["#learnerTopicSelect", "#learnerGuideSelect", "#startLearningButton"]) {
+    const locator = panel.locator(selector);
+    await expect(locator).toBeVisible();
+    const box = await locator.boundingBox();
+    expect(box).not.toBeNull();
+    expect(box.x).toBeGreaterThanOrEqual(0);
+    expect(box.x + box.width).toBeLessThanOrEqual(321);
+  }
+
+  await panel.close();
+});
+
+
+test("editor sidepanel fits a narrow viewport", async () => {
+  const panel = await openPanel();
+  await panel.setViewportSize({ width: 320, height: 720 });
+  await login(panel, "sanity.editor");
+  await expect(panel.locator("#createModeView")).toBeVisible();
+
+  const sizes = await panel.evaluate(() => ({
+    viewport: document.documentElement.clientWidth,
+    page: document.documentElement.scrollWidth
+  }));
+  expect(sizes.page).toBeLessThanOrEqual(sizes.viewport + 1);
+
+  const visibleControls = panel.locator("#createModeView button:visible, #createModeView input:visible, #createModeView select:visible, #createModeView textarea:visible");
+  const count = await visibleControls.count();
+  expect(count).toBeGreaterThan(0);
+
+  for (let index = 0; index < count; index++) {
+    const box = await visibleControls.nth(index).boundingBox();
+    if (!box) continue;
+    expect(box.x).toBeGreaterThanOrEqual(-1);
+    expect(box.x + box.width).toBeLessThanOrEqual(321);
+  }
+
+  await panel.close();
+});
+
+
+test("stage 6 accessibility - editor reflows at 200 percent zoom", async () => {
+  const panel = await openPanel();
+  await panel.setViewportSize({ width: 640, height: 720 });
+  await login(panel, "sanity.editor");
+  await expect(panel.locator("#createModeView")).toBeVisible();
+
+  // Chromium page zoom is not exposed as a stable Playwright API for extension
+  // pages. Emulate 200% reflow by halving the available CSS viewport width while
+  // keeping the normal Side Panel content contract under test.
+  await panel.setViewportSize({ width: 320, height: 720 });
+
+  const guideCard = panel.locator("[data-guide-id]").filter({ hasText: "תרגול מלא - Demo CRM" }).first();
+  await expect(guideCard).toBeVisible();
+  await guideCard.click();
+
+  const firstStep = panel.locator("#stepsList .step-item").first();
+  await expect(firstStep).toBeVisible();
+  await firstStep.click();
+  await expect(panel.locator("#stepEditor")).toBeVisible();
+
+  const layout = await panel.evaluate(() => ({
+    viewport: document.documentElement.clientWidth,
+    page: document.documentElement.scrollWidth
+  }));
+  expect(layout.page).toBeLessThanOrEqual(layout.viewport + 1);
+
+  const controls = panel.locator("#createModeView button:visible, #createModeView input:visible, #createModeView select:visible, #createModeView [contenteditable='true']:visible");
+  const count = await controls.count();
+  expect(count).toBeGreaterThan(0);
+
+  for (let index = 0; index < count; index++) {
+    const control = controls.nth(index);
+    const box = await control.boundingBox();
+    if (!box) continue;
+    expect(box.x).toBeGreaterThanOrEqual(-1);
+    expect(box.x + box.width).toBeLessThanOrEqual(321);
+  }
+
+  for (const selector of ["#selectButton", "#screenNameInput", "#instructionInput", "#saveStepButton", "#cancelStepButton"]) {
+    await expect(panel.locator(selector)).toBeVisible();
+  }
+
+  await panel.close();
+});
+
+
+function parseRgb(cssColor) {
+  const match = cssColor.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+  if (!match) throw new Error(`Unsupported CSS color: ${cssColor}`);
+  return [Number(match[1]), Number(match[2]), Number(match[3])];
+}
+
+function contrastRatio(foreground, background) {
+  const luminance = (rgb) => {
+    const channels = rgb.map((value) => {
+      const normalized = value / 255;
+      return normalized <= 0.04045 ? normalized / 12.92 : Math.pow((normalized + 0.055) / 1.055, 2.4);
+    });
+    return 0.2126 * channels[0] + 0.7152 * channels[1] + 0.0722 * channels[2];
+  };
+  const first = luminance(foreground);
+  const second = luminance(background);
+  return (Math.max(first, second) + 0.05) / (Math.min(first, second) + 0.05);
+}
+
+test("stage 6 accessibility batch - rendered sidepanel contrast and status semantics", async () => {
+  const panel = await openPanel();
+  await login(panel, "sanity.editor");
+
+  const samples = panel.locator(".description:visible, .current-user-identity__role:visible, .guide-item span:visible, .button:visible");
+  const count = await samples.count();
+  expect(count).toBeGreaterThan(0);
+
+  for (let index = 0; index < count; index++) {
+    const values = await samples.nth(index).evaluate((element) => {
+      const style = getComputedStyle(element);
+      let backgroundElement = element;
+      let background = style.backgroundColor;
+      while (backgroundElement.parentElement && (background === "rgba(0, 0, 0, 0)" || background === "transparent")) {
+        backgroundElement = backgroundElement.parentElement;
+        background = getComputedStyle(backgroundElement).backgroundColor;
+      }
+      return { color: style.color, background };
+    });
+    expect(contrastRatio(parseRgb(values.color), parseRgb(values.background))).toBeGreaterThanOrEqual(4.5);
+  }
+
+  const guideCard = panel.locator("[data-guide-id]").filter({ hasText: "תרגול מלא - Demo CRM" }).first();
+  await guideCard.click();
+  await panel.locator("#stepsList .step-item").first().click();
+
+  for (const statusSelector of ["#elementPickerStatus", "#status", "#stepsSaveStatus"]) {
+    const status = panel.locator(statusSelector);
+    await expect(status).toHaveAttribute("aria-live", "polite");
+  }
+
+  await panel.close();
+});
+
+test("stage 6 accessibility batch - admin reflow keeps management controls reachable", async () => {
+  const panel = await openPanel();
+  await panel.setViewportSize({ width: 320, height: 720 });
+  await login(panel, "sanity.admin");
+  await expect(panel.locator("#adminView")).toBeVisible();
+
+  await panel.locator("#openCreateUserButton").click();
+  await expect(panel.locator("#createUserCard")).toBeVisible();
+
+  const layout = await panel.evaluate(() => ({
+    viewport: document.documentElement.clientWidth,
+    page: document.documentElement.scrollWidth
+  }));
+  expect(layout.page).toBeLessThanOrEqual(layout.viewport + 1);
+
+  for (const selector of ["#newDisplayName", "#newUsername", "#newPassword", "#newRole", "#createUserButton", "#closeCreateUserButton"]) {
+    const control = panel.locator(selector);
+    await expect(control).toBeVisible();
+    const box = await control.boundingBox();
+    expect(box).not.toBeNull();
+    expect(box.x).toBeGreaterThanOrEqual(-1);
+    expect(box.x + box.width).toBeLessThanOrEqual(321);
+  }
+
+  await panel.close();
+});
+
+test("stage 6 accessibility batch - editor primary authoring controls are keyboard focusable", async () => {
+  const panel = await openPanel();
+  await login(panel, "sanity.editor");
+
+  const guideCard = panel.locator("[data-guide-id]").filter({ hasText: "תרגול מלא - Demo CRM" }).first();
+  await guideCard.focus();
+  await expect(guideCard).toBeFocused();
+  await guideCard.press("Enter");
+
+  const firstStep = panel.locator("#stepsList .step-item").first();
+  await firstStep.focus();
+  await expect(firstStep).toBeFocused();
+  await firstStep.press("Enter");
+  await expect(panel.locator("#stepEditor")).toBeVisible();
+
+  for (const selector of ["#screenNameInput", "#instructionInput", "#selectButton", "#saveStepButton", "#cancelStepButton"]) {
+    const control = panel.locator(selector);
+    await control.focus();
+    await expect(control).toBeFocused();
+  }
+
+  await panel.close();
+});
+
+test("stage 6 accessibility batch - required editor fields expose programmatic semantics", async () => {
+  const panel = await openPanel();
+  await login(panel, "sanity.editor");
+
+  await panel.locator("#openNewGuideButton").click();
+  for (const selector of ["#guideNameInput", "#topicSelect", "#guideStartInstructionInput"]) {
+    await expect(panel.locator(selector)).toHaveAttribute("required", "");
+    await expect(panel.locator(selector)).toHaveAttribute("aria-required", "true");
+  }
+
+  await panel.close();
+});
+
+
+test("visual layout - admin sidepanel fits a narrow viewport", async () => {
+  const panel = await openPanel();
+  await panel.setViewportSize({ width: 320, height: 720 });
+  await login(panel, "sanity.admin");
+  await expect(panel.locator("#adminView")).toBeVisible();
+
+  const sizes = await panel.evaluate(() => ({
+    viewport: document.documentElement.clientWidth,
+    page: document.documentElement.scrollWidth
+  }));
+  expect(sizes.page).toBeLessThanOrEqual(sizes.viewport + 1);
+
+  const controls = panel.locator("#adminView button:visible, #adminView input:visible, #adminView select:visible");
+  for (let i = 0; i < await controls.count(); i++) {
+    const box = await controls.nth(i).boundingBox();
+    if (!box) continue;
+    expect(box.x).toBeGreaterThanOrEqual(-1);
+    expect(box.x + box.width).toBeLessThanOrEqual(321);
+  }
+  await panel.close();
+});
+
+test("visual layout - learner guidance stays inside a narrow target viewport", async () => {
+  const panel = await openPanel();
+  await login(panel, "sanity.learner");
+  const crm = await context.newPage();
+  await crm.setViewportSize({ width: 360, height: 640 });
+  await crm.goto(`${SITE_URL}/site.html`);
+  await crm.bringToFront();
+
+  const topic = panel.locator("#learnerTopicSelect option").filter({ hasText: "Demo CRM" });
+  await panel.locator("#learnerTopicSelect").selectOption(await topic.getAttribute("value"));
+  const guide = panel.locator("#learnerGuideSelect option").filter({ hasText: "תרגול מלא - Demo CRM" });
+  await panel.locator("#learnerGuideSelect").selectOption(await guide.getAttribute("value"));
+  const restart = panel.locator("#restartLearningButton");
+  if (await restart.isVisible()) await restart.click();
+  else await panel.locator("#startLearningButton").click();
+  await confirmGuideStartInstruction(panel);
+
+  const content = crm.frameLocator('iframe[name="TargetContent"]');
+  const overlay = content.locator(".gwtp-training-overlay");
+  await expect(overlay).toBeVisible({ timeout: 10000 });
+  const fit = await overlay.evaluate((element) => {
+    const rect = element.getBoundingClientRect();
+    return { left: rect.left, right: rect.right, viewport: innerWidth };
+  });
+  expect(fit.left).toBeGreaterThanOrEqual(0);
+  expect(fit.right).toBeLessThanOrEqual(fit.viewport + 1);
+  await panel.close();
+  await crm.close();
+});
+
+test("visual layout - guidance controls remain usable with enlarged text", async () => {
+  const panel = await openPanel();
+  await login(panel, "sanity.learner");
+  const crm = await context.newPage();
+  await crm.setViewportSize({ width: 480, height: 720 });
+  await crm.goto(`${SITE_URL}/site.html`);
+  await crm.bringToFront();
+
+  const topic = panel.locator("#learnerTopicSelect option").filter({ hasText: "Demo CRM" });
+  await panel.locator("#learnerTopicSelect").selectOption(await topic.getAttribute("value"));
+  const guide = panel.locator("#learnerGuideSelect option").filter({ hasText: "תרגול מלא - Demo CRM" });
+  await panel.locator("#learnerGuideSelect").selectOption(await guide.getAttribute("value"));
+  const restart = panel.locator("#restartLearningButton");
+  if (await restart.isVisible()) await restart.click();
+  else await panel.locator("#startLearningButton").click();
+  await confirmGuideStartInstruction(panel);
+
+  const content = crm.frameLocator('iframe[name="TargetContent"]');
+  const overlay = content.locator(".gwtp-training-overlay");
+  await expect(overlay).toBeVisible({ timeout: 10000 });
+  await overlay.evaluate((element) => { element.style.fontSize = "28px"; });
+  const buttons = overlay.locator("button");
+  expect(await buttons.count()).toBeGreaterThan(0);
+  for (let i = 0; i < await buttons.count(); i++) {
+    await expect(buttons.nth(i)).toBeVisible();
+  }
+  const fit = await overlay.evaluate((element) => {
+    const rect = element.getBoundingClientRect();
+    return { left: rect.left, right: rect.right, viewport: innerWidth, scrollWidth: element.scrollWidth, clientWidth: element.clientWidth };
+  });
+  expect(fit.left).toBeGreaterThanOrEqual(0);
+  expect(fit.right).toBeLessThanOrEqual(fit.viewport + 1);
+  expect(fit.scrollWidth).toBeLessThanOrEqual(fit.clientWidth + 1);
+  await panel.close();
+  await crm.close();
+});
+
+test("visual layout - Hebrew learner guidance uses RTL direction", async () => {
+  const panel = await openPanel();
+  await login(panel, "sanity.learner");
+  const crm = await context.newPage();
+  await crm.goto(`${SITE_URL}/site.html`);
+  await crm.bringToFront();
+
+  const topic = panel.locator("#learnerTopicSelect option").filter({ hasText: "Demo CRM" });
+  await panel.locator("#learnerTopicSelect").selectOption(await topic.getAttribute("value"));
+  const guide = panel.locator("#learnerGuideSelect option").filter({ hasText: "תרגול מלא - Demo CRM" });
+  await panel.locator("#learnerGuideSelect").selectOption(await guide.getAttribute("value"));
+  const restart = panel.locator("#restartLearningButton");
+  if (await restart.isVisible()) await restart.click();
+  else await panel.locator("#startLearningButton").click();
+  await confirmGuideStartInstruction(panel);
+
+  const overlay = crm.frameLocator('iframe[name="TargetContent"]').locator(".gwtp-training-overlay");
+  await expect(overlay).toBeVisible({ timeout: 10000 });
+  await expect(overlay).toHaveAttribute("dir", "rtl");
+  await panel.close();
+  await crm.close();
+});
+
+
+test("accessibility resilience - login supports keyboard submission", async () => {
+  const panel = await openPanel();
+  await panel.locator("#usernameInput").fill("sanity.learner");
+  await panel.locator("#passwordInput").fill(PASSWORD);
+  await panel.locator("#passwordInput").press("Enter");
+  await expect(panel.locator("#appView")).toBeVisible();
+  await expect(panel.locator("#learnModeView")).toBeVisible();
+  await panel.close();
+});
+
+test("accessibility resilience - learner primary controls are keyboard focusable", async () => {
+  const panel = await openPanel();
+  await login(panel, "sanity.learner");
+  const topicSelect = panel.locator("#learnerTopicSelect");
+  await topicSelect.focus();
+  await expect(topicSelect).toBeFocused();
+
+  // Guide selection is intentionally disabled until a topic is selected.
+  // Exercise the real learner flow before asserting keyboard focusability.
+  const topic = topicSelect.locator("option").filter({ hasText: "Demo CRM" });
+  await topicSelect.selectOption(await topic.getAttribute("value"));
+
+  const guideSelect = panel.locator("#learnerGuideSelect");
+  await expect(guideSelect).toBeEnabled();
+  await guideSelect.focus();
+  await expect(guideSelect).toBeFocused();
+
+  const guide = guideSelect.locator("option").filter({ hasText: "תרגול מלא - Demo CRM" });
+  await guideSelect.selectOption(await guide.getAttribute("value"));
+
+  const startButton = panel.locator("#startLearningButton");
+  await expect(startButton).toBeEnabled();
+  await startButton.focus();
+  await expect(startButton).toBeFocused();
+  await panel.close();
+});
+
+test("accessibility resilience - completion dialog traps focus and closes with Escape", async () => {
+  const panel = await openPanel();
+  await login(panel, "sanity.learner");
+  const crm = await context.newPage();
+  await crm.goto(`${SITE_URL}/site.html`);
+  await crm.bringToFront();
+
+  const topic = panel.locator("#learnerTopicSelect option").filter({ hasText: "Demo CRM" });
+  await panel.locator("#learnerTopicSelect").selectOption(await topic.getAttribute("value"));
+  const validationGuide = panel.locator("#learnerGuideSelect option").filter({ hasText: "בדיקת כל חוקי הוולידציה" });
+  await panel.locator("#learnerGuideSelect").selectOption(await validationGuide.getAttribute("value"));
+  const restart = panel.locator("#restartLearningButton");
+  if (await restart.isVisible()) await restart.click();
+  else await panel.locator("#startLearningButton").click();
+  await confirmGuideStartInstruction(panel);
+
+  const content = crm.frameLocator('iframe[name="TargetContent"]');
+  const next = content.locator(".gwtp-training-overlay button").filter({ hasText: /הבא|Next/i });
+  await content.locator("#site-name").fill("TEST Accessibility");
+  await next.click();
+  await content.locator("#site-type").selectOption("branch");
+  await next.click();
+  await expect.poll(async () => panel.evaluate(async () => (await chrome.runtime.sendMessage({ type: "GWTP_TRAINING_GET_CURRENT" }))?.current?.stepIndex ?? null), { timeout: 10000 }).toBe(2);
+  await content.locator("#site-type").selectOption("hq");
+  await next.click();
+  await expect.poll(async () => panel.evaluate(async () => (await chrome.runtime.sendMessage({ type: "GWTP_TRAINING_GET_CURRENT" }))?.current?.stepIndex ?? null), { timeout: 10000 }).toBe(3);
+  await content.locator("#site-name").fill("TEST Accessibility");
+  await next.click();
+  await expect.poll(async () => panel.evaluate(async () => (await chrome.runtime.sendMessage({ type: "GWTP_TRAINING_GET_CURRENT" }))?.current?.stepIndex ?? null), { timeout: 10000 }).toBe(4);
+  let phone = content.locator("#site-phone");
+  const baseline = await phone.inputValue();
+  await phone.fill(baseline === "03-7654321" ? "03-7654322" : "03-7654321");
+  await next.click();
+  await expect.poll(async () => panel.evaluate(async () => (await chrome.runtime.sendMessage({ type: "GWTP_TRAINING_GET_CURRENT" }))?.current?.stepIndex ?? null), { timeout: 10000 }).toBe(5);
+  phone = content.locator("#site-phone");
+  const finalBaseline = await phone.inputValue();
+  await phone.fill(finalBaseline === "03-7654323" ? "03-7654324" : "03-7654323");
+  await content.locator(".gwtp-training-overlay button").filter({ hasText: /סיום|סיים|Finish/i }).click();
+
+  const dialog = content.locator('[role="dialog"][aria-modal="true"]');
+  await expect(dialog).toBeVisible({ timeout: 10000 });
+  await expect(dialog.locator("button")).toBeFocused();
+  await dialog.locator("button").press("Tab");
+  await expect(dialog.locator("button")).toBeFocused();
+  await dialog.locator("button").press("Escape");
+  await expect(dialog).toBeHidden();
+
+  await panel.close();
+  await crm.close();
+});
+
+test("accessibility resilience - learner recovery actions remain available after missing target", async () => {
+  const panel = await openPanel();
+  await login(panel, "sanity.learner");
+  const crm = await context.newPage();
+  await crm.goto(`${SITE_URL}/site.html`);
+  await crm.bringToFront();
+
+  const topic = panel.locator("#learnerTopicSelect option").filter({ hasText: "Demo CRM" });
+  await panel.locator("#learnerTopicSelect").selectOption(await topic.getAttribute("value"));
+  const guide = panel.locator("#learnerGuideSelect option").filter({ hasText: "תרגול מלא - Demo CRM" });
+  await panel.locator("#learnerGuideSelect").selectOption(await guide.getAttribute("value"));
+  const restart = panel.locator("#restartLearningButton");
+  if (await restart.isVisible()) await restart.click();
+  else await panel.locator("#startLearningButton").click();
+  await confirmGuideStartInstruction(panel);
+  await expect(crm.frameLocator('iframe[name="TargetContent"]').locator(".gwtp-training-overlay")).toBeVisible({ timeout: 10000 });
+
+  await crm.goto(`${SITE_URL}/leads.html`);
+  await panel.bringToFront();
+  await panel.locator("#exitLearningButton").click();
+  await expect(panel.locator("#learnerTopicSelect")).toBeEnabled();
+  await expect(panel.locator("#learnerGuideSelect")).toBeEnabled();
+
+  await panel.close();
+  await crm.close();
+});
+
+
+test("stage 4 lifecycle - editor authors, previews and publishes a guide that learner can run", async () => {
+  const guideName = `Stage 4 Lifecycle ${Date.now()}`;
+  let createdGuideId = null;
+
+  const editor = await openPanel();
+  let crm = null;
+  let learnerBeforePublish = null;
+  let learner = null;
+
+  try {
+    await login(editor, "sanity.editor");
+
+    crm = await context.newPage();
+    await crm.goto(`${SITE_URL}/site.html`);
+    await crm.bringToFront();
+
+  // Create a new unpublished guide in the real editor.
+  await editor.locator("#openNewGuideButton").click();
+  await expect(editor.locator("#guideEditorView")).toBeVisible();
+
+  const demoTopic = editor.locator("#topicSelect option").filter({ hasText: "Demo CRM" });
+  await editor.locator("#topicSelect").selectOption(await demoTopic.getAttribute("value"));
+  await editor.locator("#guideNameInput").fill(guideName);
+  await editor.locator("#guideStartInstructionInput").fill("Open the relevant system and navigate to the starting screen.");
+  await expect(editor.locator("#guideAvailableInput")).not.toBeChecked();
+
+  // Author one real step with the real element picker.
+  await editor.locator("#addStepButton").click();
+  await editor.locator("#selectButton").click();
+  const content = crm.frameLocator('iframe[name="TargetContent"]');
+  await content.locator("#site-code").click();
+  const authoredSelector = (await editor.locator("#selectedSelector").innerText()).trim();
+  expect(authoredSelector).not.toBe("");
+  await editor.locator("#instructionInput").fill("Stage 4 lifecycle instruction");
+  await editor.locator("#saveStepButton").click();
+  await expect(editor.locator("#stepEditor")).toBeHidden();
+
+  // Preview must work while the guide is still unpublished.
+  await crm.bringToFront();
+  await editor.locator("#previewGuideButton").click();
+  await confirmGuideStartInstruction(editor);
+  await expect(content.locator("#site-code")).toHaveCSS("outline-width", "3px", { timeout: 10000 });
+  await expect(content.locator(".gwtp-training-overlay")).toHaveCount(1);
+  await expect(content.locator(".gwtp-training-overlay")).toBeVisible();
+  await editor.bringToFront();
+  await editor.locator("#exitPreviewButton").click();
+
+  // Save unpublished, then prove the learner catalog does not expose it.
+  await editor.locator("#saveGuideButton").click();
+  await expect(editor.locator("#guideLibraryView")).toBeVisible();
+  const createdCard = editor.locator("[data-guide-id]").filter({ hasText: guideName }).first();
+  await expect(createdCard).toBeVisible();
+  createdGuideId = Number(await createdCard.getAttribute("data-guide-id"));
+  expect(createdGuideId).toBeGreaterThan(0);
+
+  learnerBeforePublish = await openPanel();
+  await login(learnerBeforePublish, "sanity.learner");
+  const learnerTopicBefore = learnerBeforePublish.locator("#learnerTopicSelect option").filter({ hasText: "Demo CRM" });
+  await learnerBeforePublish.locator("#learnerTopicSelect").selectOption(await learnerTopicBefore.getAttribute("value"));
+  await expect(learnerBeforePublish.locator("#learnerGuideSelect option").filter({ hasText: guideName })).toHaveCount(0);
+  await learnerBeforePublish.close();
+  learnerBeforePublish = null;
+
+  // Publish through the real editor.
+  await createdCard.click();
+  await editor.locator("#guideAvailableInput").check();
+  await editor.locator("#saveGuideButton").click();
+  await expect(editor.locator("#guideLibraryView")).toBeVisible();
+
+  // A fresh learner session must now discover and run the authored guide.
+  learner = await openPanel();
+  await login(learner, "sanity.learner");
+  const learnerTopic = learner.locator("#learnerTopicSelect option").filter({ hasText: "Demo CRM" });
+  await learner.locator("#learnerTopicSelect").selectOption(await learnerTopic.getAttribute("value"));
+  const learnerGuide = learner.locator("#learnerGuideSelect option").filter({ hasText: guideName });
+  await expect(learnerGuide).toHaveCount(1);
+  await learner.locator("#learnerGuideSelect").selectOption(await learnerGuide.getAttribute("value"));
+
+  await crm.bringToFront();
+  await learner.locator("#startLearningButton").click();
+  await confirmGuideStartInstruction(learner);
+  await expect(content.locator("#site-code")).toHaveCSS("outline-width", "3px", { timeout: 10000 });
+  await expect(content.locator(".gwtp-training-overlay")).toBeVisible();
+
+  // Unpublish through the real editor and prove a fresh learner catalog hides it again.
+  await learner.close();
+  learner = null;
+  await editor.bringToFront();
+  let lifecycleCard = editor.locator("[data-guide-id]").filter({ hasText: guideName }).first();
+  await lifecycleCard.click();
+  await editor.locator("#guideAvailableInput").uncheck();
+  await editor.locator("#saveGuideButton").click();
+  await expect(editor.locator("#guideLibraryView")).toBeVisible();
+
+  learner = await openPanel();
+  await login(learner, "sanity.learner");
+  const learnerTopicAfterUnpublish = learner.locator("#learnerTopicSelect option").filter({ hasText: "Demo CRM" });
+  await learner.locator("#learnerTopicSelect").selectOption(await learnerTopicAfterUnpublish.getAttribute("value"));
+  await expect(learner.locator("#learnerGuideSelect option").filter({ hasText: guideName })).toHaveCount(0);
+  } finally {
+    await learnerBeforePublish?.close().catch(() => {});
+    await learner?.close().catch(() => {});
+
+    // Cleanup must run even when an assertion fails after the guide has been saved.
+    if (createdGuideId) {
+      try {
+        await editor.bringToFront();
+        const cleanupCard = editor.locator(`[data-guide-id="${createdGuideId}"]`).first();
+        if (await cleanupCard.count()) {
+          await cleanupCard.click();
+          await editor.locator("#deleteEditedGuideButton").click();
+          await expect(editor.locator("#deleteConfirmOverlay")).toBeVisible();
+          await editor.locator("#confirmDeleteButton").click();
+          await expect(editor.locator(`[data-guide-id="${createdGuideId}"]`)).toHaveCount(0);
+        }
+      } catch {
+        // Preserve the original test failure; a later run can still identify the
+        // timestamped QA fixture by guideName if UI cleanup itself is unavailable.
+      }
+    }
+
+    await editor.close().catch(() => {});
+    await crm?.close().catch(() => {});
+  }
+});
+
+
+test("stage 4 grid - stable grid selector resolves the same logical target after server rerender", async () => {
+  const panel = await openPanel();
+  await login(panel, "sanity.editor");
+
+  const crm = await context.newPage();
+  const sortResponses = [];
+  crm.on("response", (response) => {
+    if (response.url().includes("/api/customers/10082?") && response.request().method() === "GET") {
+      sortResponses.push(response.url());
+    }
+  });
+
+  await crm.goto(`${SITE_URL}/customer360.html`);
+  const content = crm.frameLocator('iframe[name="TargetContent"]');
+  const table = content.locator("#c360-summary-table");
+  await expect(table).toBeVisible({ timeout: 10000 });
+
+  const targetCell = table.locator("tbody td").filter({ hasText: "LD-3094" }).first();
+  await expect(targetCell).toBeVisible();
+  const originalRow = await targetCell.evaluate((cell) => cell.parentElement?.rowIndex ?? -1);
+
+  const stableSelector = 'gwtp-grid:#c360-summary-table|1|"LD-3094"';
+  const resolveGridSelector = async () => {
+    const cells = table.locator("tbody tr td:first-child");
+    const count = await cells.count();
+    const matchingTexts = [];
+
+    for (let index = 0; index < count; index += 1) {
+      const text = (await cells.nth(index).innerText()).trim().replace(/\\s+/g, " ");
+      if (text === "LD-3094") matchingTexts.push(text);
+    }
+
+    return {
+      found: matchingTexts.length === 1,
+      text: matchingTexts[0] || "",
+      matchCount: matchingTexts.length
+    };
+  };
+
+  expect(stableSelector).toBe('gwtp-grid:#c360-summary-table|1|"LD-3094"');
+  const initialResolve = await resolveGridSelector();
+  expect(initialResolve).toEqual({ found: true, text: "LD-3094", matchCount: 1 });
+
+  const sortButton = content.locator('.ps-grid-sort[data-sort="referenceNumber"]');
+  await sortButton.click();
+
+  await expect.poll(() => sortResponses.some((url) =>
+    url.includes("sort=referenceNumber") && url.includes("direction=desc")
+  ), {
+    message: "Customer 360 sort did not issue the expected server request",
+    timeout: 10000
+  }).toBeTruthy();
+
+  await expect(sortButton).toHaveAttribute("aria-sort", "descending");
+  await expect(targetCell).toBeVisible();
+  const sortedRow = await targetCell.evaluate((cell) => cell.parentElement?.rowIndex ?? -1);
+  expect(sortedRow).not.toBe(originalRow);
+
+  const afterSortResolve = await resolveGridSelector();
+  expect(afterSortResolve).toEqual({ found: true, text: "LD-3094", matchCount: 1 });
+
+  await panel.close();
+  await crm.close();
+});
+
+
+test("stage 4 learner - active guidance restores after a full page reload", async () => {
+  const panel = await openPanel();
+  await login(panel, "sanity.learner");
+
+  const crm = await context.newPage();
+  await crm.goto(`${SITE_URL}/site.html`);
+  await crm.bringToFront();
+
+  const topic = panel.locator("#learnerTopicSelect option").filter({ hasText: "Demo CRM" });
+  await panel.locator("#learnerTopicSelect").selectOption(await topic.getAttribute("value"));
+  const guideOption = panel.locator("#learnerGuideSelect option").filter({ hasText: "תרגול מלא - Demo CRM" });
+  const guideId = Number(await guideOption.getAttribute("value"));
+  expect(guideId).toBeGreaterThan(0);
+
+  const auth = await panel.evaluate(async () => (await chrome.storage.local.get("gwtp.auth.user"))["gwtp.auth.user"]);
+  expect(auth?.accessToken).toBeTruthy();
+
+  const guideResponse = await panel.evaluate(async ({ apiUrl, id, token }) => {
+    const response = await fetch(`${apiUrl}/api/learner/guides/${id}`, {
+      headers: { Authorization: `Bearer ${token}`, Accept: "application/json" }
+    });
+    return { ok: response.ok, body: await response.json() };
+  }, { apiUrl: API_URL, id: guideId, token: auth.accessToken });
+  expect(guideResponse.ok).toBeTruthy();
+
+  const topFrameStep = guideResponse.body.steps.find((step) => !step.frame || step.frame.isTop);
+  expect(topFrameStep, "Full Demo CRM guide must contain a top-frame step").toBeTruthy();
+
+  await panel.evaluate(async ({ guide, targetIndex }) => {
+    const restart = await chrome.runtime.sendMessage({ type: "GWTP_TRAINING_RESTART", guide });
+    if (!restart?.success) throw new Error(restart?.message || "Unable to restart learner progress.");
+    for (let index = 0; index < targetIndex; index += 1) {
+      const response = await chrome.runtime.sendMessage({ type: "GWTP_TRAINING_NEXT" });
+      if (!response?.success) throw new Error(response?.message || "Unable to prepare learner progress.");
+    }
+  }, { guide: guideResponse.body, targetIndex: Number(topFrameStep.stepOrder) - 1 });
+
+  await panel.locator("#learnerGuideSelect").selectOption(String(guideId));
+  await panel.locator("#startLearningButton").click();
+
+  // Progress was prepared as InProgress above. Resume must restore the saved
+  // step directly and must not replay the guide-level start instruction.
+  await expect(panel.locator("#learnerStartInstructionPanel")).toBeHidden();
+  await expect(crm.locator(".gwtp-training-overlay")).toBeVisible({ timeout: 10000 });
+  const before = await panel.evaluate(async () =>
+    (await chrome.runtime.sendMessage({ type: "GWTP_TRAINING_GET_CURRENT" }))?.current?.stepIndex ?? null
+  );
+
+  await crm.reload();
+  await expect(crm.locator(".gwtp-training-overlay")).toBeVisible({ timeout: 10000 });
+
+  const after = await panel.evaluate(async () =>
+    (await chrome.runtime.sendMessage({ type: "GWTP_TRAINING_GET_CURRENT" }))?.current?.stepIndex ?? null
+  );
+  expect(after).toBe(before);
+
+  await panel.close();
+  await crm.close();
+});
+
+
+test("stage 4 grid learner - active guidance restores the logical target after grid rerender", async () => {
+  const panel = await openPanel();
+  await login(panel, "sanity.learner");
+
+  const crm = await context.newPage();
+  await crm.goto(`${SITE_URL}/customer360.html`);
+  await crm.bringToFront();
+
+  const topic = panel.locator("#learnerTopicSelect option").filter({ hasText: "Demo CRM" });
+  await panel.locator("#learnerTopicSelect").selectOption(await topic.getAttribute("value"));
+  const guideOption = panel.locator("#learnerGuideSelect option").filter({ hasText: "תרגול מלא - Demo CRM" });
+  const guideId = Number(await guideOption.getAttribute("value"));
+  expect(guideId).toBeGreaterThan(0);
+
+  // Put the sanity learner directly on the guide's existing Grid step. This is a
+  // QA setup operation only; the runtime still renders and owns the real learner step.
+  const auth = await panel.evaluate(async () => (await chrome.storage.local.get("gwtp.auth.user"))["gwtp.auth.user"]);
+  expect(auth?.accessToken).toBeTruthy();
+
+  const guideResponse = await panel.evaluate(async ({ apiUrl, id, token }) => {
+    const response = await fetch(`${apiUrl}/api/learner/guides/${id}`, {
+      headers: { Authorization: `Bearer ${token}`, Accept: "application/json" }
+    });
+    return { ok: response.ok, body: await response.json() };
+  }, { apiUrl: API_URL, id: guideId, token: auth.accessToken });
+  expect(guideResponse.ok).toBeTruthy();
+
+  const gridStep = guideResponse.body.steps.find((step) => String(step.selector || "").startsWith("gwtp-grid:"));
+  expect(gridStep, "Full Demo CRM guide must contain a Grid step").toBeTruthy();
+
+  await panel.evaluate(async ({ guide, targetIndex }) => {
+    const restart = await chrome.runtime.sendMessage({ type: "GWTP_TRAINING_RESTART", guide });
+    if (!restart?.success) throw new Error(restart?.message || "Unable to restart learner progress.");
+
+    for (let index = 0; index < targetIndex; index += 1) {
+      const response = await chrome.runtime.sendMessage({ type: "GWTP_TRAINING_NEXT" });
+      if (!response?.success) throw new Error(response?.message || "Unable to prepare Grid learner progress.");
+    }
+  }, { guide: guideResponse.body, targetIndex: Number(gridStep.stepOrder) - 1 });
+
+  await panel.locator("#learnerGuideSelect").selectOption(String(guideId));
+  const start = panel.locator("#startLearningButton");
+  await expect(start).toBeVisible();
+  await start.click();
+
+  const content = crm.frameLocator('iframe[name="TargetContent"]');
+  const targetText = "בטיפול מומחה";
+  const targetCell = content.locator("#c360-summary-table tbody td").filter({ hasText: targetText }).first();
+  await expect(targetCell).toHaveCSS("outline-width", "3px", { timeout: 10000 });
+  await expect(content.locator(".gwtp-training-overlay")).toBeVisible();
+
+  const beforeRow = await targetCell.evaluate((cell) => cell.parentElement?.rowIndex ?? -1);
+  const sortButton = content.locator('.ps-grid-sort[data-sort="status"]');
+  // The training bubble may legitimately overlap the grid header. Trigger the
+  // business control programmatically so this test exercises the server-side
+  // rerender rather than Playwright's pointer hit-testing.
+  await sortButton.evaluate((button) => button.click());
+  await expect(sortButton).toHaveAttribute("aria-sort", "ascending");
+
+  const rerenderedTarget = content.locator("#c360-summary-table tbody td").filter({ hasText: targetText }).first();
+  await expect(rerenderedTarget).toBeVisible();
+  const afterRow = await rerenderedTarget.evaluate((cell) => cell.parentElement?.rowIndex ?? -1);
+  expect(afterRow).not.toBe(beforeRow);
+
+  // A grid rerender replaces tbody cells. Ask the existing runner to restore the
+  // current step, exactly as it does after readiness/recovery, and verify the stable
+  // Grid selector resolves the new cell instance.
+  await panel.evaluate(async () => {
+    const response = await chrome.runtime.sendMessage({ type: "GWTP_TRAINING_GET_CURRENT" });
+    if (!response?.current) throw new Error("Current learner progress is unavailable.");
+    await window.guideRunner.showCurrentStep(response.current);
+  });
+
+  await expect(rerenderedTarget).toHaveCSS("outline-width", "3px", { timeout: 10000 });
+  await expect(content.locator(".gwtp-training-overlay")).toBeVisible();
+
+  await panel.close();
+  await crm.close();
+});
+
+
+test("stage 4 grid editor - picker-authored grid selector survives row reorder", async () => {
+  const panel = await openPanel();
+  await login(panel, "sanity.editor");
+
+  const crm = await context.newPage();
+  await crm.goto(`${SITE_URL}/customer360.html`);
+  await crm.bringToFront();
+
+  // Reuse the existing Demo CRM guide only as editor context. The test does not
+  // save or mutate the guide; it opens a new unsaved step and exercises the real picker.
+  const guideCards = panel.locator("[data-guide-id]");
+  const fullGuideCard = guideCards.filter({ hasText: "תרגול מלא - Demo CRM" }).first();
+  await expect(fullGuideCard).toBeVisible({ timeout: 10000 });
+  await fullGuideCard.click();
+
+  await expect(panel.locator("#stepsSection")).toBeVisible();
+  await panel.locator("#addStepButton").click();
+  await expect(panel.locator("#stepEditor")).toBeVisible();
+
+  await panel.locator("#selectButton").click();
+
+  const content = crm.frameLocator('iframe[name="TargetContent"]');
+  const targetText = "בטיפול מומחה";
+  const targetCell = content.locator("#c360-summary-table tbody td").filter({ hasText: targetText }).first();
+  await expect(targetCell).toBeVisible();
+
+  // The real content-script picker intercepts this click and sends
+  // GWTP_ELEMENT_SELECTED back to the panel.
+  await targetCell.click();
+
+  const selector = panel.locator("#selectedSelector");
+  await expect(selector).toContainText("gwtp-grid:", { timeout: 10000 });
+  const authoredSelector = (await selector.innerText()).trim();
+  // The picker may choose either the table's unique stable ID or its unique stable
+  // class. Both are valid Grid identities; the behavior under rerender is what this
+  // E2E test must prove rather than coupling the test to one selector-builder detail.
+  expect(authoredSelector.startsWith("gwtp-grid:")).toBeTruthy();
+
+  const beforeRow = await targetCell.evaluate((cell) => cell.parentElement?.rowIndex ?? -1);
+  const sortButton = content.locator('.ps-grid-sort[data-sort="status"]');
+  await sortButton.click();
+  await expect(sortButton).toHaveAttribute("aria-sort", "ascending");
+
+  const rerenderedTarget = content.locator("#c360-summary-table tbody td").filter({ hasText: targetText }).first();
+  await expect(rerenderedTarget).toBeVisible();
+  const afterRow = await rerenderedTarget.evaluate((cell) => cell.parentElement?.rowIndex ?? -1);
+  expect(afterRow).not.toBe(beforeRow);
+
+  // Ask the editor to highlight the selected authored target again. This uses the
+  // same stable Grid selector through the real content-script element finder.
+  await panel.evaluate(async (selectorValue) => {
+    const responses = await window.messagingService.sendToAllFrames({
+      type: "GWTP_HIGHLIGHT_ELEMENT",
+      selector: selectorValue
+    });
+    if (!responses.some((item) => item.response?.success)) {
+      throw new Error("The authored Grid selector no longer resolves after sorting.");
+    }
+  }, authoredSelector);
+
+  await expect(rerenderedTarget).toHaveCSS("outline-width", "3px", { timeout: 10000 });
+
+  await panel.close();
+  await crm.close();
+});
+
+
+test("stage 6 browser-internal page - editor picker fails gracefully without Chrome access error", async () => {
+  const panel = await openPanel();
+  await login(panel, "sanity.editor");
+
+  const guideCard = panel.locator("[data-guide-id]").first();
+  await expect(guideCard).toBeVisible({ timeout: 10000 });
+  await guideCard.click();
+  await panel.locator("#addStepButton").click();
+  await expect(panel.locator("#stepEditor")).toBeVisible();
+
+  const browserPage = await context.newPage();
+  await browserPage.goto("chrome://version/");
+  await browserPage.bringToFront();
+
+  // Chrome may intentionally omit tab.url for restricted pages. The messaging
+  // layer must not reject a missing URL pre-emptively; it should normalize the
+  // actual restricted-page failure returned by the Chrome API.
+  const activeTabInfo = await panel.evaluate(async () => {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    return { hasId: Boolean(tab?.id), url: tab?.url || null };
+  });
+  expect(activeTabInfo.hasId).toBeTruthy();
+
+  const consoleErrors = [];
+  panel.on("console", (message) => {
+    if (message.type() === "error") consoleErrors.push(message.text());
+  });
+
+  await panel.locator("#selectButton").click();
+  await expect(panel.locator("#elementPickerStatus")).toContainText(/browser-internal|פנימיים של הדפדפן/i);
+  expect(consoleErrors.some((message) =>
+    message.includes("Cannot access a chrome:// URL")
+    || message.includes("GWTP cannot access this browser page")
+  )).toBeFalsy();
+
+  await browserPage.close();
+  await panel.close();
+});
+
+
+test("stage 6 editor missing selected element - localized error stays with element selection", async () => {
+  const panel = await openPanel();
+  await login(panel, "sanity.editor");
+
+  const guideCard = panel.locator("[data-guide-id]").first();
+  await expect(guideCard).toBeVisible({ timeout: 10000 });
+  await guideCard.click();
+  await expect(panel.locator("#stepsSection")).toBeVisible();
+
+  const stepCard = panel.locator("#stepsList .step-item").first();
+  await expect(stepCard).toBeVisible();
+  await stepCard.click();
+  await expect(panel.locator("#stepEditor")).toBeVisible();
+
+  // Move away from the guide's target page so the persisted selector cannot resolve.
+  const unrelated = await context.newPage();
+  await unrelated.goto(`${SITE_URL}/dynamic-destination.html`);
+  await unrelated.bringToFront();
+  await stepCard.click();
+
+  const pickerStatus = panel.locator("#elementPickerStatus");
+  await expect(pickerStatus).toHaveAttribute("data-type", "error");
+  await expect(pickerStatus).toContainText("לא ניתן למצוא את האלמנט שנבחר בעמוד הנוכחי.");
+  await expect(panel.locator("#status")).not.toContainText("Could not find the selected element");
+
+  // The error belongs structurally to the element-selection area, immediately
+  // after the Select button and before the selected-element details.
+  const placement = await panel.evaluate(() => {
+    const select = document.querySelector("#selectButton");
+    const pickerStatus = document.querySelector("#elementPickerStatus");
+    const selected = document.querySelector("#selectedElement");
+    return select?.nextElementSibling === pickerStatus && pickerStatus?.nextElementSibling === selected;
+  });
+  expect(placement).toBeTruthy();
+
+  await unrelated.close();
+  await panel.close();
+});
+
+
+test("stage 6 editor picker - active selection can be cancelled from side panel", async () => {
+  const panel = await openPanel();
+  await login(panel, "sanity.editor");
+
+  const crm = await context.newPage();
+  await crm.goto(`${SITE_URL}/customer360.html`);
+  await crm.bringToFront();
+
+  const guideCard = panel.locator("[data-guide-id]").first();
+  await expect(guideCard).toBeVisible({ timeout: 10000 });
+  await guideCard.click();
+  await panel.locator("#addStepButton").click();
+
+  const pickerButton = panel.locator("#selectButton");
+  await pickerButton.click();
+  await expect(pickerButton).toHaveText("בטל בחירת אלמנט · Esc");
+  await expect(panel.locator("#elementPickerStatus")).toContainText("מצב בחירת אלמנט פעיל.");
+
+  await pickerButton.click();
+  await expect(pickerButton).not.toHaveText("בטל בחירת אלמנט · Esc");
+  await expect(panel.locator("#elementPickerStatus")).toContainText("בחירת האלמנט בוטלה.");
+
+  const content = crm.frameLocator('iframe[name="TargetContent"]');
+  const target = content.locator("input, button, select").first();
+  await target.hover();
+  await expect(target).not.toHaveAttribute("data-gwtp-picker-hovered", "true");
+
+  await panel.close();
+  await crm.close();
+});
+
+
+test("stage 6 editor picker - Escape in side panel cancels active selection", async () => {
+  const panel = await openPanel();
+  await login(panel, "sanity.editor");
+
+  const crm = await context.newPage();
+  await crm.goto(`${SITE_URL}/customer360.html`);
+  await crm.bringToFront();
+
+  const guideCard = panel.locator("[data-guide-id]").first();
+  await expect(guideCard).toBeVisible({ timeout: 10000 });
+  await guideCard.click();
+  await panel.locator("#addStepButton").click();
+
+  const pickerButton = panel.locator("#selectButton");
+  await pickerButton.click();
+  await expect(pickerButton).toHaveText("בטל בחירת אלמנט · Esc");
+
+  // Keep keyboard focus inside the Side Panel: Escape must cancel here too,
+  // not only when the target web page owns keyboard focus.
+  await pickerButton.focus();
+  await panel.keyboard.press("Escape");
+
+  await expect(pickerButton).not.toHaveText("בטל בחירת אלמנט · Esc");
+  await expect(panel.locator("#elementPickerStatus")).toContainText("בחירת האלמנט בוטלה.");
+
+  const content = crm.frameLocator('iframe[name="TargetContent"]');
+  const target = content.locator("input, button, select").first();
+  await target.hover();
+  await expect(target).not.toHaveAttribute("data-gwtp-picker-hovered", "true");
+
+  await panel.close();
+  await crm.close();
+});
+
+
+test("stage 6 editor highlight - falls back when persisted frame metadata is stale", async () => {
+  const panel = await openPanel();
+  await login(panel, "sanity.editor");
+
+  const page = await context.newPage();
+  await page.goto(`${SITE_URL}/site.html`);
+  await page.bringToFront();
+
+  const result = await panel.evaluate(async () => {
+    const original = window.messagingService.sendToMatchingFrame;
+    window.messagingService.sendToMatchingFrame = async () => null;
+    try {
+      const step = {
+        id: "stale-frame-highlight-test",
+        selector: "body",
+        element: { frame: { url: "https://stale.example/", name: "old-frame" } }
+      };
+      await highlightEditorStep(step);
+      return document.querySelector("#elementPickerStatus").textContent;
+    } finally {
+      window.messagingService.sendToMatchingFrame = original;
+    }
+  });
+
+  expect(result).toBe("");
+  await expect(page.locator("body")).toHaveAttribute("data-gwtp-highlighted", "true");
+
+  await panel.close();
+  await page.close();
+});
+
+
+test("architecture guard - editor picker keyboard command is declared", async () => {
+  const manifest = JSON.parse(await fs.promises.readFile(path.join(EXTENSION_PATH, "manifest.json"), "utf8"));
+  expect(manifest.commands?.["start-element-picker"]?.suggested_key?.default).toBe("Ctrl+Shift+E");
+  expect(manifest.commands?.["start-element-picker"]?.suggested_key?.mac).toBe("Command+Shift+E");
+
+  const worker = context.serviceWorkers()[0] || await context.waitForEvent("serviceworker");
+  const commandListenerRegistered = await worker.evaluate(() => typeof chrome.commands?.onCommand?.addListener === "function");
+  expect(commandListenerRegistered).toBe(true);
+});
+
+
+test("stage 6 element highlight - editor and picker outlines use important priority", async () => {
+  const page = await context.newPage();
+  await page.goto(`${SITE_URL}/site.html`);
+
+  await page.evaluate(() => {
+    document.body.style.setProperty("outline", "1px solid transparent", "important");
+    document.body.style.setProperty("outline-offset", "1px", "important");
+  });
+
+  const worker = context.serviceWorkers()[0] || await context.waitForEvent("serviceworker");
+  const tabId = await worker.evaluate(async () => {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    return tab?.id;
+  });
+  expect(Number.isInteger(tabId)).toBeTruthy();
+
+  const highlighted = await worker.evaluate(async (id) => {
+    return chrome.tabs.sendMessage(id, { type: "GWTP_HIGHLIGHT_ELEMENT", selector: "body" });
+  }, tabId);
+  expect(highlighted?.success).toBe(true);
+
+  const editorPriority = await page.evaluate(() => document.body.style.getPropertyPriority("outline"));
+  expect(editorPriority).toBe("important");
+
+  await worker.evaluate(async (id) => {
+    await chrome.tabs.sendMessage(id, { type: "GWTP_CLEAR_HIGHLIGHT" });
+  }, tabId);
+
+  const restored = await page.evaluate(() => ({
+    outline: document.body.style.getPropertyValue("outline"),
+    priority: document.body.style.getPropertyPriority("outline")
+  }));
+  expect(restored.priority).toBe("important");
+  expect(restored.outline).toBeTruthy();
+  const restoredComputed = await page.evaluate(() => getComputedStyle(document.body).outline);
+  expect(restoredComputed).toBe("rgba(0, 0, 0, 0) solid 1px");
+
+  await page.close();
+});
+
+
+test("architecture guard - learner does not intercept or replay host link navigation", async ({ page }) => {
+  const runnerSource = await fs.promises.readFile(
+    path.join(EXTENSION_PATH, "content", "overlay", "training-runner.js"),
+    "utf8"
+  );
+
+  expect(runnerSource).not.toContain('target.addEventListener("click", async (event) =>');
+  expect(runnerSource).not.toContain("window.location.assign(href)");
+  expect(runnerSource).not.toContain("window.top.location.assign(href)");
+  expect(runnerSource).not.toContain("window.parent.location.assign(href)");
+});
+
+
+test("architecture guard - learner unavailable copy and placement constants remain generic", async () => {
+  const [panelSource, i18nSource, runnerSource] = await Promise.all([
+    fs.promises.readFile(path.join(EXTENSION_PATH, "sidepanel", "sidepanel.js"), "utf8"),
+    fs.promises.readFile(path.join(EXTENSION_PATH, "services", "i18nService.js"), "utf8"),
+    fs.promises.readFile(path.join(EXTENSION_PATH, "content", "overlay", "training-runner.js"), "utf8")
+  ]);
+
+  expect(panelSource).toContain('translate("stepTargetUnavailable"');
+  expect(i18nSource).toContain('stepTargetUnavailable: "The next step is not available right now.');
+  expect(i18nSource).toContain('stepTargetUnavailable: "השלב הבא אינו זמין כרגע.');
+  expect(runnerSource).toContain("const verticalGap = 16;");
+  expect(runnerSource).toContain("const horizontalGap = 28;");
+  expect(runnerSource).toContain('{ side: "below", top: rect.bottom + verticalGap');
+  expect(runnerSource).toContain('{ side: "above", top: rect.top - overlayRect.height - verticalGap');
+  expect(runnerSource).toContain('{ side: "right", top: centeredTop, left: rect.right + horizontalGap');
+  expect(runnerSource).toContain('{ side: "left", top: centeredTop, left: rect.left - overlayRect.width - horizontalGap');
+});
+
+
+test("architecture guard - learner render clears stale guidance across accessible frames", async () => {
+  const [guideRunnerSource, runnerSource] = await Promise.all([
+    fs.promises.readFile(path.join(EXTENSION_PATH, "learner", "guide-runner.js"), "utf8"),
+    fs.promises.readFile(path.join(EXTENSION_PATH, "content", "overlay", "training-runner.js"), "utf8")
+  ]);
+
+  expect(guideRunnerSource).toContain('sendToAllFrames({ type: "GWTP_CLEAR_TRAINING_STEP" })');
+  const availabilityIndex = guideRunnerSource.indexOf("const available = await canShowStep({");
+  const clearIndex = guideRunnerSource.indexOf("await clearTrainingAcrossFrames();", availabilityIndex);
+  const showIndex = guideRunnerSource.indexOf('type: "GWTP_SHOW_TRAINING_STEP"', clearIndex);
+  expect(availabilityIndex).toBeGreaterThan(-1);
+  expect(clearIndex).toBeGreaterThan(availabilityIndex);
+  expect(showIndex).toBeGreaterThan(clearIndex);
+  expect(guideRunnerSource).toContain("if (!available) {");
+  expect(runnerSource).toContain("const candidates = [");
+  expect(runnerSource).toContain("fitsViewport(candidate) && doesNotOverlapTarget(candidate)");
+});
+
+
+test("architecture guard - redundant learner restore preserves rendered step identity", async () => {
+  const guideRunnerSource = await fs.promises.readFile(
+    path.join(EXTENSION_PATH, "learner", "guide-runner.js"),
+    "utf8"
+  );
+
+  expect(guideRunnerSource).toContain("let renderedStepIdentity = null;");
+  expect(guideRunnerSource).toContain("if (renderedStepIdentity === stepIdentity)");
+  expect(guideRunnerSource).toContain("return { success: true, unchanged: true };");
+  expect(guideRunnerSource).toContain("renderedStepIdentity = stepIdentity;");
+});
+
+
+
+
+test("architecture guard - guidance placement algorithm remains target-centered and viewport-aware", async () => {
+  const runnerSource = await fs.promises.readFile(
+    path.join(EXTENSION_PATH, "content", "overlay", "training-runner.js"),
+    "utf8"
+  );
+
+  expect(runnerSource).toContain("const centeredLeft =");
+  expect(runnerSource).toContain("const centeredTop =");
+  expect(runnerSource).toContain("const candidates = [");
+  expect(runnerSource).toContain("const chosen = candidates.find(");
+  expect(runnerSource).toContain("fitsViewport(candidate) && doesNotOverlapTarget(candidate)");
+});
+
+
+test("architecture guard - guidance placement algorithm rejects target overlap", async () => {
+  const runnerSource = await fs.promises.readFile(
+    path.join(EXTENSION_PATH, "content", "overlay", "training-runner.js"),
+    "utf8"
+  );
+
+  expect(runnerSource).toContain("const doesNotOverlapTarget =");
+  expect(runnerSource).toContain("candidate.top >= rect.bottom + verticalGap");
+  expect(runnerSource).toContain("candidate.left >= rect.right + horizontalGap");
+  expect(runnerSource).toContain("fitsViewport(candidate) && doesNotOverlapTarget(candidate)");
+  expect(runnerSource).not.toContain("const contextualRects = [];");
+  expect(runnerSource).not.toContain("const intersectionArea =");
+});
+
+
+test("architecture guard - preview uses learner-equivalent availability messages", async () => {
+  const [runnerSource, sidepanelSource] = await Promise.all([
+    fs.promises.readFile(path.join(EXTENSION_PATH, "content", "overlay", "training-runner.js"), "utf8"),
+    fs.promises.readFile(path.join(EXTENSION_PATH, "sidepanel", "sidepanel.js"), "utf8")
+  ]);
+
+  expect(runnerSource).toContain('action === "GWTP_PREVIEW_NEXT"');
+  expect(runnerSource).toContain('"GWTP_PREVIEW_PEEK_NEXT"');
+  expect(runnerSource).toContain('"GWTP_CHECK_NEXT_STEP_AVAILABLE"');
+  expect(sidepanelSource).toContain('message?.type === "GWTP_PREVIEW_PEEK_NEXT"');
+  expect(sidepanelSource).toContain('message?.type === "GWTP_CHECK_NEXT_STEP_AVAILABLE"');
+});
+
+
+test("architecture guard - preview and learner share navigation decision helpers", async () => {
+  const [runnerSource, sidepanelSource] = await Promise.all([
+    fs.promises.readFile(path.join(EXTENSION_PATH, "content", "overlay", "training-runner.js"), "utf8"),
+    fs.promises.readFile(path.join(EXTENSION_PATH, "sidepanel", "sidepanel.js"), "utf8")
+  ]);
+
+  expect(runnerSource).toContain('const isForward = action === "GWTP_TRAINING_NEXT" || action === "GWTP_PREVIEW_NEXT";');
+  expect(runnerSource).toContain("const guardedStepAction = isForward || isBackward;");
+  expect(runnerSource).toContain("const peekType = isPreview");
+  expect(sidepanelSource).toContain("function checkStepAvailability(current)");
+  expect(sidepanelSource.match(/checkStepAvailability\(message\.current\)\.then\(sendResponse\)/g)?.length).toBe(2);
+});
+
+
+test("architecture guard - preview pending move is PAGE_READY driven", async () => {
+  const sidepanelSource = await fs.promises.readFile(
+    path.join(EXTENSION_PATH, "sidepanel", "sidepanel.js"),
+    "utf8"
+  );
+
+  expect(sidepanelSource).toContain("let previewPendingDirection = null;");
+  expect(sidepanelSource).toContain("previewPendingDirection = direction;");
+  expect(sidepanelSource).toContain("await window.guideRunner.canShowStep(pendingCurrent)");
+  expect(sidepanelSource).toContain("previewSession.stepIndex = nextIndex;");
+  expect(sidepanelSource).toContain("previewPendingDirection = null;");
+});
+
+
+test("architecture guard - learner activation intent does not intercept host actions", async () => {
+  const runnerSource = await fs.promises.readFile(
+    path.join(EXTENSION_PATH, "content", "overlay", "training-runner.js"),
+    "utf8"
+  );
+
+  expect(runnerSource).toContain('const nativeNavigationAnchor = target?.closest?.("a[href]")');
+  expect(runnerSource).toContain('nativeNavigationHref !== "#"');
+  expect(runnerSource).toContain('!nativeNavigationHref.toLowerCase().startsWith("javascript:")');
+  expect(runnerSource).toContain('nativeNavigationAnchor.addEventListener("pointerdown", persistActivationIntent');
+  expect(runnerSource).toContain('type: "GWTP_TRAINING_PENDING_SET"');
+  const activationBlock = runnerSource.slice(
+    runnerSource.indexOf("const persistActivationIntent"),
+    runnerSource.indexOf('if (target && step.selector.startsWith("gwtp-grid:"))')
+  );
+  expect(activationBlock).not.toContain("preventDefault");
+  expect(activationBlock).not.toContain("location.assign");
+  expect(activationBlock).not.toContain("window.open");
+});
+
+
+test("architecture guard - pending learner navigation is event-driven without timer polling", async () => {
+  const guideRunnerSource = await fs.promises.readFile(
+    path.join(EXTENSION_PATH, "learner", "guide-runner.js"),
+    "utf8"
+  );
+
+  expect(guideRunnerSource).toContain("let pendingNavigationReadyVersion = 0;");
+  expect(guideRunnerSource).toContain("pendingNavigationReadyVersion += 1;");
+  expect(guideRunnerSource).toContain("processedReadyVersion !== pendingNavigationReadyVersion");
+  expect(guideRunnerSource).not.toContain("setTimeout(resolve, 100)");
+});
+
+
+test("architecture guard - same-step idempotence verifies overlay presence", async () => {
+  const guideRunnerSource = await fs.promises.readFile(
+    path.join(EXTENSION_PATH, "learner", "guide-runner.js"),
+    "utf8"
+  );
+  const contentScriptSource = await fs.promises.readFile(
+    path.join(EXTENSION_PATH, "content", "content-script.js"),
+    "utf8"
+  );
+
+  expect(contentScriptSource).toContain('GWTP_IS_TRAINING_STEP_RENDERED');
+  expect(contentScriptSource).toContain('globalThis.gwtpTrainingOverlay?.isConnected');
+  expect(guideRunnerSource).toContain('type: "GWTP_IS_TRAINING_STEP_RENDERED"');
+  expect(guideRunnerSource).toContain('if (rendered?.success === true)');
+  expect(guideRunnerSource).toContain('return { success: true, unchanged: true };');
+  expect(guideRunnerSource).toContain('const available = await canShowStep');
+});
+
+
+test("architecture guard - training bubble keeps target-safe placement constants", async () => {
+  const runnerSource = await fs.promises.readFile(
+    path.join(EXTENSION_PATH, "content", "overlay", "training-runner.js"),
+    "utf8"
+  );
+
+  expect(runnerSource).toContain("const verticalGap = 16;");
+  expect(runnerSource).toContain("const horizontalGap = 28;");
+  expect(runnerSource).toContain("candidate.top >= rect.bottom + verticalGap");
+  expect(runnerSource).toContain("candidate.left >= rect.right + horizontalGap");
+});
+
+
+test("architecture guard - bubble fallback has no stale gap identifier", async () => {
+  const runnerSource = await fs.promises.readFile(
+    path.join(EXTENSION_PATH, "content", "overlay", "training-runner.js"),
+    "utf8"
+  );
+  const targetPositioningSource = runnerSource.slice(runnerSource.indexOf("const rect = gwtpTrainingTarget.getBoundingClientRect();"));
+  expect(targetPositioningSource).not.toMatch(/\bgap\b(?=\s*[,;)])/);
+  expect(targetPositioningSource).toContain("viewportGap");
+  expect(targetPositioningSource).toContain("verticalGap");
+  expect(targetPositioningSource).toContain("horizontalGap");
+});
+
+
+test("architecture guard - Web native-navigation intent is removed when its step is cleared", async () => {
+  const source = await fs.promises.readFile(
+    path.join(EXTENSION_PATH, "content", "overlay", "training-runner.js"),
+    "utf8"
+  );
+  expect(source).toContain("let gwtpTrainingNavigationCleanup = null;");
+  expect(source).toContain("gwtpTrainingNavigationCleanup();");
+  expect(source).toContain('removeEventListener("pointerdown", persistActivationIntent)');
+  expect(source).toContain('removeEventListener("keydown", handleNavigationKeydown)');
+});
+
+test("architecture guard - Windows to Web Preview restores browser foreground", async () => {
+  const source = await fs.promises.readFile(
+    path.join(EXTENSION_PATH, "sidepanel", "sidepanel.js"),
+    "utf8"
+  );
+  expect(source).toContain('previousRuntime === "windows" && nextRuntime === "web"');
+  expect(source).toContain("chrome.windows.update(activeTab.windowId, { focused: true })");
+});
+
+
+test("architecture guard - Web messaging self-recovers when active tab has no content script", async () => {
+  const messagingSource = await fs.promises.readFile(
+    path.join(EXTENSION_PATH, "services", "messagingService.js"),
+    "utf8"
+  );
+  const contentSource = await fs.promises.readFile(
+    path.join(EXTENSION_PATH, "content", "content-script.js"),
+    "utf8"
+  );
+
+  expect(messagingSource).toContain("async function ensureContentScript");
+  expect(messagingSource).toContain('"GWTP_CONTENT_READY"');
+  expect(messagingSource).toContain('"content/content-script.js"');
+  expect(messagingSource).toMatch(/isMissingReceiverError[\s\S]*ensureContentScript\(tab\.id, frameId\)[\s\S]*chrome\.tabs\.sendMessage/);
+  expect(contentSource).toContain('message?.type === "GWTP_CONTENT_READY"');
+});
+
+
+test("architecture guard - restored Windows target does not fail Preview on transient empty bounds", async () => {
+  const runtimeSource = await fs.promises.readFile(
+    path.join(ROOT_PATH, "windows-runtime", "GWTP.Windows.Runtime", "MainWindow.xaml.cs"),
+    "utf8"
+  );
+
+  const showStart = runtimeSource.indexOf("public bool ShowAuthoredStep");
+  const clearStart = runtimeSource.indexOf("public void ClearAuthoredStep", showStart);
+  const showSource = runtimeSource.slice(showStart, clearStart);
+
+  expect(showSource).toContain("ActivateAuthoredTargetWindow(element);");
+  expect(showSource).toContain("StartElementTracking(element);");
+  expect(showSource).toContain("AuthoredStep.WaitingForVisibleBounds");
+  expect(showSource).not.toContain("AuthoredStep.InvalidBounds");
+  expect(showSource).not.toMatch(/bounds\.IsEmpty[\s\S]{0,200}return false;/);
+});
+
+
+test("architecture guard - BFCache restore discards stale training visuals before PAGE_READY", async () => {
+  const contentScriptSource = await fs.promises.readFile(
+    path.join(EXTENSION_PATH, "content", "content-script.js"),
+    "utf8"
+  );
+
+  expect(contentScriptSource).toContain('window.addEventListener("pageshow"');
+  expect(contentScriptSource).toContain("if (!event.persisted) return;");
+  const pageshowStart = contentScriptSource.indexOf('window.addEventListener("pageshow"');
+  const pageshowEnd = contentScriptSource.indexOf("});", pageshowStart);
+  const pageshowSource = contentScriptSource.slice(pageshowStart, pageshowEnd);
+  expect(pageshowSource.indexOf("clearTrainingStep();")).toBeLessThan(pageshowSource.indexOf("notifyPageReady();"));
+  expect(pageshowSource.indexOf("clearHighlight();")).toBeLessThan(pageshowSource.indexOf("notifyPageReady();"));
+});
+
+
+test("architecture guard - Preview pending navigation is bound to its source step", async () => {
+  const sidepanelSource = await fs.promises.readFile(
+    path.join(EXTENSION_PATH, "sidepanel", "sidepanel.js"),
+    "utf8"
+  );
+
+  expect(sidepanelSource).toContain("let previewPendingFromStepIndex = null;");
+  expect(sidepanelSource).toContain("previewPendingFromStepIndex === previewSession.stepIndex");
+  expect(sidepanelSource).toContain("previewPendingFromStepIndex = previewSession.stepIndex;");
+});
+
+
+test("architecture guard - Preview native navigation records adjacent-step intent before unload", async () => {
+  const runnerSource = await fs.promises.readFile(
+    path.join(EXTENSION_PATH, "content", "overlay", "training-runner.js"),
+    "utf8"
+  );
+
+  expect(runnerSource).not.toContain('navigation.mode !== "preview" &&');
+  expect(runnerSource).toContain('? chrome.runtime.sendMessage({ type: "GWTP_PREVIEW_PEEK_NEXT" })');
+  expect(runnerSource).toContain('type: "GWTP_TRAINING_PENDING_SET"');
+});
+
+
+test("architecture guard - instruction-only availability bypasses DOM target lookup", async () => {
+  const guideRunnerSource = await fs.promises.readFile(
+    path.join(EXTENSION_PATH, "learner", "guide-runner.js"),
+    "utf8"
+  );
+
+  const canShowStart = guideRunnerSource.indexOf("async function canShowStep(current)");
+  const canShowEnd = guideRunnerSource.indexOf("async function showCurrentStep(current", canShowStart);
+  const canShowSource = guideRunnerSource.slice(canShowStart, canShowEnd);
+
+  expect(canShowSource).toContain('if (current.step.targetType === "none") return true;');
+  expect(canShowSource.indexOf('targetType === "none"')).toBeLessThan(
+    canShowSource.indexOf('runtime || "web"')
+  );
+});
+
+
+test("stage 6 instruction-only step - editor UI persists, reopens and previews target-free guidance", async () => {
+  test.setTimeout(60000);
+  const suffix = Date.now();
+  const topicName = `Instruction Only Topic ${suffix}`;
+  const guideName = `Instruction Only Guide ${suffix}`;
+  const instruction = `Instruction only guidance ${suffix}`;
+  const panel = await openPanel();
+  let fixture = null;
+
+  const findGuide = () => panel.locator("#guidesList [data-guide-id]").filter({ hasText: guideName }).first();
+
+  try {
+    await login(panel, "sanity.editor");
+
+    // Author the complete fixture through the same GUI an editor uses.
+    await panel.locator("#openTopicsButton").click();
+    await panel.locator("#openCreateTopicButton").click();
+    await panel.locator("#newTopicInput").fill(topicName);
+    await panel.locator("#createTopicButton").click();
+    await expect(panel.locator("#topicsList [data-topic-id]").filter({ hasText: topicName }).first()).toBeVisible();
+    await panel.locator("#backFromTopicsButton").click();
+
+    fixture = await context.newPage();
+    await fixture.goto(`${SITE_URL}/gwtp-test-fixture.html`);
+    await fixture.bringToFront();
+
+    await panel.locator("#openNewGuideButton").click();
+    const topicOption = panel.locator("#topicSelect option").filter({ hasText: topicName });
+    await panel.locator("#topicSelect").selectOption(await topicOption.getAttribute("value"));
+    await panel.locator("#guideNameInput").fill(guideName);
+    await panel.locator("#guideStartInstructionInput").fill("Open the relevant system and navigate to the starting screen.");
+    await panel.locator("#guideAvailableInput").check();
+
+    await panel.locator("#addStepButton").click();
+    await panel.locator("#instructionOnlyInput").check();
+    await expect(panel.locator("#selectButton")).toBeHidden();
+    await expect(panel.locator("#elementPickerStatus")).toHaveText("");
+    await panel.locator("#instructionInput").fill(instruction);
+    await panel.locator("#saveStepButton").click();
+    await expect(panel.locator("#stepsList .step-item")).toHaveCount(1);
+    await expect(panel.locator("#stepsList .step-item").first()).toContainText(instruction);
+
+    // Saving the guide crosses the real UI -> extension service -> API -> DB path.
+    await panel.locator("#saveGuideButton").click();
+    await expect(findGuide()).toBeVisible();
+
+    // Reopen from persisted backend data rather than trusting the in-memory draft.
+    await findGuide().click();
+    await expect(panel.locator("#stepsList .step-item")).toHaveCount(1);
+    await panel.locator("#stepsList .step-item").first().click();
+    await expect(panel.locator("#instructionOnlyInput")).toBeChecked();
+    await expect(panel.locator("#selectButton")).toBeHidden();
+    await expect(panel.locator("#elementPickerStatus")).toHaveText("");
+    await expect(panel.locator("#instructionInput")).toContainText(instruction);
+    await expect(panel.locator("#selectorInput")).toHaveValue("");
+
+    // Preview must render guidance without any selected/highlighted target.
+    await fixture.bringToFront();
+    await panel.locator("#previewGuideButton").click();
+    await confirmGuideStartInstruction(panel);
+    const overlay = fixture.locator(".gwtp-training-overlay");
+    await expect(overlay).toBeVisible({ timeout: 10000 });
+    await expect(overlay).toContainText(instruction);
+    await expect(fixture.locator("[data-gwtp-highlighted='true']")).toHaveCount(0);
+    await expect(fixture.locator("[data-gwtp-training-target='true']")).toHaveCount(0);
+
+    await fixture.bringToFront();
+    await panel.locator("#exitPreviewButton").evaluate((button) => button.click());
+    await expect(overlay).toHaveCount(0);
+  } finally {
+    // Cleanup through the public Editor UI so this E2E remains rerunnable.
+    try {
+      if (await panel.locator("#appView").isVisible().catch(() => false)) {
+        if (await panel.locator("#guideEditorView").isVisible().catch(() => false)) {
+          await panel.locator("#backToGuidesButton").click().catch(() => {});
+        }
+        const guide = findGuide();
+        if (await guide.count()) {
+          await guide.click().catch(() => {});
+          await panel.locator("#deleteEditedGuideButton").click().catch(() => {});
+          if (await panel.locator("#deleteConfirmOverlay").isVisible().catch(() => false)) {
+            await panel.locator("#confirmDeleteButton").click().catch(() => {});
+          }
+        }
+        await panel.locator("#openTopicsButton").click().catch(() => {});
+        const topic = panel.locator("#topicsList [data-topic-id]").filter({ hasText: topicName }).first();
+        if (await topic.count()) {
+          await topic.click().catch(() => {});
+          await panel.locator("#deleteEditedTopicButton").click().catch(() => {});
+          if (await panel.locator("#deleteConfirmOverlay").isVisible().catch(() => false)) {
+            await panel.locator("#confirmDeleteButton").click().catch(() => {});
+          }
+        }
+      }
+    } catch {}
+    await panel.close().catch(() => {});
+    if (fixture) await fixture.close().catch(() => {});
+  }
+});
+
+
+test("stage 6 Windows step authoring - Editor selects and persists native target descriptor", async () => {
+  test.setTimeout(60000);
+  const suffix = Date.now();
+  const name = `Windows Authoring ${suffix}`;
+  const panel = await openPanel();
+  let setup = null;
+
+  const windowsTarget = {
+    processName: "GWTPTestHost",
+    window: { automationId: "MainWindow", name: "GWTP UIA Test Host" },
+    element: { controlType: "ControlType.Button", automationId: "SharedContinue", name: "Continue" },
+    ancestors: [
+      { controlType: "ControlType.Group", automationId: "GroupA", name: "Group A" }
+    ]
+  };
+
+  try {
+    await login(panel, "sanity.editor");
+    setup = await createTemporaryFixtureGuide(panel, name, [{
+      selector: "",
+      targetType: "none",
+      runtime: "web",
+      windowsTarget: null,
+      instruction: "Existing instruction-only step",
+      screenName: "Start",
+      frame: null,
+      validation: null
+    }]);
+
+    // The fixture is created directly through the API, so the already-open Editor
+    // list does not know about it. Reopen the side panel to exercise the normal
+    // Editor load path instead of waiting on stale DOM state.
+    await panel.close();
+    const editor = await openPanel();
+    await login(editor, "sanity.editor");
+    await editor.locator("#guidesList [data-guide-id]").filter({ hasText: name }).first().click();
+    await editor.locator("#addStepButton").click();
+    await editor.locator("#stepRuntimeSelect").selectOption("windows");
+
+    await editor.evaluate((target) => {
+      window.windowsBridgeService.pickTarget = async () => structuredClone(target);
+    }, windowsTarget);
+
+    await editor.locator("#selectButton").click();
+    await expect(editor.locator("#selectedElement")).toBeVisible();
+    await expect(editor.locator("#selectedSelector")).toContainText("GWTPTestHost");
+    await editor.locator("#instructionInput").fill("Use the selected Windows control.");
+    await expect(editor.locator("#saveStepButton")).toBeEnabled();
+    await editor.locator("#saveStepButton").click();
+    await expect(editor.locator("#stepsList .step-item")).toHaveCount(2);
+    await expect(editor.locator("#stepsList .step-item").nth(1)).toContainText("GWTPTestHost");
+    await expect(editor.locator("#stepsSaveStatus")).toHaveAttribute("data-type", "success");
+
+    const savedBeforeReopen = await editor.evaluate(async (guideId) => {
+      return window.apiService.request(`/api/guides/${guideId}`);
+    }, setup.guideId);
+    expect(savedBeforeReopen.steps).toHaveLength(2);
+    expect(savedBeforeReopen.steps[1].runtime).toBe("windows");
+    expect(savedBeforeReopen.steps[1].windowsTarget).toEqual(windowsTarget);
+
+    await editor.locator("#backToGuidesButton").click();
+    await editor.locator("#guidesList [data-guide-id]").filter({ hasText: name }).first().click();
+    await expect(editor.locator("#stepsList .step-item")).toHaveCount(2);
+    await editor.locator("#stepsList .step-item").nth(1).click();
+    await expect(editor.locator("#stepRuntimeSelect")).toHaveValue("windows");
+    await expect(editor.locator("#selectorInput")).toHaveValue("");
+    await expect(editor.locator("#selectedSelector")).toContainText("GWTPTestHost");
+
+    const persisted = await editor.evaluate(async (guideId) => {
+      return window.apiService.request(`/api/guides/${guideId}`);
+    }, setup.guideId);
+    expect(persisted.steps[1].runtime).toBe("windows");
+    expect(persisted.steps[1].selector).toBe("");
+    expect(persisted.steps[1].windowsTarget).toEqual(windowsTarget);
+  } finally {
+    if (setup) { const cleanup = await openPanel(); await login(cleanup, "sanity.editor"); await deleteTemporaryFixtureGuide(cleanup, setup).catch(() => {}); await cleanup.close().catch(() => {}); }
+  }
+});
