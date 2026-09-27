@@ -3,10 +3,11 @@
 Last updated: 2026-09-27
 
 ### Windows Service database location
-- The installed Windows Service uses `C:\\ProgramData\\GWTP\\Data\\GWTP.db` through `GWTP_DATA_PATH`; it does not use the repository `database/GWTP.db`.
-- The repository database remains the local/interactive fallback when no external data path is configured.
+- The installed Windows Service owns the persistent database at `C:\\ProgramData\\GWTP\\Data\\GWTP.db` through `GWTP_DATA_PATH`.
+- The repository `database/` directory is schema/documentation source only: it contains `schema.sql` and database documentation, not a working `GWTP.db`.
+- A fresh service installation copies `schema.sql` to ProgramData; the API creates `GWTP.db` there and applies versioned migrations.
 - The Stage 2 sanity-user migration was verified against the actual service database in ProgramData: `sanity.admin`, `sanity.editor`, and `sanity.learner` exist there.
-- Future Windows Service migration/debug checks must inspect the ProgramData database to avoid false negatives from checking the repository DB.
+- Future migration/debug checks must inspect the ProgramData database.
 
 ### Windows Service deployment reliability
 - Fixed `scripts/server/deploy-service.bat` service-state parsing: `sc.exe query` exposes the textual state in token 4, not token 3.
@@ -104,8 +105,9 @@ Reset was verified to delete both guide and step progress as intended.
 - The fixture is created through versioned backend migration code rather than by manually replacing `database/GWTP.db`. After the migration ID is recorded, subsequent API startups only perform the migration-ID lookup and do not query/create the guide.
 
 ## Repository database rule
+- `database/` is retained intentionally as the source-controlled home for `schema.sql` and database documentation; it is not a runtime data directory.
 - Changes to persistent/test database content must be delivered through GitHub as versioned repository changes.
-- Do not distribute a replacement `GWTP.db` as the normal project workflow. The developer should receive repository changes with `git pull origin main`.
+- Do not distribute or track a replacement `GWTP.db`. The developer should receive schema/migration changes with `git pull origin main`.
 
 - Demo CRM regression: the Customer 360 tier instruction now explicitly tells the learner to choose a tier other than Platinum, matching its validation rule.
 
