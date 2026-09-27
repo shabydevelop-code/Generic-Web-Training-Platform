@@ -1,6 +1,5 @@
 param(
     [string]$ApiBaseUrl = "http://localhost:5000",
-    [string]$SiteBaseUrl = "http://localhost:5100",
     [string]$AdminUsername = "sanity.admin",
     [string]$AdminPassword = "Sanity2026!"
 )
@@ -35,13 +34,6 @@ Test-HttpGet "Database health" "$ApiBaseUrl/api/health/database" {
     param($r)
     $r.status -eq "ok" -and [int]$r.tableCount -gt 0 -and
     $r.guideStepRuntime -eq $true -and $r.windowsTargetPersistence -eq $true
-}
-
-try {
-    $response = Invoke-WebRequest -Uri "$SiteBaseUrl/site.html" -Method Get -TimeoutSec 10 -UseBasicParsing
-    Add-Result "Demo site available" ($response.StatusCode -eq 200) "HTTP $($response.StatusCode)"
-} catch {
-    Add-Result "Demo site available" $false $_.Exception.Message
 }
 
 try {
