@@ -2540,54 +2540,45 @@ test("accessibility resilience - learner primary controls are keyboard focusable
 });
 
 test("accessibility resilience - completion dialog traps focus and closes with Escape", async () => {
-  const panel = await openPanel();
-  await login(panel, "sanity.learner");
+  const fixtureName = `GWTP Completion Accessibility ${Date.now()}`;
+  const editor = await openPanel();
+  await login(editor, "sanity.editor");
+  const setup = await createTemporaryFixtureGuide(editor, fixtureName, [
+    { selector: "#site-name", instruction: "Completion dialog accessibility target", screenName: "Site", frame: { name: "TargetContent", srcIncludes: "site_content.html" }, validation: null }
+  ]);
+  await editor.close();
+
+  let panel;
   const crm = await context.newPage();
-  await crm.goto(`${SITE_URL}/site.html`);
-  await crm.bringToFront();
+  try {
+    panel = await openPanel();
+    await login(panel, "sanity.learner");
+    await crm.goto(`${SITE_URL}/site.html`);
+    await crm.bringToFront();
 
-  const topic = panel.locator("#learnerTopicSelect option").filter({ hasText: "Demo CRM" });
-  await panel.locator("#learnerTopicSelect").selectOption(await topic.getAttribute("value"));
-  const validationGuide = panel.locator("#learnerGuideSelect option").filter({ hasText: "בדיקת כל חוקי הוולידציה" });
-  await panel.locator("#learnerGuideSelect").selectOption(await validationGuide.getAttribute("value"));
-  const restart = panel.locator("#restartLearningButton");
-  if (await restart.isVisible()) await restart.click();
-  else await panel.locator("#startLearningButton").click();
-  await confirmGuideStartInstruction(panel);
+    await panel.locator("#learnerTopicSelect").selectOption(String(setup.topicId));
+    await panel.locator("#learnerGuideSelect").selectOption(String(setup.guideId));
+    await panel.locator("#startLearningButton").click();
+    await confirmGuideStartInstruction(panel);
 
-  const content = crm.frameLocator('iframe[name="TargetContent"]');
-  const next = content.locator(".gwtp-training-overlay button").filter({ hasText: /הבא|Next/i });
-  await content.locator("#site-name").fill("TEST Accessibility");
-  await next.click();
-  await content.locator("#site-type").selectOption("branch");
-  await next.click();
-  await expect.poll(async () => panel.evaluate(async () => (await chrome.runtime.sendMessage({ type: "GWTP_TRAINING_GET_CURRENT" }))?.current?.stepIndex ?? null), { timeout: 10000 }).toBe(2);
-  await content.locator("#site-type").selectOption("hq");
-  await next.click();
-  await expect.poll(async () => panel.evaluate(async () => (await chrome.runtime.sendMessage({ type: "GWTP_TRAINING_GET_CURRENT" }))?.current?.stepIndex ?? null), { timeout: 10000 }).toBe(3);
-  await content.locator("#site-name").fill("TEST Accessibility");
-  await next.click();
-  await expect.poll(async () => panel.evaluate(async () => (await chrome.runtime.sendMessage({ type: "GWTP_TRAINING_GET_CURRENT" }))?.current?.stepIndex ?? null), { timeout: 10000 }).toBe(4);
-  let phone = content.locator("#site-phone");
-  const baseline = await phone.inputValue();
-  await phone.fill(baseline === "03-7654321" ? "03-7654322" : "03-7654321");
-  await next.click();
-  await expect.poll(async () => panel.evaluate(async () => (await chrome.runtime.sendMessage({ type: "GWTP_TRAINING_GET_CURRENT" }))?.current?.stepIndex ?? null), { timeout: 10000 }).toBe(5);
-  phone = content.locator("#site-phone");
-  const finalBaseline = await phone.inputValue();
-  await phone.fill(finalBaseline === "03-7654323" ? "03-7654324" : "03-7654323");
-  await content.locator(".gwtp-training-overlay button").filter({ hasText: /סיום|סיים|Finish/i }).click();
+    const content = crm.frameLocator('iframe[name="TargetContent"]');
+    await content.locator(".gwtp-training-overlay button").filter({ hasText: /סיום|סיים|Finish/i }).click();
 
-  const dialog = content.locator('[role="dialog"][aria-modal="true"]');
-  await expect(dialog).toBeVisible({ timeout: 10000 });
-  await expect(dialog.locator("button")).toBeFocused();
-  await dialog.locator("button").press("Tab");
-  await expect(dialog.locator("button")).toBeFocused();
-  await dialog.locator("button").press("Escape");
-  await expect(dialog).toBeHidden();
-
-  await panel.close();
-  await crm.close();
+    const dialog = content.locator('[role="dialog"][aria-modal="true"]');
+    await expect(dialog).toBeVisible({ timeout: 10000 });
+    await expect(dialog.locator("button")).toBeFocused();
+    await dialog.locator("button").press("Tab");
+    await expect(dialog.locator("button")).toBeFocused();
+    await dialog.locator("button").press("Escape");
+    await expect(dialog).toBeHidden();
+  } finally {
+    if (panel && !panel.isClosed()) await panel.close();
+    if (!crm.isClosed()) await crm.close();
+    const cleanup = await openPanel();
+    await login(cleanup, "sanity.editor");
+    await deleteTemporaryFixtureGuide(cleanup, setup);
+    await cleanup.close();
+  }
 });
 
 test("accessibility resilience - learner recovery actions remain available after missing target", async () => {
