@@ -2,6 +2,10 @@
 
 GWTP uses a small central SQLite data model focused on users, training content, optional step validation, and learner progress.
 
+## Database directory responsibility
+
+The repository `database/` directory is intentionally retained as the source-controlled home for the SQLite schema and database documentation. It is not a runtime data directory and must not contain a working database file.
+
 ## Database location
 
 - The repository contains the database definition (`schema.sql`) only; it does not contain a distributable or working `GWTP.db`.
