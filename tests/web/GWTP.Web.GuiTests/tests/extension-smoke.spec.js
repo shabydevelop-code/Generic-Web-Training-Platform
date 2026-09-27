@@ -111,10 +111,19 @@ async function createTemporaryFixtureGuide(panel, name, steps) {
 }
 
 async function deleteTemporaryFixtureGuide(panel, setup) {
+  if (!setup) return;
+
   await panel.evaluate(async ({ token, guideId, topicId }) => {
     const headers = { Authorization: `Bearer ${token}` };
-    await fetch(`${globalThis.appConfig.api.baseUrl}/api/guides/${guideId}`, { method: "DELETE", headers });
-    await fetch(`${globalThis.appConfig.api.baseUrl}/api/topics/${topicId}`, { method: "DELETE", headers });
+    const remove = async (path, label) => {
+      const response = await fetch(`${globalThis.appConfig.api.baseUrl}${path}`, { method: "DELETE", headers });
+      if (!response.ok && response.status !== 404) {
+        throw new Error(`Failed to delete temporary ${label}: HTTP ${response.status} ${await response.text()}`);
+      }
+    };
+
+    await remove(`/api/guides/${guideId}`, "guide");
+    await remove(`/api/topics/${topicId}`, "topic");
   }, setup);
 }
 
