@@ -5,7 +5,7 @@
 - Local working copy: `C:\\yossi\\ChatGpt\\Generic-Web-Training-Platform`.
 - ChatGPT inspects and updates the GitHub repository; the developer syncs changes with `git pull`.
 - Do not use ZIP delivery for normal project changes.
-- Database changes and test fixtures must be delivered through versioned GitHub repository changes. Do not use manual replacement of `database/GWTP.db` as the normal workflow; the developer should receive them with `git pull origin main`.
+- Database schema changes and test fixtures must be delivered through versioned GitHub repository changes. The repository does not contain `database/GWTP.db`; persistent database changes are applied through schema/migrations and the developer receives them with `git pull origin main`.
 - One-time database content changes should use versioned migrations recorded in `SchemaMigrations`; do not keep permanent startup seed logic that repeatedly checks whether test/demo content exists.
 - Inspect current repository files before changing code.
 - When changing Editor/Admin management UI or behavior in the extension (Topics, Guides, Steps, Users, filters, validation, authoring, publish/availability, Preview, or related management flows), review the relevant Playwright E2E coverage in the same change set. Update or add tests when the behavior/DOM contract changes, run the targeted affected test group first, then run the full regression before considering the change verified. A UI change is not complete if its existing management tests are knowingly stale or broken.
@@ -33,9 +33,10 @@ Main capabilities include element selection/highlighting, guide steps, Write/Cli
 Backend: .NET API + SQLite.
 Local API: `http://localhost:5000`.
 Database:
-- Interactive/local development fallback: `database/GWTP.db` in the repository when `GWTP_DATA_PATH` is not configured.
+- Repository: `database/schema.sql` defines fresh-database structure; no working `GWTP.db` is tracked.
 - Installed Windows Service: `C:\\ProgramData\\GWTP\\Data\\GWTP.db`, supplied through `GWTP_DATA_PATH`.
-- When diagnosing the Windows Service, always inspect the ProgramData database rather than the repository database.
+- Fresh installation creates the persistent DB from `schema.sql` and then applies versioned migrations.
+- The extension never owns or accesses the SQLite file directly.
 
 ## UI rules
 - Hebrew and English must be supported cleanly, including RTL/LTR separation.
