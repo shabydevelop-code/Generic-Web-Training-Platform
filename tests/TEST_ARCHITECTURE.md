@@ -2,7 +2,7 @@
 
 ## Goal
 
-Organize regression coverage by the capability being verified, not by the web page that happens to be open during the test. Demo CRM is an integration fixture, not a default host for unrelated GWTP tests.
+Organize regression coverage by the capability being verified, not by the web page that happens to be open during the test. The standalone Web Test Host is the default host for Web runtime tests; product/demo applications are not test infrastructure.
 
 ## Test families
 
@@ -59,21 +59,14 @@ Owns interaction with arbitrary modern web pages.
 
 `dynamic-app.html` is the preferred fixture for these behaviors.
 
-### 5. Business-System Integration (Demo CRM)
+### 5. Host-system behavior
 
-Demo CRM is reserved for behaviors that genuinely require server-backed/business-system semantics.
-
-- Server postback/reload
-- Real server save followed by reload
-- Cross-screen business navigation such as Site -> Case
-- Frame reload caused by the host application
-- Server-rendered/server-sorted Grid behavior
-- Business application interactions whose behavior cannot be represented faithfully by the deterministic fixture
+Server-backed host behaviors such as save/reload, postback-like navigation, frame reload and server-rendered Grid behavior are represented by the standalone Web Test Host. The automated Web suite must not depend on Demo CRM as its execution host.
 
 ## Deterministic fixtures
 
-- `site/gwtp-test-fixture.html` is the lightweight fixture for generic Extension UI, authoring, validation and learner-runtime scenarios. It intentionally has no CRM API calls, postbacks, frames or business behavior.
-- `site/dynamic-app.html` owns modern-web behavior such as SPA changes, DOM replacement, dynamic frames and real navigation.
+- `tests/web/GWTP.Web.TestHost/wwwroot/gwtp-test-fixture.html` is the lightweight fixture for generic Extension UI, authoring, validation and learner-runtime scenarios. It intentionally has no CRM API calls, postbacks, frames or business behavior.
+- `tests/web/GWTP.Web.TestHost/wwwroot/dynamic-app.html` owns modern-web behavior such as SPA changes, DOM replacement, dynamic frames and real navigation.
 - Demo CRM pages are reserved for business-system integration coverage.
 
 ## Duplication rules
