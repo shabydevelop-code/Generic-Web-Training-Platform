@@ -21,8 +21,8 @@ internal static class Program
     {
         var selectedTests = ParseSelectedTests(args);
         var root = FindRepoRoot();
-        var runtimeExe = Path.Combine(root, "GWTP.Windows.Runtime", "bin", "Debug", "net8.0-windows", "GWTP.Windows.Runtime.exe");
-        var hostExe = Path.Combine(root, "GWTP.Windows.TestHost", "bin", "Debug", "net8.0-windows", "GWTP.Windows.TestHost.exe");
+        var runtimeExe = Path.Combine(root, "windows-runtime", "GWTP.Windows.Runtime", "bin", "Debug", "net8.0-windows", "GWTP.Windows.Runtime.exe");
+        var hostExe = Path.Combine(root, "tests", "windows", "GWTP.Windows.TestHost", "bin", "Debug", "net8.0-windows", "GWTP.Windows.TestHost.exe");
 
         if (!File.Exists(runtimeExe) || !File.Exists(hostExe))
         {
@@ -1132,7 +1132,7 @@ internal static class Program
         var dir = new DirectoryInfo(AppContext.BaseDirectory);
         while (dir is not null)
         {
-            if (Directory.Exists(Path.Combine(dir.FullName, "GWTP.Windows.Runtime")) && Directory.Exists(Path.Combine(dir.FullName, "GWTP.Windows.GuiTests"))) return dir.FullName;
+            if (Directory.Exists(Path.Combine(dir.FullName, "windows-runtime", "GWTP.Windows.Runtime")) && Directory.Exists(Path.Combine(dir.FullName, "tests", "windows", "GWTP.Windows.GuiTests"))) return dir.FullName;
             dir = dir.Parent;
         }
         throw new DirectoryNotFoundException("Repository root not found.");
