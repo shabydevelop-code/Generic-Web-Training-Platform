@@ -4,10 +4,11 @@ GWTP uses a small central SQLite data model focused on users, training content, 
 
 ## Database location
 
-- Local/interactive development uses `database/GWTP.db` when `GWTP_DATA_PATH` is not configured.
-- The installed Windows Service uses `C:\\ProgramData\\GWTP\\Data\\GWTP.db` through the `GWTP_DATA_PATH` environment setting.
-- These are separate database files. A migration executed by the Windows Service changes the ProgramData database, not the repository copy.
-- Service troubleshooting and migration verification must therefore query `C:\\ProgramData\\GWTP\\Data\\GWTP.db`.
+- The repository contains the database definition (`schema.sql`) only; it does not contain a distributable or working `GWTP.db`.
+- The installed Windows Service owns the persistent database at `C:\\ProgramData\\GWTP\\Data\\GWTP.db` through the `GWTP_DATA_PATH` environment setting.
+- On a fresh installation the API creates `GWTP.db` from `schema.sql`, then applies versioned migrations.
+- Service troubleshooting and migration verification must query `C:\\ProgramData\\GWTP\\Data\\GWTP.db`.
+- The browser extension never reads SQLite directly; it communicates with the API.
 
 ## Core hierarchy
 
