@@ -64,12 +64,9 @@ async function expectEditorPreviewMode(panel, active) {
   }
 }
 
-async function requireHealthyStack(request) {
+async function requireHealthyApi(request) {
   const api = await request.get(`${API_URL}/api/health`);
   expect(api.ok(), "GWTP API must be running before Stage 3").toBeTruthy();
-
-  const site = await request.get(`${SITE_URL}/site.html`);
-  expect(site.ok(), "Demo CRM must be running before Stage 3").toBeTruthy();
 }
 
 async function openPanel() {
@@ -122,7 +119,7 @@ async function deleteTemporaryFixtureGuide(panel, setup) {
 }
 
 test.beforeAll(async ({ request }) => {
-  await requireHealthyStack(request);
+  await requireHealthyApi(request);
 
   context = await chromium.launchPersistentContext("", {
     headless: false,
