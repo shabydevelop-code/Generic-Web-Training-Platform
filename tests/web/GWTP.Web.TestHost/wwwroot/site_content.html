@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>CRM PeopleSoft - מסך אתר</title>
+  <link rel="icon" type="image/png" href="/icons/icon48.png">
+  <link rel="stylesheet" href="peoplesoft_crm.css">
+</head>
+<body>
+<div id="splash-screen" class="splash-screen" aria-live="polite" aria-label="טוען נתונים">
+    <div class="splash-loading-box">
+      <div class="splash-spinner"></div>
+      <span>טוען נתונים...</span>
+    </div>
+  </div>
+<main class="ps-container">
+    <div class="ps-page-title-bar">
+      <div>
+        <h1 class="ps-page-title" id="page-title">ניהול אתר לקוח / סניף ראשי</h1>
+        <div class="ps-breadcrumb">ראשי &gt; ניהול נכסים &gt; פרטי אתר</div>
+      </div>
+      <div>
+        <span class="ps-status-badge" id="site-status-badge"></span>
+      </div>
+    </div>
+
+    <section class="ps-panel" aria-labelledby="panel-header-general">
+      <div class="ps-panel-header" id="panel-header-general">
+        <span>פרטי אתר כלליים (General Information)</span>
+        <span id="site-system-id" style="font-size: 11px; color: #475569;"></span>
+      </div>
+      <div class="ps-panel-body">
+        <form id="form-site" method="post" action="/site/type-change">
+          <div id="site-server-message" class="ps-notice" hidden></div>
+          <div class="ps-form-grid">
+            <div class="ps-form-group">
+              <label for="site-code" class="ps-label required">קוד אתר (Site Code)</label>
+              <input type="text" id="site-code" name="code" class="ps-input" required>
+            </div>
+            <div class="ps-form-group">
+              <label for="site-name" class="ps-label required">שם האתר / סניף</label>
+              <input type="text" id="site-name" name="name" class="ps-input" required>
+            </div>
+            <div class="ps-form-group">
+              <label for="site-type" class="ps-label">סוג אתר</label>
+              <select id="site-type" name="type" class="ps-select">
+                <option value="hq">מטה ראשי</option>
+                <option value="branch">סניף מכירות</option>
+                <option value="warehouse">מרלוג והפצה</option>
+              </select>
+            </div>
+            <div class="ps-form-group">
+              <label for="site-city" class="ps-label">עיר וכתובת</label>
+              <input type="text" id="site-city" name="city" class="ps-input">
+            </div>
+            <div class="ps-form-group">
+              <label for="site-contact-name" class="ps-label">איש קשר ראשי באתר</label>
+              <input type="text" id="site-contact-name" name="contactName" class="ps-input">
+            </div>
+            <div class="ps-form-group">
+              <label for="site-phone" class="ps-label">טלפון ישיר</label>
+              <input type="tel" id="site-phone" name="phone" class="ps-input">
+            </div>
+          </div>
+
+          <div class="ps-action-bar" style="margin-top: 14px;">
+            <button type="submit" class="ps-btn ps-btn-primary" id="btn-save-site">שמור שינויים</button>
+            <button type="button" class="ps-btn ps-btn-accent" id="btn-refresh-site">רענן נתונים</button>
+            <a href="case.html" class="ps-btn" id="btn-open-case-from-site" target="_top">פתח פניה לאתר זה &larr;</a>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <section class="ps-panel" aria-labelledby="panel-header-devices">
+      <div class="ps-panel-header" id="panel-header-devices">
+        <span>ציוד ותשתיות באתר (Installed Assets)</span>
+        <span id="site-assets-count" style="font-size: 11px; color: #475569;"></span>
+      </div>
+      <div class="ps-panel-body">
+        <div class="ps-table-wrapper">
+          <table class="ps-table" id="site-assets-table">
+            <thead>
+              <tr>
+                <th>מספר סידורי</th>
+                <th>דגם / תיאור מוצר</th>
+                <th>כתובת IP</th>
+                <th>סטטוס תפעולי</th>
+                <th>תאריך התקנה</th>
+              </tr>
+            </thead>
+            <tbody id="site-assets-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </main>
+  <script src="peoplesoft_common.js"></script>
+  <script src="site.js"></script>
+</body>
+</html>
