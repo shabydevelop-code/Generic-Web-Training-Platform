@@ -8,7 +8,7 @@ module.exports = defineConfig({
   workers: 1,
   reporter: [["list"], ["html", { outputFolder: "playwright-report", open: "never" }]],
   webServer: {
-    command: "dotnet run --project ../web-test-host/GWTP.Web.TestHost.csproj",
+    command: "dotnet run --project ../GWTP.Web.TestHost/GWTP.Web.TestHost.csproj",
     url: "http://localhost:5100/site.html",
     reuseExistingServer: true,
     timeout: 120000,
