@@ -161,6 +161,375 @@ internal static class Program
                 WaitForTopLevelWindow("GWTP Windows UIA Test Host", LaunchTimeoutMs);
 
                 Run("20. Cross-launch rediscovery finds authored target in a new process instance", () =>
+                {
+                    WaitUntil(() => Process.GetProcessesByName("GWTP.Windows.TestHost").Length == 1,
+                        "Previous test-host process did not exit before cross-launch rediscovery.",
+                        LaunchTimeoutMs);
+                    var reopenedHost = WaitForTopLevelWindow("GWTP Windows UIA Test Host", LaunchTimeoutMs);
+                    var scenarioScroll = TryFindByAutomationId(reopenedHost, "ScenarioScrollViewer");
+                    if (scenarioScroll is not null &&
+                        scenarioScroll.TryGetCurrentPattern(ScrollPattern.Pattern, out var reopenedScrollObject) &&
+                        reopenedScrollObject is ScrollPattern reopenedScroll &&
+                        reopenedScroll.Current.VerticallyScrollable)
+                    {
+                        reopenedScroll.SetScrollPercent(ScrollPattern.NoScroll, 0);
+                    }
+
+                    var reopenedTarget = FindTargetWithinGroup(reopenedHost, "GroupA", "SharedContinue");
+                    var reopenedHwnd = new IntPtr(reopenedHost.Current.NativeWindowHandle);
+                    SetForegroundWindow(reopenedHwnd);
+                    Invoke(FindByAutomationId(focusedRuntimeWindow, "FindElementButton"));
+                    SetForegroundWindow(reopenedHwnd);
+                    WaitUntil(() => IsOverlayAttached(runtime.Id, reopenedTarget),
+                        "Authored target was not rediscovered after the target application restarted.");
+                });
+
+                Console.WriteLine();
+                Console.WriteLine($"Windows GUI sanity: {_passed} passed, {_failed} failed");
+                return _failed == 0 ? 0 : 1;
+            }
+
+            var runtimeWindow = WaitForWindow(runtime.Id, "GWTP Windows Runtime");
+            Run("01. Open UIA Test Host through GUI", () =>
+            {
+                Invoke(FindByName(runtimeWindow, "Open Ambiguity Test"));
+                WaitForTopLevelWindow("GWTP Windows UIA Test Host", LaunchTimeoutMs);
+            });
+
+            var hostWindow = WaitForTopLevelWindow("GWTP Windows UIA Test Host");
+            ArrangeWindowsForPicker(runtimeWindow, hostWindow);
+
+            Run("02. T01 picker selects duplicate target A and shows attached overlays", () =>
+            {
+                var targets = FindAllByAutomationId(hostWindow, "SharedContinue");
+                Require(targets.Count == 2, "Expected two duplicate Continue targets.");
+                SelectThroughRealPicker(runtimeWindow, targets[0]);
+                WaitForRuntimeWindow(runtime.Id, "GWTP Guidance");
+                WaitForRuntimeWindow(runtime.Id, "GWTP Highlight");
+                AssertOverlayAttached(runtime.Id, targets[0]);
+            });
+
+            Run("03. T01 picker selects duplicate target B and Previous/Next rediscover correct ancestors", () =>
+            {
+                var targets = FindAllByAutomationId(hostWindow, "SharedContinue");
+                SelectThroughRealPicker(runtimeWindow, targets[1]);
+                var guidance = WaitForRuntimeWindow(runtime.Id, "GWTP Guidance");
+                AssertOverlayAttached(runtime.Id, targets[1]);
+
+                Invoke(FindByName(guidance, "Previous"));
+                WaitUntil(() => IsOverlayAttached(runtime.Id, targets[0]), "Previous did not return to Group A target.");
+                guidance = WaitForRuntimeWindow(runtime.Id, "GWTP Guidance");
+                Invoke(FindByName(guidance, "Next"));
+                WaitUntil(() => IsOverlayAttached(runtime.Id, targets[1]), "Next did not return to Group B target.");
+            });
+
+            Run("04. Tracking follows target when host window moves", () =>
+            {
+                var target = FindAllByAutomationId(hostWindow, "SharedContinue")[1];
+                var before = WaitForRuntimeWindow(runtime.Id, "GWTP Guidance").Current.BoundingRectangle;
+                MoveWindow(hostWindow, 70, 45);
+                WaitUntil(() =>
+                {
+                    var after = TryFindRuntimeWindow(runtime.Id, "GWTP Guidance")?.Current.BoundingRectangle;
+                    return after is { } rect && Math.Abs(rect.Left - before.Left) > 20 && IsOverlayAttached(runtime.Id, target);
+                }, "Guidance did not follow the moved target.");
+            });
+
+            Run("05. Minimize hides overlays and Restore reattaches them", () =>
+            {
+                var target = FindAllByAutomationId(hostWindow, "SharedContinue")[1];
+                var hwnd = new IntPtr(hostWindow.Current.NativeWindowHandle);
+                var minimizeStarted = Stopwatch.StartNew();
+                ShowWindow(hwnd, SwMinimize);
+                WaitUntil(() => TryFindRuntimeWindow(runtime.Id, "GWTP Guidance") is null &&
+                                TryFindRuntimeWindow(runtime.Id, "GWTP Highlight") is null,
+                    "Overlays remained visible while host was minimized.",
+                    timeoutMs: 1000);
+                Require(minimizeStarted.ElapsedMilliseconds < 1000,
+                    $"Overlay hide latency was too high: {minimizeStarted.ElapsedMilliseconds} ms.");
+                ShowWindow(hwnd, SwRestore);
+                SetForegroundWindow(hwnd);
+                WaitUntil(() => IsOverlayAttached(runtime.Id, target),
+                    "Overlays did not reattach after Restore.");
+            });
+
+            Run("06. Stress Previous/Next with repeated Minimize/Restore stays attached", () =>
+            {
+                var targets = FindAllByAutomationId(hostWindow, "SharedContinue");
+                Require(targets.Count == 2, "Expected two SharedContinue targets for stress test.");
+                var hwnd = new IntPtr(hostWindow.Current.NativeWindowHandle);
+
+                for (var cycle = 0; cycle < 10; cycle++)
+                {
+                    var guidance = WaitForRuntimeWindow(runtime.Id, "GWTP Guidance");
+                    Invoke(FindByName(guidance, "Previous"));
+                    WaitUntil(() => IsOverlayAttached(runtime.Id, targets[0]),
+                        $"Stress cycle {cycle + 1}: Previous did not attach to Group A.");
+
+                    guidance = WaitForRuntimeWindow(runtime.Id, "GWTP Guidance");
+                    Invoke(FindByName(guidance, "Next"));
+                    WaitUntil(() => IsOverlayAttached(runtime.Id, targets[1]),
+                        $"Stress cycle {cycle + 1}: Next did not attach to Group B.");
+
+                    ShowWindow(hwnd, SwMinimize);
+                    WaitUntil(() => TryFindRuntimeWindow(runtime.Id, "GWTP Guidance") is null &&
+                                    TryFindRuntimeWindow(runtime.Id, "GWTP Highlight") is null,
+                        $"Stress cycle {cycle + 1}: overlays remained visible while minimized.");
+
+                    ShowWindow(hwnd, SwRestore);
+                    SetForegroundWindow(hwnd);
+                    WaitUntil(() => IsOverlayAttached(runtime.Id, targets[1]),
+                        $"Stress cycle {cycle + 1}: overlays did not reattach after Restore.");
+                }
+            });
+
+            Run("07. Foreground loss hides overlays and returning to host restores them", () =>
+            {
+                var target = FindAllByAutomationId(hostWindow, "SharedContinue")[1];
+                var runtimeHwnd = new IntPtr(runtimeWindow.Current.NativeWindowHandle);
+                Require(SetForegroundWindow(runtimeHwnd), "Could not request unrelated foreground window.");
+                WaitUntil(() => GetForegroundWindow() == runtimeHwnd,
+                    "Unrelated window did not actually become foreground.");
+                WaitUntil(() => TryFindRuntimeWindow(runtime.Id, "GWTP Guidance") is null,
+                    "Guidance remained visible over unrelated foreground window.");
+                var hostHwnd = new IntPtr(hostWindow.Current.NativeWindowHandle);
+                Require(SetForegroundWindow(hostHwnd), "Could not request host foreground window.");
+                WaitUntil(() => GetForegroundWindow() == hostHwnd,
+                    "Host window did not actually regain foreground.");
+                WaitUntil(() => IsOverlayAttached(runtime.Id, target),
+                    "Guidance did not return when host regained foreground.");
+            });
+
+            Run("08. T02 TextBox with AutomationId is exposed through UIA", () =>
+            {
+                var target = FindByAutomationId(hostWindow, "StableTextBox");
+                Require(target.Current.ControlType == ControlType.Edit, "StableTextBox is not exposed as Edit.");
+            });
+
+            Run("09. T03 TextBox without authored AutomationId remains selectable in GUI", () =>
+            {
+                var edits = hostWindow.FindAll(
+                    TreeScope.Descendants,
+                    new PropertyCondition(AutomationElement.ControlTypeProperty, ControlType.Edit));
+
+                var target = edits.Cast<AutomationElement>()
+                    .SingleOrDefault(element =>
+                        string.IsNullOrEmpty(element.Current.AutomationId) &&
+                        element.Current.BoundingRectangle.Top > 0);
+
+                Require(target is not null, "No TextBox without AutomationId was exposed through UIA.");
+                Require(target.Current.ControlType == ControlType.Edit, "No-id textbox is not exposed as Edit.");
+            });
+
+            Run("10. T04 Button without authored AutomationId remains selectable in GUI", () =>
+            {
+                var target = FindByName(hostWindow, "No AutomationId Button");
+                Require(target.Current.ControlType == ControlType.Button, "No-id button is not exposed as Button.");
+            });
+
+            Run("11. T05 Dynamic Name changes through GUI", () =>
+            {
+                Invoke(FindByName(hostWindow, "Change target name"));
+                WaitUntil(() => TryFindByName(hostWindow, "Dynamic target 2") is not null,
+                    "Dynamic target name did not change.");
+                Require(FindByAutomationId(hostWindow, "DynamicNameTarget").Current.Name == "Dynamic target 2",
+                    "Stable AutomationId no longer resolves the renamed target.");
+            });
+
+            Run("12. T06 Deep hierarchy target is exposed through UIA", () =>
+            {
+                var target = FindByAutomationId(hostWindow, "DeepTarget");
+                Require(target.Current.Name == "Deep Target", "Deep target could not be resolved.");
+            });
+
+            Run("13. T07 Dynamic target disappears and returns through GUI", () =>
+            {
+                Invoke(FindByName(hostWindow, "Toggle dynamic target"));
+                WaitUntil(() => TryFindByAutomationId(hostWindow, "AppearingTarget") is null,
+                    "Dynamic target did not disappear.");
+                Invoke(FindByName(hostWindow, "Toggle dynamic target"));
+                WaitUntil(() => TryFindByAutomationId(hostWindow, "AppearingTarget") is not null,
+                    "Dynamic target did not return.");
+            });
+
+            Run("14. T08 Second top-level window opens in same process through GUI", () =>
+            {
+                Invoke(FindByName(hostWindow, "Open second test window"));
+                var second = WaitForTopLevelWindow("GWTP UIA Test Host — Second Window");
+                Require(FindByAutomationId(second, "SameProcessTarget").Current.ProcessId == hostWindow.Current.ProcessId,
+                    "Second window is not owned by the same process.");
+            });
+
+            Run("15. T03 no-AutomationId target survives picker rediscovery", () =>
+            {
+                PrepareHostTargetForPicker(runtimeWindow, hostWindow, "No AutomationId Button");
+                var target = FindByName(hostWindow, "No AutomationId Button");
+                SelectThroughRealPicker(runtimeWindow, target);
+                Require(IsOverlayAttached(runtime.Id, target),
+                    "No-AutomationId target did not remain attached after picker rediscovery.");
+            });
+
+            Run("16. T05 dynamic Name exposes current descriptor limitation after authored selection", () =>
+            {
+                PrepareHostTargetForPicker(runtimeWindow, hostWindow, automationId: "DynamicNameTarget");
+                var target = FindByAutomationId(hostWindow, "DynamicNameTarget");
+                var authoredName = target.Current.Name;
+                SelectThroughRealPicker(runtimeWindow, target);
+                Invoke(FindByName(hostWindow, "Change target name"));
+                WaitUntil(() => FindByAutomationId(hostWindow, "DynamicNameTarget").Current.Name != authoredName,
+                    "Dynamic target name did not change after authored selection.");
+                Invoke(FindByAutomationId(runtimeWindow, "FindElementButton"));
+                WaitUntil(() => TryFindRuntimeWindow(runtime.Id, "GWTP Guidance") is null,
+                    "Current descriptor unexpectedly rediscovered a target whose persisted Name changed.");
+            });
+
+            Run("17. T07 active dynamic target hides when removed and returns event-driven", () =>
+            {
+                PrepareHostTargetForPicker(runtimeWindow, hostWindow, automationId: "AppearingTarget");
+                var target = FindByAutomationId(hostWindow, "AppearingTarget");
+                SelectThroughRealPicker(runtimeWindow, target);
+                Invoke(FindByName(hostWindow, "Toggle dynamic target"));
+                WaitUntil(() => TryFindRuntimeWindow(runtime.Id, "GWTP Guidance") is null &&
+                                TryFindRuntimeWindow(runtime.Id, "GWTP Highlight") is null,
+                    "Active dynamic target overlays remained after target disappeared.");
+                Invoke(FindByName(hostWindow, "Toggle dynamic target"));
+                WaitUntil(() => TryFindByAutomationId(hostWindow, "AppearingTarget") is not null,
+                    "Dynamic target did not return to the host.");
+            });
+
+            Run("18. T08 duplicate leaf in second same-process window does not steal authored target", () =>
+            {
+                // Tests 14-17 intentionally mutate the shared host (second window,
+                // scroll/foreground state and authored targets). T08 validates the
+                // same-process duplicate-window contract, not those earlier mutations,
+                // so start it from a fresh deterministic Test Host process.
+                var previousHostHwnd = new IntPtr(hostWindow.Current.NativeWindowHandle);
+                SendMessage(previousHostHwnd, WmClose, IntPtr.Zero, IntPtr.Zero);
+                WaitUntil(() => Process.GetProcessesByName("GWTP.Windows.TestHost").Length == 0,
+                    "Previous test-host process did not exit before isolated T08 setup.",
+                    LaunchTimeoutMs);
+
+                Invoke(FindByName(runtimeWindow, "Open Ambiguity Test"));
+                WaitUntil(() => Process.GetProcessesByName("GWTP.Windows.TestHost").Length == 1,
+                    "Fresh T08 test-host process did not start.",
+                    LaunchTimeoutMs);
+                hostWindow = WaitForTopLevelWindow("GWTP Windows UIA Test Host", LaunchTimeoutMs);
+                ArrangeWindowsForPicker(runtimeWindow, hostWindow);
+
+                Invoke(FindByName(hostWindow, "Open second test window"));
+                var second = WaitForTopLevelWindow("GWTP UIA Test Host — Second Window", LaunchTimeoutMs);
+                var secondDuplicate = FindByAutomationId(second, "SharedContinue");
+                Require(secondDuplicate.Current.ProcessId == hostWindow.Current.ProcessId,
+                    "Second-window duplicate is not in the same process.");
+
+                var secondHwnd = new IntPtr(second.Current.NativeWindowHandle);
+                ShowWindow(secondHwnd, SwMinimize);
+                WaitUntil(() =>
+                {
+                    var pattern = (WindowPattern)second.GetCurrentPattern(WindowPattern.Pattern);
+                    return pattern.Current.WindowVisualState == WindowVisualState.Minimized;
+                }, "Second test window did not minimize before authored target selection.");
+
+                // Earlier lifecycle tests may leave the host scrolled, minimized/restored
+                // or moved. Normalize it through the same public-UIA picker preparation
+                // used by the other authored-target cases.
+                PrepareHostTargetForPicker(runtimeWindow, hostWindow, automationId: "GroupA");
+                var hostHwnd = new IntPtr(hostWindow.Current.NativeWindowHandle);
+
+                AutomationElement? authored = null;
+                WaitUntil(() =>
+                {
+                    // Query the main host by its distinguishing Group A ancestor.
+                    // A process-wide AutomationId lookup is intentionally ambiguous now
+                    // because T08 adds another SharedContinue in the second window.
+                    var scenarioScroll = TryFindByAutomationId(hostWindow, "ScenarioScrollViewer");
+                    if (scenarioScroll is null ||
+                        !scenarioScroll.TryGetCurrentPattern(ScrollPattern.Pattern, out var scrollPatternObject) ||
+                        scrollPatternObject is not ScrollPattern scenarioScrollPattern)
+                    {
+                        return false;
+                    }
+
+                    if (scenarioScrollPattern.Current.VerticallyScrollable)
+                    {
+                        scenarioScrollPattern.SetScrollPercent(
+                            ScrollPattern.NoScroll,
+                            0);
+                    }
+
+                    var groupA = TryFindByAutomationId(hostWindow, "GroupA");
+                    if (groupA is null) return false;
+
+                    // GroupBox is not guaranteed to be the Button's parent in the
+                    // UIA Control View. Resolve the duplicate leafs from the host,
+                    // then identify the authored one by its screen geometry relative
+                    // to Group A. Bring it into view before the physical picker.
+                    // The host's ScrollViewer can clip T01 completely after later
+                    // scenarios have scrolled down. Scroll the known Group A container
+                    // itself into view first; a clipped child can report Empty bounds
+                    // and therefore cannot be identified geometrically yet.
+                    if (groupA.TryGetCurrentPattern(ScrollItemPattern.Pattern, out var groupScrollPattern) &&
+                        groupScrollPattern is ScrollItemPattern groupScrollItem)
+                    {
+                        groupScrollItem.ScrollIntoView();
+                    }
+
+                    var groupRect = groupA.Current.BoundingRectangle;
+                    authored = FindAllByAutomationId(hostWindow, "SharedContinue")
+                        .FirstOrDefault(candidate =>
+                        {
+                            var rect = candidate.Current.BoundingRectangle;
+                            if (rect.IsEmpty || rect.Width <= 0 || rect.Height <= 0) return false;
+                            var centerX = rect.Left + rect.Width / 2;
+                            return centerX >= groupRect.Left && centerX <= groupRect.Right;
+                        });
+                    if (authored is null) return false;
+
+                    if (authored.TryGetCurrentPattern(ScrollItemPattern.Pattern, out var scrollPattern) &&
+                        scrollPattern is ScrollItemPattern scrollItem)
+                    {
+                        scrollItem.ScrollIntoView();
+                    }
+
+                    var rect = authored.Current.BoundingRectangle;
+                    if (rect.IsEmpty || rect.Width <= 0 || rect.Height <= 0) return false;
+                    var center = new System.Drawing.Point(
+                        (int)Math.Round(rect.Left + rect.Width / 2),
+                        (int)Math.Round(rect.Top + rect.Height / 2));
+                    return Forms.Screen.AllScreens.Any(screen => screen.Bounds.Contains(center));
+                }, BuildPickerGeometryDiagnostic(hostWindow, authored));
+                SelectThroughRealPicker(runtimeWindow, authored!);
+                ShowWindow(secondHwnd, SwRestore);
+
+                // Restoring the competing window can make it foreground. The runtime
+                // correctly hides guidance whenever the authored host is not foreground,
+                // so explicitly return foreground ownership to the authored host before
+                // asserting target rediscovery. The competing window remains restored
+                // and present in the same process, which preserves the T08 ambiguity.
+                SetForegroundWindow(hostHwnd);
+                WaitUntil(() => GetForegroundWindow() == hostHwnd,
+                    "Authored host did not regain foreground before T08 rediscovery.");
+
+                Invoke(FindByAutomationId(runtimeWindow, "FindElementButton"));
+                SetForegroundWindow(hostHwnd);
+                WaitUntil(() => IsOverlayAttached(runtime.Id, authored),
+                    "Same-process second-window duplicate stole the authored target.");
+            });
+
+            Run("19. Closing tracked host removes overlays and runtime stays responsive", () =>
+            {
+                var hostHwnd = new IntPtr(hostWindow.Current.NativeWindowHandle);
+                SendMessage(hostHwnd, WmClose, IntPtr.Zero, IntPtr.Zero);
+                WaitUntil(() => TryFindTopLevelWindow("GWTP Windows UIA Test Host") is null,
+                    "Tracked host did not close.");
+                WaitUntil(() => TryFindRuntimeWindow(runtime.Id, "GWTP Guidance") is null &&
+                                TryFindRuntimeWindow(runtime.Id, "GWTP Highlight") is null,
+                    "Overlays remained after tracked host closed.");
+                Invoke(FindByName(runtimeWindow, "Open Ambiguity Test"));
+                WaitForTopLevelWindow("GWTP Windows UIA Test Host", LaunchTimeoutMs);
+            });
+
+            Run("20. Cross-launch rediscovery finds authored target in a new process instance", () =>
             {
                 // Own the complete cross-launch lifecycle inside T20. Earlier tests
                 // deliberately mutate the selected descriptor and host lifecycle, so
