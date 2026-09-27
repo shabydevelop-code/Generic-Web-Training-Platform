@@ -145,13 +145,23 @@ Database:
 - Windows authoring UI and Native Messaging handoff are implemented. Real authoring has been manually verified end to end: Editor -> Native Messaging -> Windows Runtime -> UIA picker -> persisted WindowsTarget -> API/SQLite -> reload. Production Editor Preview can render persisted Windows targets; broader learner execution remains separate work.
 
 
-## Local API execution rule (2026-09-26)
+## Local API execution rule (updated 2026-09-27)
 
-- The normal GWTP development/test environment uses the installed `GWTP.Api` Windows Service. Do **not** run Windows Service `GWTP.Api` while that service is running.
-- After pulling Backend/API changes, deploy them with `scripts/server/deploy-service.bat`; the deployed service is the API instance used by sanity and Playwright tests.
-- Windows Service `GWTP.Api` is reserved for intentional standalone/local API debugging when the Windows Service is stopped/not being used.
-- Normal Backend verification flow: `git pull` -> `scripts/server/deploy-service.bat` -> sanity tests -> relevant/full Playwright regression.
+- The supported local GWTP API execution model is the installed Windows Service `GWTP.Api`.
+- Do not run a parallel manual `dotnet run` API instance while the service is active.
+- After pulling Backend/API changes, deploy them with `scripts/server/deploy-service.bat`.
+- Service lifecycle scripts are centralized under `scripts/server/`: `install-service.bat`, `deploy-service.bat`, and `uninstall-service.bat`.
+- The former manual API launcher `start-server.bat` is retired and must not be recreated.
+- Normal Backend verification flow: `git pull` -> `scripts/server/deploy-service.bat` -> API sanity -> relevant/full GUI regression.
 
+## Operational and demo scripts (2026-09-27)
+
+- Repository-root BAT launch/deployment files are retired; operational scripts live under `scripts/`.
+- `scripts/server/` owns Windows Service installation, deployment and removal.
+- `scripts/demo/start-demo.bat` starts the customer-facing Demo application under `site/`.
+- `site/` is intentionally retained as the demonstrable business application and is separate from automated test infrastructure.
+- Automated Web tests use `tests/web/GWTP.Web.TestHost/`; they must not depend on the customer-facing Demo application.
+- `scripts/check-source-guards.ps1` remains a repository maintenance/source-quality guard rather than a GUI test.
 
 ## Windows runtime bridge (2026-09-26)
 
@@ -168,10 +178,10 @@ Database:
 - `Generic-Web-Training-Platform` is the single source repository for GWTP, including Web and Windows runtimes.
 - The former standalone `GWTP-Windows-POC` repository is retired from active development. Its proven implementation has been consolidated under `windows-runtime/`; do not make new product changes in the old repository.
 - Consolidated layout:
-  - `windows-runtime/GWTP.Windows.Runtime/` — interactive Windows UIA runtime and Native Messaging host.
-  - `windows-runtime/GWTP.Windows.TestHost/` — deterministic external WPF UIA test host.
-  - `windows-runtime/GWTP.Windows.GuiTests/` — Windows GUI/E2E sanity runner.
-  - `windows-runtime/run-sanity.ps1` — builds all three projects and runs the Windows GUI suite.
+  - `windows-runtime/GWTP.Windows.Runtime/` — production interactive Windows UIA runtime and Native Messaging host.
+  - `tests/windows/GWTP.Windows.TestHost/` — deterministic external WPF UIA test host.
+  - `tests/windows/GWTP.Windows.GuiTests/` — Windows GUI/E2E sanity runner.
+  - `tests/windows/run-sanity.ps1` — builds the production Windows Runtime plus the Windows test projects and runs the GUI suite.
 - Browser extension, API, database contract, Windows runtime and both Web/Windows automated suites must evolve atomically in this repository.
 - The old Windows POC repository may be retained temporarily for history/reference until the consolidated Windows suite is verified, but it is not a source of truth.
 
