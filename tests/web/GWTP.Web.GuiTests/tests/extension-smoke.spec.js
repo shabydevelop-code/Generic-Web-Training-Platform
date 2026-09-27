@@ -2,7 +2,8 @@ const { test, expect, chromium } = require("@playwright/test");
 const path = require("path");
 const fs = require("fs");
 
-const EXTENSION_PATH = path.resolve(__dirname, "../../../../extension");
+const ROOT_PATH = path.resolve(__dirname, "../../../..");
+const EXTENSION_PATH = path.join(ROOT_PATH, "extension");
 const API_URL = "http://localhost:5000";
 const SITE_URL = "http://localhost:5100";
 const PASSWORD = "Sanity2026!";
