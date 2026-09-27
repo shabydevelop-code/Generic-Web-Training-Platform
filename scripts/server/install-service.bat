@@ -22,8 +22,8 @@ if errorlevel 1 goto :error
 
 if not exist "%DATA_DIR%" mkdir "%DATA_DIR%"
 
-if not exist "%DATA_DIR%\schema.sql" copy /Y "%SOURCE_DATA%\schema.sql" "%DATA_DIR%\schema.sql" >nul
-if not exist "%DATA_DIR%\GWTP.db" if exist "%SOURCE_DATA%\GWTP.db" copy /Y "%SOURCE_DATA%\GWTP.db" "%DATA_DIR%\GWTP.db" >nul
+copy /Y "%SOURCE_DATA%\schema.sql" "%DATA_DIR%\schema.sql" >nul
+if errorlevel 1 goto :error
 
 sc.exe query "%SERVICE_NAME%" >nul 2>&1
 if not errorlevel 1 (
@@ -35,7 +35,7 @@ if not errorlevel 1 (
 sc.exe create "%SERVICE_NAME%" binPath= "\"%PUBLISH_DIR%\GWTP.Api.exe\"" start= auto DisplayName= "GWTP API"
 if errorlevel 1 goto :error
 
-sc.exe description "%SERVICE_NAME%" "Generic Web Training Platform central API"
+sc.exe description "%SERVICE_NAME%" "Generic Workplace Training Platform central API"
 sc.exe failure "%SERVICE_NAME%" reset= 86400 actions= restart/5000/restart/5000/restart/5000
 
 reg.exe add "HKLM\SYSTEM\CurrentControlSet\Services\%SERVICE_NAME%" /v Environment /t REG_MULTI_SZ /d "ASPNETCORE_URLS=http://127.0.0.1:5000\0GWTP_DATA_PATH=%DATA_DIR%" /f >nul
