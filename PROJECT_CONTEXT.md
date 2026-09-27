@@ -195,3 +195,19 @@ Database:
 - Web native-navigation intent belongs to the currently rendered authored step, not permanently to the host-page element. When that step is cleared/replaced, its pointer/keyboard navigation listeners must be detached so later interaction with the old underlying link cannot advance the new active step.
 - Cross-runtime focus handoff is explicit and directional. Web -> Windows activates/restores the uniquely resolved Windows target once on step entry. Windows -> Web must return foreground through the native runtime to the browser HWND captured when the Windows segment was entered; browser API focus alone is insufficient. Preserve that original browser HWND across intermediate Windows -> Windows steps. Once a runtime step is active, ordinary user minimize/foreground loss remains passive lifecycle behavior and must not trigger focus fighting.
 - Manual verification on 2026-09-27 confirms browser-history/BFCache behavior is clean and Windows -> Web Previous returns focus to the browser with the Web guidance restored. Windows -> Windows focus transfer between two distinct native applications follows the per-step activation design but remains an explicit verification item.
+
+
+## Centralized test layout (2026-09-27)
+
+- All automated test infrastructure lives under `tests/`.
+- Web:
+  - `tests/web/GWTP.Web.GuiTests/`
+  - `tests/web/GWTP.Web.TestHost/`
+- Windows:
+  - `tests/windows/GWTP.Windows.GuiTests/`
+  - `tests/windows/GWTP.Windows.TestHost/`
+  - `tests/windows/run-sanity.ps1`
+- Shared API/database sanity: `tests/api/run-sanity.ps1`.
+- Production runtime code must remain outside `tests/`; `windows-runtime/GWTP.Windows.Runtime/` is production code.
+- Web and Windows test architecture should remain structurally symmetric where their runtime differences permit: a GUI suite plus a dedicated Test Host.
+- The old `sanity-tests/` layout and Windows test projects under `windows-runtime/` are retired and must not be recreated.
