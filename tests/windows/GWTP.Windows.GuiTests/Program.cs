@@ -399,7 +399,25 @@ internal static class Program
 
             Run("18. T08 duplicate leaf in second same-process window does not steal authored target", () =>
             {
-                var second = WaitForTopLevelWindow("GWTP UIA Test Host — Second Window");
+                // Tests 14-17 intentionally mutate the shared host (second window,
+                // scroll/foreground state and authored targets). T08 validates the
+                // same-process duplicate-window contract, not those earlier mutations,
+                // so start it from a fresh deterministic Test Host process.
+                var previousHostHwnd = new IntPtr(hostWindow.Current.NativeWindowHandle);
+                SendMessage(previousHostHwnd, WmClose, IntPtr.Zero, IntPtr.Zero);
+                WaitUntil(() => Process.GetProcessesByName("GWTP.Windows.TestHost").Length == 0,
+                    "Previous test-host process did not exit before isolated T08 setup.",
+                    LaunchTimeoutMs);
+
+                Invoke(FindByName(runtimeWindow, "Open Ambiguity Test"));
+                WaitUntil(() => Process.GetProcessesByName("GWTP.Windows.TestHost").Length == 1,
+                    "Fresh T08 test-host process did not start.",
+                    LaunchTimeoutMs);
+                hostWindow = WaitForTopLevelWindow("GWTP Windows UIA Test Host", LaunchTimeoutMs);
+                ArrangeWindowsForPicker(runtimeWindow, hostWindow);
+
+                Invoke(FindByName(hostWindow, "Open second test window"));
+                var second = WaitForTopLevelWindow("GWTP UIA Test Host — Second Window", LaunchTimeoutMs);
                 var secondDuplicate = FindByAutomationId(second, "SharedContinue");
                 Require(secondDuplicate.Current.ProcessId == hostWindow.Current.ProcessId,
                     "Second-window duplicate is not in the same process.");
