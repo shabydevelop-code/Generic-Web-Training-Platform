@@ -1871,6 +1871,37 @@ static void ApplyDatabaseMigrations(string databasePath)
         transaction.Commit();
     });
 
+    ApplyOneTimeMigration(connection, "20260927_remove_legacy_test_guides", () =>
+    {
+        using var transaction = connection.BeginTransaction();
+
+        using var deleteGuides = connection.CreateCommand();
+        deleteGuides.Transaction = transaction;
+        deleteGuides.CommandText = """
+            DELETE FROM Guides
+            WHERE Name = 'בדיקת כל חוקי הוולידציה'
+               OR Name GLOB 'GWTP Validation Rules [0-9]*'
+               OR Name GLOB 'GWTP Learner Navigation [0-9]*'
+               OR Name GLOB 'Windows Authoring [0-9]*';
+            """;
+        deleteGuides.ExecuteNonQuery();
+
+        using var deleteEmptyTestTopics = connection.CreateCommand();
+        deleteEmptyTestTopics.Transaction = transaction;
+        deleteEmptyTestTopics.CommandText = """
+            DELETE FROM Topics
+            WHERE NOT EXISTS (SELECT 1 FROM Guides WHERE Guides.TopicId = Topics.Id)
+              AND (
+                    Name GLOB 'GWTP Validation Rules [0-9]*'
+                 OR Name GLOB 'GWTP Learner Navigation [0-9]*'
+                 OR Name GLOB 'Windows Authoring [0-9]*'
+              );
+            """;
+        deleteEmptyTestTopics.ExecuteNonQuery();
+
+        transaction.Commit();
+    });
+
     using var normalizeProgress = connection.CreateCommand();
     normalizeProgress.CommandText = "UPDATE UserProgress SET StartedAt = COALESCE(StartedAt, CURRENT_TIMESTAMP), LastActivityAt = COALESCE(LastActivityAt, CURRENT_TIMESTAMP);";
     normalizeProgress.ExecuteNonQuery();
