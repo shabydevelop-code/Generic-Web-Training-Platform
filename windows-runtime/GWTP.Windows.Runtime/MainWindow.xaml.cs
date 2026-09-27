@@ -248,7 +248,8 @@ public partial class MainWindow : Window
         {
             var projectPath = Path.Combine(
                 AppContext.BaseDirectory,
-                "..", "..", "..", "..", "GWTP.Windows.TestHost", "GWTP.Windows.TestHost.csproj");
+                "..", "..", "..", "..", "..", "..",
+                "tests", "windows", "GWTP.Windows.TestHost", "GWTP.Windows.TestHost.csproj");
 
             projectPath = Path.GetFullPath(projectPath);
 
