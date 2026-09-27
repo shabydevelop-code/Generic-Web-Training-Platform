@@ -1562,112 +1562,61 @@ test("learner can reopen the extension and resume saved progress", async () => {
 
 
 test("completed guide is stored as Completed and starts over on the next run", async () => {
-  let panel = await openPanel();
-  await login(panel, "sanity.learner");
+  const fixtureName = `GWTP Completion ${Date.now()}`;
+  const editor = await openPanel();
+  await login(editor, "sanity.editor");
+  const setup = await createTemporaryFixtureGuide(editor, fixtureName, [
+    { selector: "#site-name", instruction: "Completion target", screenName: "Site", frame: { name: "TargetContent", srcIncludes: "site_content.html" }, validation: null }
+  ]);
+  await editor.close();
 
+  let panel;
   const crm = await context.newPage();
-  await crm.goto(`${SITE_URL}/site.html`);
-  await crm.bringToFront();
+  try {
+    panel = await openPanel();
+    await login(panel, "sanity.learner");
+    await crm.goto(`${SITE_URL}/site.html`);
+    await crm.bringToFront();
 
-  const topic = panel.locator("#learnerTopicSelect option").filter({ hasText: "Demo CRM" });
-  await panel.locator("#learnerTopicSelect").selectOption(await topic.getAttribute("value"));
-  const validationGuide = panel.locator("#learnerGuideSelect option").filter({ hasText: "בדיקת כל חוקי הוולידציה" });
-  const guideId = await validationGuide.getAttribute("value");
-  await panel.locator("#learnerGuideSelect").selectOption(guideId);
+    await panel.locator("#learnerTopicSelect").selectOption(String(setup.topicId));
+    await panel.locator("#learnerGuideSelect").selectOption(String(setup.guideId));
+    await panel.locator("#startLearningButton").click();
+    await confirmGuideStartInstruction(panel);
 
-  const restart = panel.locator("#restartLearningButton");
-  if (await restart.isVisible()) await restart.click();
-  else await panel.locator("#startLearningButton").click();
-  await confirmGuideStartInstruction(panel);
+    const content = crm.frameLocator('iframe[name="TargetContent"]');
+    const finish = content.locator(".gwtp-training-overlay button").filter({ hasText: /סיום|סיים|Finish/i });
+    await expect(finish).toBeEnabled();
+    await finish.click();
+    await expect(content.locator('[role="dialog"][aria-modal="true"]')).toBeVisible({ timeout: 10000 });
 
-  const content = crm.frameLocator('iframe[name="TargetContent"]');
-  await expect(content.locator(".gwtp-training-overlay")).toBeVisible({ timeout: 10000 });
+    await panel.close();
+    panel = await context.newPage();
+    await panel.goto(`chrome-extension://${extensionId}/sidepanel/sidepanel.html`);
+    await expect(panel.locator("#learnModeView")).toBeVisible({ timeout: 10000 });
+    await panel.locator("#learnerTopicSelect").selectOption(String(setup.topicId));
+    await panel.locator("#learnerGuideSelect").selectOption(String(setup.guideId));
 
-  // Complete the compact validation guide while satisfying every authored rule.
-  // Step indexes: 0 required name, 1 equals branch, 2 not-equals HQ,
-  // 3 contains TEST, 4 changed phone, 5 changed+regex phone.
-  await content.locator("#site-name").fill("TEST Completion Site");
-  await content.locator(".gwtp-training-overlay button").filter({ hasText: /הבא|Next/i }).click();
-  await expect(content.locator("#site-type")).toHaveCSS("outline-width", "3px");
+    const start = panel.locator("#startLearningButton");
+    await expect(start).toBeVisible();
+    await expect(start).not.toContainText(/המשך למידה|Continue/i);
+    await expect(panel.locator("#restartLearningButton")).toBeHidden();
 
-  await content.locator("#site-type").selectOption("branch");
-  await expect(content.locator("#site-type")).toHaveValue("branch", { timeout: 10000 });
-  await content.locator(".gwtp-training-overlay button").filter({ hasText: /הבא|Next/i }).click();
-  await expect.poll(async () => panel.evaluate(async () => {
-    const response = await chrome.runtime.sendMessage({ type: "GWTP_TRAINING_GET_CURRENT" });
-    return response?.current?.stepIndex ?? null;
-  }), { timeout: 10000 }).toBe(2);
-
-  // Step 2 requires a value different from branch. Changing this field triggers
-  // the Demo CRM postback/reload, so wait for the new document/value before Next.
-  await content.locator("#site-type").selectOption("hq");
-  await expect(content.locator("#site-type")).toHaveValue("hq", { timeout: 10000 });
-  await content.locator(".gwtp-training-overlay button").filter({ hasText: /הבא|Next/i }).click();
-  await expect.poll(async () => panel.evaluate(async () => {
-    const response = await chrome.runtime.sendMessage({ type: "GWTP_TRAINING_GET_CURRENT" });
-    return response?.current?.stepIndex ?? null;
-  }), { timeout: 10000 }).toBe(3);
-  await expect(content.locator("#site-name")).toHaveCSS("outline-width", "3px");
-
-  await content.locator("#site-name").fill("TEST Completion Site");
-  await content.locator(".gwtp-training-overlay button").filter({ hasText: /הבא|Next/i }).click();
-  await expect.poll(async () => panel.evaluate(async () => {
-    const response = await chrome.runtime.sendMessage({ type: "GWTP_TRAINING_GET_CURRENT" });
-    return response?.current?.stepIndex ?? null;
-  }), { timeout: 10000 }).toBe(4);
-  await expect(content.locator("#site-phone")).toHaveCSS("outline-width", "3px");
-
-  let phone = content.locator("#site-phone");
-  const baseline = await phone.inputValue();
-  const firstChangedPhone = baseline === "03-7654321" ? "03-7654322" : "03-7654321";
-  await phone.fill(firstChangedPhone);
-  await content.locator(".gwtp-training-overlay button").filter({ hasText: /הבא|Next/i }).click();
-  await expect.poll(async () => panel.evaluate(async () => {
-    const response = await chrome.runtime.sendMessage({ type: "GWTP_TRAINING_GET_CURRENT" });
-    return response?.current?.stepIndex ?? null;
-  }), { timeout: 10000 }).toBe(5);
-
-  phone = content.locator("#site-phone");
-  const secondBaseline = await phone.inputValue();
-  const secondChangedPhone = secondBaseline === "03-7654323" ? "03-7654324" : "03-7654323";
-  await phone.fill(secondChangedPhone);
-
-  const finish = content.locator(".gwtp-training-overlay button").filter({ hasText: /סיום|סיים|Finish/i });
-  await expect(finish).toBeEnabled();
-  await finish.click();
-
-  const completion = content.locator('[role="dialog"][aria-modal="true"]');
-  await expect(completion).toBeVisible({ timeout: 10000 });
-
-  // Reopen the extension UI so its learner catalog is freshly loaded from the API.
-  await panel.close();
-  panel = await context.newPage();
-  await panel.goto(`chrome-extension://${extensionId}/sidepanel/sidepanel.html`);
-  await expect(panel.locator("#learnModeView")).toBeVisible({ timeout: 10000 });
-
-  const reopenedTopic = panel.locator("#learnerTopicSelect option").filter({ hasText: "Demo CRM" });
-  await panel.locator("#learnerTopicSelect").selectOption(await reopenedTopic.getAttribute("value"));
-  const reopenedGuide = panel.locator("#learnerGuideSelect option").filter({ hasText: "בדיקת כל חוקי הוולידציה" });
-  await panel.locator("#learnerGuideSelect").selectOption(await reopenedGuide.getAttribute("value"));
-
-  // Completed guides are not offered Continue/Restart. Pressing Start must restart
-  // from step 1 rather than attempting to resume the completed final step.
-  const start = panel.locator("#startLearningButton");
-  await expect(start).toBeVisible();
-  await expect(start).not.toContainText(/המשך למידה|Continue/i);
-  await expect(panel.locator("#restartLearningButton")).toBeHidden();
-
-  await crm.bringToFront();
-  await start.click();
-  await confirmGuideStartInstruction(panel);
-  await expect.poll(async () => panel.evaluate(async () => {
-    const response = await chrome.runtime.sendMessage({ type: "GWTP_TRAINING_GET_CURRENT" });
-    return response?.current?.stepIndex ?? null;
-  }), { timeout: 10000 }).toBe(0);
-  await expect(content.locator("#site-name")).toHaveCSS("outline-width", "3px");
-
-  await panel.close();
-  await crm.close();
+    await crm.bringToFront();
+    await start.click();
+    await confirmGuideStartInstruction(panel);
+    await expect.poll(async () => panel.evaluate(async () => {
+      const response = await chrome.runtime.sendMessage({ type: "GWTP_TRAINING_GET_CURRENT" });
+      return response?.current?.stepIndex ?? null;
+    }), { timeout: 10000 }).toBe(0);
+    await expect(content.locator("#site-name")).toHaveCSS("outline-width", "3px");
+  } finally {
+    if (panel && !panel.isClosed()) await panel.close();
+    if (!crm.isClosed()) await crm.close();
+    const cleanup = await openPanel();
+    await login(cleanup, "sanity.editor");
+    await deleteTemporaryFixtureGuide(cleanup, setup);
+    await cleanup.close();
+  }
 });
 
 
