@@ -390,7 +390,7 @@ test("stage 6 dynamic web app - GWTP follows SPA, DOM replacement, dynamic frame
 });
 
 
-test("Demo CRM loads with the GWTP content script", async () => {
+test("Web Test Host loads with the GWTP content script", async () => {
   const page = await context.newPage();
   await page.goto(`${SITE_URL}/site.html`);
   await expect(page).toHaveTitle(/.+/);
