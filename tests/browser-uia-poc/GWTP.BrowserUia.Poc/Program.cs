@@ -35,6 +35,9 @@ internal sealed class PocForm : Forms.Form
     private bool _mouseWasDown;
     private bool _armed;
     private bool _tracking;
+    private AutomationElement? _trackedElement;
+    private AutomationPropertyChangedEventHandler? _trackedPropertyHandler;
+    private StructureChangedEventHandler? _trackedStructureHandler;
 
     public PocForm()
     {
@@ -57,7 +60,11 @@ internal sealed class PocForm : Forms.Form
         _read.Click += (_, _) => ReadValue();
         _track.Click += (_, _) => ToggleTracking();
         _timer.Tick += (_, _) => TimerTick();
-        FormClosed += (_, _) => _overlay.Close();
+        FormClosed += (_, _) =>
+        {
+            StopEventTracking();
+            _overlay.Close();
+        };
     }
 
     private void TogglePicker()
@@ -160,11 +167,11 @@ internal sealed class PocForm : Forms.Form
             _find.Enabled = false;
             _read.Enabled = false;
             _status.Text = "Tracking selected target. Scroll, resize, refresh, or change the page.";
-            _timer.Start();
+            ResolveAndAttachTracking();
         }
         else
         {
-            _timer.Stop();
+            StopEventTracking();
             _pick.Enabled = true;
             _find.Enabled = true;
             _read.Enabled = true;
@@ -174,21 +181,92 @@ internal sealed class PocForm : Forms.Form
 
     private void TrackTick()
     {
+        // Picker sampling uses the timer. Active target tracking is UIA event-driven.
+    }
+
+    private void ResolveAndAttachTracking()
+    {
         if (_descriptor is null) return;
 
+        StopEventTracking();
         var matches = BrowserResolver.Find(_descriptor);
-        if (matches.Count == 1)
-        {
-            ShowOverlay(matches[0]);
-            _status.Text = "Tracking: unique target found.";
-        }
-        else
+        if (matches.Count != 1)
         {
             _overlay.Hide();
             _status.Text = matches.Count == 0
                 ? "Tracking: target unavailable."
                 : $"Tracking: ambiguous ({matches.Count} matches).";
+            return;
         }
+
+        _trackedElement = matches[0];
+        ShowOverlay(_trackedElement);
+        _status.Text = "Tracking: unique target found; listening for UIA layout changes.";
+
+        _trackedPropertyHandler = (_, _) => BeginInvoke(new Action(RefreshTrackedBounds));
+        _trackedStructureHandler = (_, _) => BeginInvoke(new Action(ResolveAndAttachTracking));
+
+        try
+        {
+            Automation.AddAutomationPropertyChangedEventHandler(
+                _trackedElement,
+                TreeScope.Element,
+                _trackedPropertyHandler,
+                AutomationElement.BoundingRectangleProperty,
+                AutomationElement.IsOffscreenProperty);
+
+            Automation.AddStructureChangedEventHandler(
+                _trackedElement,
+                TreeScope.Subtree,
+                _trackedStructureHandler);
+        }
+        catch (ElementNotAvailableException)
+        {
+            ResolveAndAttachTracking();
+        }
+    }
+
+    private void RefreshTrackedBounds()
+    {
+        if (!_tracking || _trackedElement is null) return;
+
+        try
+        {
+            if (_trackedElement.Current.IsOffscreen)
+            {
+                _overlay.Hide();
+                _status.Text = "Tracking: target is offscreen.";
+                return;
+            }
+
+            ShowOverlay(_trackedElement);
+            _status.Text = "Tracking: target bounds updated by UIA event.";
+        }
+        catch (ElementNotAvailableException)
+        {
+            ResolveAndAttachTracking();
+        }
+    }
+
+    private void StopEventTracking()
+    {
+        if (_trackedElement is not null)
+        {
+            try
+            {
+                if (_trackedPropertyHandler is not null)
+                    Automation.RemoveAutomationPropertyChangedEventHandler(_trackedElement, _trackedPropertyHandler);
+                if (_trackedStructureHandler is not null)
+                    Automation.RemoveStructureChangedEventHandler(_trackedElement, _trackedStructureHandler);
+            }
+            catch (ElementNotAvailableException)
+            {
+            }
+        }
+
+        _trackedElement = null;
+        _trackedPropertyHandler = null;
+        _trackedStructureHandler = null;
     }
 
     private void FindAgain()
