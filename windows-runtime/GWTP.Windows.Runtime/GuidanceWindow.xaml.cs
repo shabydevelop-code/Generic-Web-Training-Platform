@@ -78,12 +78,18 @@ public partial class GuidanceWindow : Window
         var rtl = string.Equals(direction, "rtl", StringComparison.OrdinalIgnoreCase);
         var flowDirection = rtl ? System.Windows.FlowDirection.RightToLeft : System.Windows.FlowDirection.LeftToRight;
         ContentPanel.FlowDirection = flowDirection;
+        ContentStack.FlowDirection = flowDirection;
+        ContentStack.HorizontalAlignment = HorizontalAlignment.Stretch;
+        StepPositionText.HorizontalAlignment = HorizontalAlignment.Stretch;
+        InstructionText.HorizontalAlignment = HorizontalAlignment.Stretch;
+        ValidationMessage.HorizontalAlignment = HorizontalAlignment.Stretch;
         StepPositionText.FlowDirection = flowDirection;
         InstructionText.FlowDirection = flowDirection;
         ValidationMessage.FlowDirection = flowDirection;
-        StepPositionText.TextAlignment = rtl ? TextAlignment.Right : TextAlignment.Left;
-        InstructionText.TextAlignment = rtl ? TextAlignment.Right : TextAlignment.Left;
-        ValidationMessage.TextAlignment = rtl ? TextAlignment.Right : TextAlignment.Left;
+        var textAlignment = rtl ? TextAlignment.Right : TextAlignment.Left;
+        StepPositionText.TextAlignment = textAlignment;
+        InstructionText.TextAlignment = textAlignment;
+        ValidationMessage.TextAlignment = textAlignment;
         PreviousButton.FlowDirection = flowDirection;
         NextButton.FlowDirection = flowDirection;
     }
