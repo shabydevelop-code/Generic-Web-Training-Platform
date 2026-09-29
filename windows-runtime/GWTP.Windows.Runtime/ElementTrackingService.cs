@@ -397,6 +397,12 @@ internal sealed class ElementTrackingService : IDisposable
                                     bounds.Width <= 0 ||
                                     bounds.Height <= 0 ||
                                     (_hostWindow != IntPtr.Zero && IsIconic(_hostWindow));
+
+                if (!temporarilyHidden)
+                {
+                    bounds = GetVisibleBounds(bounds);
+                    temporarilyHidden = bounds.IsEmpty || bounds.Width <= 0 || bounds.Height <= 0;
+                }
             }
         }
         catch (ElementNotAvailableException)
@@ -435,6 +441,53 @@ internal sealed class ElementTrackingService : IDisposable
 
             BoundsChanged?.Invoke(bounds);
         });
+    }
+
+    private Rect GetVisibleBounds(Rect targetBounds)
+    {
+        var visibleBounds = targetBounds;
+        AutomationElement? current;
+
+        try
+        {
+            current = TreeWalker.ControlViewWalker.GetParent(_element);
+        }
+        catch (ElementNotAvailableException)
+        {
+            return Rect.Empty;
+        }
+
+        for (var depth = 0; current is not null && depth < 32; depth++)
+        {
+            try
+            {
+                var controlType = current.Current.ControlType;
+                var clipsDescendants =
+                    controlType == ControlType.Window ||
+                    (bool)current.GetCurrentPropertyValue(AutomationElement.IsScrollPatternAvailableProperty);
+
+                if (clipsDescendants)
+                {
+                    var ancestorBounds = current.Current.BoundingRectangle;
+                    if (!ancestorBounds.IsEmpty && ancestorBounds.Width > 0 && ancestorBounds.Height > 0)
+                    {
+                        visibleBounds.Intersect(ancestorBounds);
+                        if (visibleBounds.IsEmpty)
+                        {
+                            return Rect.Empty;
+                        }
+                    }
+                }
+
+                current = TreeWalker.ControlViewWalker.GetParent(current);
+            }
+            catch (ElementNotAvailableException)
+            {
+                return Rect.Empty;
+            }
+        }
+
+        return visibleBounds;
     }
 
     private void NotifyUnavailable()
