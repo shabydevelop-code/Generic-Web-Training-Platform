@@ -23,6 +23,7 @@ internal sealed class PocForm : Forms.Form
     private readonly Forms.Button _pick = new() { Text = "Pick browser element", AutoSize = true };
     private readonly Forms.Button _find = new() { Text = "Find again", AutoSize = true, Enabled = false };
     private readonly Forms.Button _read = new() { Text = "Read value", AutoSize = true, Enabled = false };
+    private readonly Forms.Button _track = new() { Text = "Start tracking", AutoSize = true, Enabled = false };
     private readonly Forms.Label _status = new() { AutoSize = true, Text = "Open Chrome or Edge normally, then pick an element inside the page." };
     private readonly Forms.TextBox _details = new() { Multiline = true, ReadOnly = true, ScrollBars = Forms.ScrollBars.Vertical, Dock = Forms.DockStyle.Fill };
     private readonly Forms.Timer _timer = new() { Interval = 40 };
@@ -33,6 +34,7 @@ internal sealed class PocForm : Forms.Form
     private bool _picking;
     private bool _mouseWasDown;
     private bool _armed;
+    private bool _tracking;
 
     public PocForm()
     {
@@ -42,7 +44,7 @@ internal sealed class PocForm : Forms.Form
         StartPosition = Forms.FormStartPosition.CenterScreen;
 
         var buttons = new Forms.FlowLayoutPanel { Dock = Forms.DockStyle.Top, AutoSize = true, Padding = new Padding(8) };
-        buttons.Controls.AddRange(new Forms.Control[] { _pick, _find, _read });
+        buttons.Controls.AddRange(new Forms.Control[] { _pick, _find, _read, _track });
         _status.Dock = Forms.DockStyle.Top;
         _status.Padding = new Padding(10, 6, 10, 8);
 
@@ -53,7 +55,8 @@ internal sealed class PocForm : Forms.Form
         _pick.Click += (_, _) => TogglePicker();
         _find.Click += (_, _) => FindAgain();
         _read.Click += (_, _) => ReadValue();
-        _timer.Tick += (_, _) => PickerTick();
+        _track.Click += (_, _) => ToggleTracking();
+        _timer.Tick += (_, _) => TimerTick();
         FormClosed += (_, _) => _overlay.Close();
     }
 
@@ -71,6 +74,17 @@ internal sealed class PocForm : Forms.Form
         _pick.Text = "Cancel";
         _status.Text = "Move over a web-page element in Chrome/Edge and left-click it.";
         _timer.Start();
+    }
+
+    private void TimerTick()
+    {
+        if (_tracking)
+        {
+            TrackTick();
+            return;
+        }
+
+        PickerTick();
     }
 
     private void PickerTick()
@@ -123,12 +137,57 @@ internal sealed class PocForm : Forms.Form
             _details.Text = JsonSerializer.Serialize(_descriptor, new JsonSerializerOptions { WriteIndented = true });
             _find.Enabled = true;
             _read.Enabled = true;
+            _track.Enabled = true;
             StopPicker("Selected. Descriptor captured from UI Automation only.");
             ShowOverlay(_hovered!);
         }
         catch (Exception ex)
         {
             StopPicker($"Selection failed: {ex.Message}");
+        }
+    }
+
+    private void ToggleTracking()
+    {
+        if (_descriptor is null) return;
+
+        _tracking = !_tracking;
+        _track.Text = _tracking ? "Stop tracking" : "Start tracking";
+
+        if (_tracking)
+        {
+            _pick.Enabled = false;
+            _find.Enabled = false;
+            _read.Enabled = false;
+            _status.Text = "Tracking selected target. Scroll, resize, refresh, or change the page.";
+            _timer.Start();
+        }
+        else
+        {
+            _timer.Stop();
+            _pick.Enabled = true;
+            _find.Enabled = true;
+            _read.Enabled = true;
+            _status.Text = "Tracking stopped.";
+        }
+    }
+
+    private void TrackTick()
+    {
+        if (_descriptor is null) return;
+
+        var matches = BrowserResolver.Find(_descriptor);
+        if (matches.Count == 1)
+        {
+            ShowOverlay(matches[0]);
+            _status.Text = "Tracking: unique target found.";
+        }
+        else
+        {
+            _overlay.Hide();
+            _status.Text = matches.Count == 0
+                ? "Tracking: target unavailable."
+                : $"Tracking: ambiguous ({matches.Count} matches).";
         }
     }
 
