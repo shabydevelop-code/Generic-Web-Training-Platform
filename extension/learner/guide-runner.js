@@ -193,7 +193,10 @@
           completedTitle: window.i18nService.translate("guideCompletedTitle", window.i18nService.getLanguage()),
           completedMessage: window.i18nService.translate("guideCompletedMessage", window.i18nService.getLanguage()),
           closeCompletion: window.i18nService.translate("closeCompletionButton", window.i18nService.getLanguage()),
-          stepPosition: window.i18nService.translate("stepPosition", window.i18nService.getLanguage())
+          stepPosition: window.i18nService.translate("stepPosition", window.i18nService.getLanguage()),
+          previousLabel: window.i18nService.translate("previousButton", window.i18nService.getLanguage()),
+          nextLabel: window.i18nService.translate("nextButton", window.i18nService.getLanguage()),
+          finishLabel: window.i18nService.translate("finishButton", window.i18nService.getLanguage())
         },
         allowDetached: Boolean(guide.allowDetached)
       }

@@ -96,10 +96,14 @@ public partial class GuidanceWindow : Window
         ValidationMessage.Visibility = string.IsNullOrWhiteSpace(message) ? Visibility.Collapsed : Visibility.Visible;
     }
 
-    public void SetNavigationState(bool canPrevious, bool canNext)
+    public void SetNavigationState(bool canPrevious, bool canNext, bool isLastStep = false, string? previousLabel = null, string? nextLabel = null, string? finishLabel = null)
     {
         PreviousButton.IsEnabled = canPrevious;
-        NextButton.IsEnabled = canNext;
+        PreviousButton.Content = string.IsNullOrWhiteSpace(previousLabel) ? "Previous" : previousLabel;
+        NextButton.IsEnabled = isLastStep || canNext;
+        NextButton.Content = isLastStep
+            ? (string.IsNullOrWhiteSpace(finishLabel) ? "Finish" : finishLabel)
+            : (string.IsNullOrWhiteSpace(nextLabel) ? "Next" : nextLabel);
     }
 
     private void PreviousButton_Click(object sender, RoutedEventArgs e) => PreviousRequested?.Invoke();

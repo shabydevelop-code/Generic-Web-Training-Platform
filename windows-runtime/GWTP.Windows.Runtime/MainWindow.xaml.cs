@@ -35,6 +35,9 @@ public partial class MainWindow : Window
     private int _authoredStepIndex;
     private int _authoredTotalSteps = 1;
     private string? _authoredStepPositionTemplate;
+    private string? _authoredPreviousLabel;
+    private string? _authoredNextLabel;
+    private string? _authoredFinishLabel;
     private IntPtr _preAuthoredWindowsForeground = IntPtr.Zero;
 
     public event Action<WindowsTargetDescriptor>? AuthoringTargetSelected;
@@ -84,7 +87,7 @@ public partial class MainWindow : Window
         return WindowsTargetResolver.Resolve(target) is not null;
     }
 
-    public bool ShowAuthoredStep(WindowsTargetDescriptor target, string? instruction, bool canPrevious, bool canNext, int stepIndex, int totalSteps, string? stepPositionTemplate)
+    public bool ShowAuthoredStep(WindowsTargetDescriptor target, string? instruction, bool canPrevious, bool canNext, int stepIndex, int totalSteps, string? stepPositionTemplate, string? previousLabel, string? nextLabel, string? finishLabel)
     {
         // Capture the foreground owner only when entering the Windows portion of
         // a Hybrid Preview. Keep it across Windows→Windows navigation so the
@@ -116,12 +119,15 @@ public partial class MainWindow : Window
         _authoredStepIndex = stepIndex;
         _authoredTotalSteps = Math.Max(1, totalSteps);
         _authoredStepPositionTemplate = stepPositionTemplate;
+        _authoredPreviousLabel = previousLabel;
+        _authoredNextLabel = nextLabel;
+        _authoredFinishLabel = finishLabel;
         StartElementTracking(element);
 
         _guidanceWindow!.SetStepPosition(_authoredStepIndex, _authoredTotalSteps, _authoredStepPositionTemplate);
         _guidanceWindow.SetInstruction(instruction);
         _guidanceWindow.SetValidationMessage(null);
-        _guidanceWindow.SetNavigationState(canPrevious, canNext);
+        _guidanceWindow.SetNavigationState(canPrevious, canNext, stepIndex >= Math.Max(1, totalSteps) - 1, previousLabel, nextLabel, finishLabel);
         _guidanceWindow.ResetManualPosition();
 
         // Restore/foreground activation is asynchronous from UIA's point of view.
@@ -348,7 +354,7 @@ public partial class MainWindow : Window
         {
             _guidanceWindow.SetStepPosition(_authoredStepIndex, _authoredTotalSteps, _authoredStepPositionTemplate);
             _guidanceWindow.SetInstruction(_authoredInstruction);
-            _guidanceWindow.SetNavigationState(_authoredCanPrevious, _authoredCanNext);
+            _guidanceWindow.SetNavigationState(_authoredCanPrevious, _authoredCanNext, _authoredStepIndex >= _authoredTotalSteps - 1, _authoredPreviousLabel, _authoredNextLabel, _authoredFinishLabel);
         }
         else
         {

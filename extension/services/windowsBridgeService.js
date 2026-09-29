@@ -108,7 +108,10 @@
       canNext: Boolean(step?.navigation?.canNext),
       stepIndex: Number.isInteger(step?.navigation?.stepIndex) ? step.navigation.stepIndex : 0,
       totalSteps: step?.navigation?.totalSteps || 1,
-      stepPosition: step?.navigation?.stepPosition || "Step {current} of {total}"
+      stepPosition: step?.navigation?.stepPosition || "Step {current} of {total}",
+      previousLabel: step?.navigation?.previousLabel || "Previous",
+      nextLabel: step?.navigation?.nextLabel || "Next",
+      finishLabel: step?.navigation?.finishLabel || "Finish"
     }, "stepShown");
     return response;
   }
