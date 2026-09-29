@@ -363,15 +363,48 @@ async function moveWindowsPreview(direction) {
   });
 }
 
+async function moveWindowsLearner(direction) {
+  if (!learnerSessionActive || (direction !== 1 && direction !== -1)) return;
+
+  const currentResponse = await chrome.runtime.sendMessage({ type: "GWTP_TRAINING_GET_CURRENT" });
+  const current = currentResponse?.current;
+  if (!current?.step) return;
+
+  const isLastStep = current.stepIndex >= (current.totalSteps || 1) - 1;
+  if (direction > 0 && isLastStep) {
+    const response = await chrome.runtime.sendMessage({ type: "GWTP_TRAINING_COMPLETE" });
+    if (!response?.success) return;
+    await window.windowsBridgeService.clearStep();
+    learnerSessionActive = false;
+    chrome.runtime.sendMessage({
+      type: "GWTP_TRAINING_COMPLETED",
+      guideId: response.result?.guideId
+    }).catch(() => {});
+    return;
+  }
+
+  const peekType = direction > 0 ? "GWTP_TRAINING_PEEK_NEXT" : "GWTP_TRAINING_PEEK_PREVIOUS";
+  const moveType = direction > 0 ? "GWTP_TRAINING_NEXT" : "GWTP_TRAINING_PREVIOUS";
+  const peekResponse = await chrome.runtime.sendMessage({ type: peekType });
+  if (!peekResponse?.success || !peekResponse.current?.step) return;
+  if (!(await window.guideRunner.canShowStep(peekResponse.current))) return;
+
+  const moveResponse = await chrome.runtime.sendMessage({ type: moveType });
+  if (!moveResponse?.success || !moveResponse.current?.step) return;
+  await window.guideRunner.showCurrentStep(moveResponse.current);
+}
+
 window.addEventListener("gwtp-windows-preview-navigation", (event) => {
   const direction = event.detail?.direction === "next"
     ? 1
     : event.detail?.direction === "previous"
       ? -1
       : 0;
+  const mode = event.detail?.mode || "learner";
+  const move = mode === "preview" ? moveWindowsPreview : moveWindowsLearner;
 
-  moveWindowsPreview(direction).catch((error) => {
-    console.info("GWTP Windows preview navigation skipped:", error);
+  move(direction).catch((error) => {
+    console.info("GWTP Windows navigation skipped:", error);
   });
 });
 

@@ -375,7 +375,8 @@
           previousLabel: window.i18nService.translate("previousButton", window.i18nService.getLanguage()),
           nextLabel: window.i18nService.translate("nextButton", window.i18nService.getLanguage()),
           finishLabel: window.i18nService.translate("finishButton", window.i18nService.getLanguage()),
-          direction: window.i18nService.getLanguage() === "he" ? "rtl" : "ltr"
+          mode: current.mode || "learner",
+          isRtl: window.i18nService.getLanguage() === "he"
         }
       });
       return response?.success === true;

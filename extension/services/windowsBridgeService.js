@@ -55,6 +55,7 @@
   }
 
   let previewPort = null;
+  let activeGuidanceMode = "learner";
 
   function ensurePreviewPort() {
     if (previewPort) return previewPort;
@@ -62,7 +63,7 @@
     previewPort.onMessage.addListener((message) => {
       if (message?.type === "navigationRequested") {
         window.dispatchEvent(new CustomEvent("gwtp-windows-preview-navigation", {
-          detail: { direction: message.direction }
+          detail: { direction: message.direction, mode: activeGuidanceMode }
         }));
       }
     });
@@ -100,6 +101,7 @@
   }
 
   async function showStep(step) {
+    activeGuidanceMode = step?.navigation?.mode || "learner";
     const response = await requestPreview({
       type: "showStep",
       target: step?.windowsTarget,
@@ -112,7 +114,7 @@
       previousLabel: step?.navigation?.previousLabel || "Previous",
       nextLabel: step?.navigation?.nextLabel || "Next",
       finishLabel: step?.navigation?.finishLabel || "Finish",
-      direction: step?.navigation?.direction || "ltr"
+      isRtl: step?.navigation?.isRtl === true
     }, "stepShown");
     return response;
   }

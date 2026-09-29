@@ -72,9 +72,8 @@ public partial class GuidanceWindow : Window
             SwpNoActivate | SwpShowWindow);
     }
 
-    public void SetDirection(string? direction)
+    public void SetDirection(bool rtl)
     {
-        var rtl = string.Equals(direction, "rtl", StringComparison.OrdinalIgnoreCase);
         var flowDirection = rtl ? System.Windows.FlowDirection.RightToLeft : System.Windows.FlowDirection.LeftToRight;
         var textAlignment = rtl ? TextAlignment.Right : TextAlignment.Left;
 
