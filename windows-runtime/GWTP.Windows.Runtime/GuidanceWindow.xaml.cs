@@ -81,7 +81,6 @@ public partial class GuidanceWindow : Window
         StepPositionText.FlowDirection = flowDirection;
         InstructionText.FlowDirection = flowDirection;
         ValidationMessage.FlowDirection = flowDirection;
-        NavigationPanel.FlowDirection = System.Windows.FlowDirection.LeftToRight;
         StepPositionText.TextAlignment = rtl ? TextAlignment.Right : TextAlignment.Left;
         InstructionText.TextAlignment = rtl ? TextAlignment.Right : TextAlignment.Left;
         ValidationMessage.TextAlignment = rtl ? TextAlignment.Right : TextAlignment.Left;
