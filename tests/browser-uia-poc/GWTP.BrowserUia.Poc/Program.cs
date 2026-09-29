@@ -26,7 +26,7 @@ internal sealed class PocForm : Forms.Form
     private readonly Forms.Button _track = new() { Text = "Start tracking", AutoSize = true, Enabled = false };
     private readonly Forms.Label _status = new() { AutoSize = true, Text = "Open Chrome or Edge normally, then pick an element inside the page." };
     private readonly Forms.TextBox _details = new() { Multiline = true, ReadOnly = true, ScrollBars = Forms.ScrollBars.Vertical, Dock = Forms.DockStyle.Fill };
-    private readonly Forms.Timer _timer = new() { Interval = 40 };
+    private readonly Forms.Timer _timer = new() { Interval = 16 };
     private readonly OverlayForm _overlay = new();
 
     private BrowserDescriptor? _descriptor;
@@ -175,9 +175,11 @@ internal sealed class PocForm : Forms.Form
             _status.Text = "Tracking selected target. Scroll, resize, refresh, or change the page.";
             if (!TryAttachSelectedElement())
                 ResolveAndAttachTracking();
+            _timer.Start();
         }
         else
         {
+            _timer.Stop();
             StopEventTracking();
             _pick.Enabled = true;
             _find.Enabled = true;
@@ -188,7 +190,22 @@ internal sealed class PocForm : Forms.Form
 
     private void TrackTick()
     {
-        // Picker sampling uses the timer. Active target tracking is UIA event-driven.
+        if (!_tracking || _trackedElement is null) return;
+
+        try
+        {
+            if (_trackedElement.Current.IsOffscreen)
+            {
+                _overlay.Hide();
+                return;
+            }
+
+            ShowOverlay(_trackedElement);
+        }
+        catch (ElementNotAvailableException)
+        {
+            ResolveAndAttachTracking();
+        }
     }
 
     private bool TryAttachSelectedElement()
