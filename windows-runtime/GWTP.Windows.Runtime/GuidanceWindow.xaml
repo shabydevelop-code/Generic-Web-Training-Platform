@@ -23,7 +23,7 @@
                               Opacity="0.22"
                               ShadowDepth="3" />
         </Border.Effect>
-        <StackPanel Width="308">
+        <StackPanel x:Name="ContentPanel" Width="308">
             <Grid x:Name="DragHandle"
                   Height="14"
                   Margin="-10,-4,-10,8"

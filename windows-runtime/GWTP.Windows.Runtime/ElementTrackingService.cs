@@ -21,6 +21,7 @@ internal sealed class ElementTrackingService : IDisposable
     private IntPtr _foregroundWinEventHook;
     private WinEventDelegate? _winEventDelegate;
     private Process? _hostProcess;
+    private readonly List<AutomationElement> _scrollAncestors = new();
     private bool _disposed;
     private int _refreshInProgress;
 
@@ -83,6 +84,7 @@ internal sealed class ElementTrackingService : IDisposable
         }
 
         CaptureWindowChain(_element);
+        SubscribeToScrollableAncestors();
         if (_hostWindow != IntPtr.Zero)
         {
             _winEventDelegate = OnWinEvent;
@@ -155,6 +157,50 @@ internal sealed class ElementTrackingService : IDisposable
 
         }
 
+    }
+
+    private void SubscribeToScrollableAncestors()
+    {
+        AutomationElement? current;
+        try
+        {
+            current = TreeWalker.ControlViewWalker.GetParent(_element);
+        }
+        catch (ElementNotAvailableException)
+        {
+            return;
+        }
+
+        for (var depth = 0; current is not null && depth < 32; depth++)
+        {
+            try
+            {
+                if ((bool)current.GetCurrentPropertyValue(AutomationElement.IsScrollPatternAvailableProperty))
+                {
+                    Automation.AddAutomationPropertyChangedEventHandler(
+                        current,
+                        TreeScope.Element,
+                        OnScrollAncestorPropertyChanged,
+                        ScrollPattern.HorizontalScrollPercentProperty,
+                        ScrollPattern.VerticalScrollPercentProperty,
+                        ScrollPattern.HorizontalViewSizeProperty,
+                        ScrollPattern.VerticalViewSizeProperty);
+                    _scrollAncestors.Add(current);
+                }
+
+                current = TreeWalker.ControlViewWalker.GetParent(current);
+            }
+            catch (ElementNotAvailableException)
+            {
+                break;
+            }
+        }
+    }
+
+    private void OnScrollAncestorPropertyChanged(object sender, AutomationPropertyChangedEventArgs e)
+    {
+        DiagnosticLog.Write("Tracker.ScrollAncestorChanged");
+        RequestBoundsRefresh();
     }
 
     private void OnAutomationPropertyChanged(object sender, AutomationPropertyChangedEventArgs e)
@@ -483,6 +529,19 @@ internal sealed class ElementTrackingService : IDisposable
                 DiagnosticLog.Write($"Tracker.Dispose.RemoveUIAHandler.Failed {ex.GetType().Name}");
             }
         });
+
+        foreach (var scrollAncestor in _scrollAncestors)
+        {
+            try
+            {
+                Automation.RemoveAutomationPropertyChangedEventHandler(scrollAncestor, OnScrollAncestorPropertyChanged);
+            }
+            catch (Exception ex)
+            {
+                DiagnosticLog.Write($"Tracker.Dispose.RemoveScrollHandler.Failed {ex.GetType().Name}");
+            }
+        }
+        _scrollAncestors.Clear();
 
         if (_hostProcess is not null)
         {

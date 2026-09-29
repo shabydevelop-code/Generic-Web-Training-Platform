@@ -76,10 +76,17 @@ public partial class GuidanceWindow : Window
     public void SetDirection(string? direction)
     {
         var rtl = string.Equals(direction, "rtl", StringComparison.OrdinalIgnoreCase);
-        FlowDirection = rtl ? System.Windows.FlowDirection.RightToLeft : System.Windows.FlowDirection.LeftToRight;
+        var flowDirection = rtl ? System.Windows.FlowDirection.RightToLeft : System.Windows.FlowDirection.LeftToRight;
+        ContentPanel.FlowDirection = flowDirection;
+        StepPositionText.FlowDirection = flowDirection;
+        InstructionText.FlowDirection = flowDirection;
+        ValidationMessage.FlowDirection = flowDirection;
+        NavigationPanel.FlowDirection = System.Windows.FlowDirection.LeftToRight;
         StepPositionText.TextAlignment = rtl ? TextAlignment.Right : TextAlignment.Left;
         InstructionText.TextAlignment = rtl ? TextAlignment.Right : TextAlignment.Left;
         ValidationMessage.TextAlignment = rtl ? TextAlignment.Right : TextAlignment.Left;
+        PreviousButton.FlowDirection = flowDirection;
+        NextButton.FlowDirection = flowDirection;
     }
 
     public void SetStepPosition(int stepIndex, int totalSteps, string? template)
