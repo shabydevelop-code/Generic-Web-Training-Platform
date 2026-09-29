@@ -45,28 +45,29 @@
                 </UniformGrid>
             </Grid>
 
-            <TextBlock x:Name="StepPositionText"
-                       HorizontalAlignment="Stretch"
-                       Margin="0,0,0,6"
-                       FontSize="14"
-                       FontWeight="SemiBold"
-                       Foreground="#667085"
-                       Text="Step 1 of 1" />
+            <Grid x:Name="StepPositionRow" HorizontalAlignment="Stretch" Margin="0,0,0,6">
+                <TextBlock x:Name="StepPositionText"
+                           FontSize="14"
+                           FontWeight="SemiBold"
+                           Foreground="#667085"
+                           Text="Step 1 of 1" />
+            </Grid>
 
-            <TextBlock x:Name="InstructionText"
-                       HorizontalAlignment="Stretch"
-                       FontSize="14"
-                       FontWeight="Medium"
-                       LineHeight="22"
-                       TextWrapping="Wrap"
-                       Text="Follow the highlighted step." />
+            <Grid x:Name="InstructionRow" HorizontalAlignment="Stretch">
+                <TextBlock x:Name="InstructionText"
+                           FontSize="14"
+                           FontWeight="Medium"
+                           LineHeight="22"
+                           TextWrapping="Wrap"
+                           Text="Follow the highlighted step." />
+            </Grid>
 
-            <TextBlock x:Name="ValidationMessage"
-                       HorizontalAlignment="Stretch"
-                       Margin="0,10,0,0"
-                       Foreground="#B42318"
-                       TextWrapping="Wrap"
-                       Visibility="Collapsed" />
+            <Grid x:Name="ValidationRow" HorizontalAlignment="Stretch" Margin="0,10,0,0">
+                <TextBlock x:Name="ValidationMessage"
+                           Foreground="#B42318"
+                           TextWrapping="Wrap"
+                           Visibility="Collapsed" />
+            </Grid>
 
             <StackPanel Orientation="Horizontal"
                         HorizontalAlignment="Center"

@@ -77,19 +77,28 @@ public partial class GuidanceWindow : Window
     {
         var rtl = string.Equals(direction, "rtl", StringComparison.OrdinalIgnoreCase);
         var flowDirection = rtl ? System.Windows.FlowDirection.RightToLeft : System.Windows.FlowDirection.LeftToRight;
+        var physicalAlignment = rtl ? System.Windows.HorizontalAlignment.Right : System.Windows.HorizontalAlignment.Left;
+        var textAlignment = rtl ? TextAlignment.Right : TextAlignment.Left;
+
         ContentPanel.FlowDirection = flowDirection;
         ContentStack.FlowDirection = flowDirection;
-        ContentStack.HorizontalAlignment = System.Windows.HorizontalAlignment.Stretch;
-        StepPositionText.HorizontalAlignment = System.Windows.HorizontalAlignment.Stretch;
-        InstructionText.HorizontalAlignment = System.Windows.HorizontalAlignment.Stretch;
-        ValidationMessage.HorizontalAlignment = System.Windows.HorizontalAlignment.Stretch;
+
+        StepPositionRow.FlowDirection = flowDirection;
+        InstructionRow.FlowDirection = flowDirection;
+        ValidationRow.FlowDirection = flowDirection;
+
         StepPositionText.FlowDirection = flowDirection;
         InstructionText.FlowDirection = flowDirection;
         ValidationMessage.FlowDirection = flowDirection;
-        var textAlignment = rtl ? TextAlignment.Right : TextAlignment.Left;
+
+        StepPositionText.HorizontalAlignment = physicalAlignment;
+        InstructionText.HorizontalAlignment = physicalAlignment;
+        ValidationMessage.HorizontalAlignment = physicalAlignment;
+
         StepPositionText.TextAlignment = textAlignment;
         InstructionText.TextAlignment = textAlignment;
         ValidationMessage.TextAlignment = textAlignment;
+
         PreviousButton.FlowDirection = flowDirection;
         NextButton.FlowDirection = flowDirection;
     }

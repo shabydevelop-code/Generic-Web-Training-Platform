@@ -321,7 +321,11 @@ async function moveWindowsPreview(direction) {
   if (!previewSession || (direction !== 1 && direction !== -1)) return;
 
   const nextIndex = previewSession.stepIndex + direction;
-  if (nextIndex < 0 || nextIndex >= previewSession.steps.length) return;
+  if (nextIndex < 0) return;
+  if (nextIndex >= previewSession.steps.length) {
+    if (direction > 0) await exitGuidePreview();
+    return;
+  }
 
   const current = {
     step: previewSession.steps[nextIndex],
