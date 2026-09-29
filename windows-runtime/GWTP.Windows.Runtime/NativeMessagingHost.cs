@@ -129,9 +129,18 @@ internal sealed class NativeMessagingHost : IDisposable
                     previousElement.ValueKind == JsonValueKind.True;
                 var canNext = message.RootElement.TryGetProperty("canNext", out var nextElement) &&
                     nextElement.ValueKind == JsonValueKind.True;
+                var stepIndex = message.RootElement.TryGetProperty("stepIndex", out var stepIndexElement) && stepIndexElement.TryGetInt32(out var parsedStepIndex)
+                    ? parsedStepIndex
+                    : 0;
+                var totalSteps = message.RootElement.TryGetProperty("totalSteps", out var totalStepsElement) && totalStepsElement.TryGetInt32(out var parsedTotalSteps)
+                    ? parsedTotalSteps
+                    : 1;
+                var stepPositionTemplate = message.RootElement.TryGetProperty("stepPosition", out var stepPositionElement)
+                    ? stepPositionElement.GetString()
+                    : null;
 
                 var shown = await _pickerWindow.Dispatcher.InvokeAsync(
-                    () => _pickerWindow.ShowAuthoredStep(target, instruction, canPrevious, canNext));
+                    () => _pickerWindow.ShowAuthoredStep(target, instruction, canPrevious, canNext, stepIndex, totalSteps, stepPositionTemplate));
                 await WriteMessageAsync(new
                 {
                     type = "stepShown",

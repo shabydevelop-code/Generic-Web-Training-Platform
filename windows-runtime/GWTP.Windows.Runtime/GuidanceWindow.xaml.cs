@@ -73,6 +73,16 @@ public partial class GuidanceWindow : Window
             SwpNoActivate | SwpShowWindow);
     }
 
+    public void SetStepPosition(int stepIndex, int totalSteps, string? template)
+    {
+        var safeTotal = Math.Max(1, totalSteps);
+        var safeCurrent = Math.Clamp(stepIndex + 1, 1, safeTotal);
+        var format = string.IsNullOrWhiteSpace(template) ? "Step {current} of {total}" : template;
+        StepPositionText.Text = format
+            .Replace("{current}", safeCurrent.ToString())
+            .Replace("{total}", safeTotal.ToString());
+    }
+
     public void SetInstruction(string? instruction)
     {
         InstructionText.Text = string.IsNullOrWhiteSpace(instruction)

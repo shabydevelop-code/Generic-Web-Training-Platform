@@ -277,6 +277,17 @@ async function showTrainingStep(step, navigation = {}) {
     overlay.style.top = `${position.top}px`;
   });
 
+  const stepPosition = document.createElement("div");
+  stepPosition.textContent = (navigation.labels?.stepPosition || "Step {current} of {total}")
+    .replace("{current}", String((Number.isInteger(navigation.stepIndex) ? navigation.stepIndex : 0) + 1))
+    .replace("{total}", String(navigation.totalSteps || 1));
+  stepPosition.style.marginBottom = "6px";
+  stepPosition.style.color = "#667085";
+  stepPosition.style.fontSize = "12px";
+  stepPosition.style.fontWeight = "600";
+  stepPosition.style.direction = navigation.direction || "ltr";
+  overlay.appendChild(stepPosition);
+
   const instructionHost = document.createElement("div");
   instructionHost.id = `gwtp-training-instruction-${Date.now()}`;
   instructionHost.setAttribute("role", "status");

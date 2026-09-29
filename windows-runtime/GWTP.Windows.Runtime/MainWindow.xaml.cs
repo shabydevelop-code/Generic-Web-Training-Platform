@@ -32,6 +32,9 @@ public partial class MainWindow : Window
     private string? _authoredInstruction;
     private bool _authoredCanPrevious;
     private bool _authoredCanNext;
+    private int _authoredStepIndex;
+    private int _authoredTotalSteps = 1;
+    private string? _authoredStepPositionTemplate;
     private IntPtr _preAuthoredWindowsForeground = IntPtr.Zero;
 
     public event Action<WindowsTargetDescriptor>? AuthoringTargetSelected;
@@ -81,7 +84,7 @@ public partial class MainWindow : Window
         return WindowsTargetResolver.Resolve(target) is not null;
     }
 
-    public bool ShowAuthoredStep(WindowsTargetDescriptor target, string? instruction, bool canPrevious, bool canNext)
+    public bool ShowAuthoredStep(WindowsTargetDescriptor target, string? instruction, bool canPrevious, bool canNext, int stepIndex, int totalSteps, string? stepPositionTemplate)
     {
         // Capture the foreground owner only when entering the Windows portion of
         // a Hybrid Preview. Keep it across Windows→Windows navigation so the
@@ -110,9 +113,13 @@ public partial class MainWindow : Window
         _authoredInstruction = instruction;
         _authoredCanPrevious = canPrevious;
         _authoredCanNext = canNext;
+        _authoredStepIndex = stepIndex;
+        _authoredTotalSteps = Math.Max(1, totalSteps);
+        _authoredStepPositionTemplate = stepPositionTemplate;
         StartElementTracking(element);
 
-        _guidanceWindow!.SetInstruction(instruction);
+        _guidanceWindow!.SetStepPosition(_authoredStepIndex, _authoredTotalSteps, _authoredStepPositionTemplate);
+        _guidanceWindow.SetInstruction(instruction);
         _guidanceWindow.SetValidationMessage(null);
         _guidanceWindow.SetNavigationState(canPrevious, canNext);
         _guidanceWindow.ResetManualPosition();
@@ -339,6 +346,7 @@ public partial class MainWindow : Window
         _guidanceWindow.NextRequested += OnNextRequested;
         if (_authoredStepActive)
         {
+            _guidanceWindow.SetStepPosition(_authoredStepIndex, _authoredTotalSteps, _authoredStepPositionTemplate);
             _guidanceWindow.SetInstruction(_authoredInstruction);
             _guidanceWindow.SetNavigationState(_authoredCanPrevious, _authoredCanNext);
         }

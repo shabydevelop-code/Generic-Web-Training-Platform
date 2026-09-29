@@ -105,7 +105,10 @@
       target: step?.windowsTarget,
       instruction: step?.instruction || "",
       canPrevious: Boolean(step?.navigation?.canPrevious),
-      canNext: Boolean(step?.navigation?.canNext)
+      canNext: Boolean(step?.navigation?.canNext),
+      stepIndex: Number.isInteger(step?.navigation?.stepIndex) ? step.navigation.stepIndex : 0,
+      totalSteps: step?.navigation?.totalSteps || 1,
+      stepPosition: step?.navigation?.stepPosition || "Step {current} of {total}"
     }, "stepShown");
     return response;
   }
