@@ -79,10 +79,10 @@ public partial class GuidanceWindow : Window
         var flowDirection = rtl ? System.Windows.FlowDirection.RightToLeft : System.Windows.FlowDirection.LeftToRight;
         ContentPanel.FlowDirection = flowDirection;
         ContentStack.FlowDirection = flowDirection;
-        ContentStack.HorizontalAlignment = HorizontalAlignment.Stretch;
-        StepPositionText.HorizontalAlignment = HorizontalAlignment.Stretch;
-        InstructionText.HorizontalAlignment = HorizontalAlignment.Stretch;
-        ValidationMessage.HorizontalAlignment = HorizontalAlignment.Stretch;
+        ContentStack.HorizontalAlignment = System.Windows.HorizontalAlignment.Stretch;
+        StepPositionText.HorizontalAlignment = System.Windows.HorizontalAlignment.Stretch;
+        InstructionText.HorizontalAlignment = System.Windows.HorizontalAlignment.Stretch;
+        ValidationMessage.HorizontalAlignment = System.Windows.HorizontalAlignment.Stretch;
         StepPositionText.FlowDirection = flowDirection;
         InstructionText.FlowDirection = flowDirection;
         ValidationMessage.FlowDirection = flowDirection;
