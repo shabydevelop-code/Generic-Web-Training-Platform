@@ -320,14 +320,16 @@ internal sealed class ElementTrackingService : IDisposable
 
     private bool IsOwnedRuntimeOverlay(IntPtr hwnd)
     {
-        // A no-activate topmost overlay can still be reported transiently while
-        // Windows is completing a foreground transition. Treat only windows owned
-        // by the tracked host as host context; all other processes are unrelated.
+        // Guidance controls are interactive and may activate the Runtime window while
+        // the learner presses Previous/Next. Treat both the tracked host process
+        // and this Runtime process as valid guidance context; unrelated apps still hide overlays.
         if (hwnd == IntPtr.Zero || _hostWindow == IntPtr.Zero) return false;
 
         GetWindowThreadProcessId(hwnd, out var foregroundProcessId);
         GetWindowThreadProcessId(_hostWindow, out var hostProcessId);
-        return foregroundProcessId != 0 && foregroundProcessId == hostProcessId;
+        var runtimeProcessId = (uint)Environment.ProcessId;
+        return foregroundProcessId != 0 &&
+               (foregroundProcessId == hostProcessId || foregroundProcessId == runtimeProcessId);
     }
 
     private void EvaluateHostWindowVisibility()

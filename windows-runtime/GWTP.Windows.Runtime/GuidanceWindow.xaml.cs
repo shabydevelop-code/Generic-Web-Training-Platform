@@ -10,7 +10,6 @@ public partial class GuidanceWindow : Window
 {
     private const int GwlExStyle = -20;
     private const int WsExToolWindow = 0x00000080;
-    private const int WsExNoActivate = 0x08000000;
     private const uint SwpNoActivate = 0x0010;
     private const uint SwpShowWindow = 0x0040;
     private static readonly IntPtr HwndTopmost = new(-1);
@@ -77,23 +76,11 @@ public partial class GuidanceWindow : Window
     {
         var rtl = string.Equals(direction, "rtl", StringComparison.OrdinalIgnoreCase);
         var flowDirection = rtl ? System.Windows.FlowDirection.RightToLeft : System.Windows.FlowDirection.LeftToRight;
-        var physicalAlignment = rtl ? System.Windows.HorizontalAlignment.Right : System.Windows.HorizontalAlignment.Left;
         var textAlignment = rtl ? TextAlignment.Right : TextAlignment.Left;
-
-        ContentPanel.FlowDirection = flowDirection;
-        ContentStack.FlowDirection = flowDirection;
-
-        StepPositionRow.FlowDirection = flowDirection;
-        InstructionRow.FlowDirection = flowDirection;
-        ValidationRow.FlowDirection = flowDirection;
 
         StepPositionText.FlowDirection = flowDirection;
         InstructionText.FlowDirection = flowDirection;
         ValidationMessage.FlowDirection = flowDirection;
-
-        StepPositionText.HorizontalAlignment = physicalAlignment;
-        InstructionText.HorizontalAlignment = physicalAlignment;
-        ValidationMessage.HorizontalAlignment = physicalAlignment;
 
         StepPositionText.TextAlignment = textAlignment;
         InstructionText.TextAlignment = textAlignment;
@@ -167,7 +154,7 @@ public partial class GuidanceWindow : Window
     {
         _handle = new WindowInteropHelper(this).Handle;
         var style = GetWindowLongPtr(_handle, GwlExStyle).ToInt64();
-        style |= WsExToolWindow | WsExNoActivate;
+        style |= WsExToolWindow;
         SetWindowLongPtr(_handle, GwlExStyle, new IntPtr(style));
     }
 
