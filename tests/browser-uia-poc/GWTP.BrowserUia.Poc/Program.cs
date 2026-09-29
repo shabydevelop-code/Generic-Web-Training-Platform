@@ -38,6 +38,9 @@ internal sealed class PocForm : Forms.Form
     private AutomationElement? _trackedElement;
     private AutomationPropertyChangedEventHandler? _trackedPropertyHandler;
     private StructureChangedEventHandler? _trackedStructureHandler;
+    private WinEventDelegate? _browserLocationHandler;
+    private IntPtr _browserLocationHook;
+    private IntPtr _trackedBrowserWindow;
 
     public PocForm()
     {
@@ -200,8 +203,9 @@ internal sealed class PocForm : Forms.Form
         }
 
         _trackedElement = matches[0];
+        _trackedBrowserWindow = FindTopLevelWindow(_trackedElement);
         ShowOverlay(_trackedElement);
-        _status.Text = "Tracking: unique target found; listening for UIA layout changes.";
+        _status.Text = "Tracking: unique target found; listening for UIA and browser-window changes.";
 
         _trackedPropertyHandler = (_, _) => BeginInvoke(new Action(RefreshTrackedBounds));
         _trackedStructureHandler = (_, _) => BeginInvoke(new Action(ResolveAndAttachTracking));
@@ -219,6 +223,8 @@ internal sealed class PocForm : Forms.Form
                 _trackedElement,
                 TreeScope.Subtree,
                 _trackedStructureHandler);
+
+            StartBrowserLocationTracking();
         }
         catch (ElementNotAvailableException)
         {
@@ -248,6 +254,65 @@ internal sealed class PocForm : Forms.Form
         }
     }
 
+    private void StartBrowserLocationTracking()
+    {
+        if (_trackedElement is null || _trackedBrowserWindow == IntPtr.Zero) return;
+
+        uint processId;
+        GetWindowThreadProcessId(_trackedBrowserWindow, out processId);
+        if (processId == 0) return;
+
+        _browserLocationHandler = (_, eventType, hwnd, idObject, _, _, _) =>
+        {
+            if (!_tracking || eventType != EventObjectLocationChange || hwnd == IntPtr.Zero) return;
+            if (idObject != ObjIdWindow) return;
+            if (GetAncestor(hwnd, GaRoot) != _trackedBrowserWindow) return;
+
+            try
+            {
+                BeginInvoke(new Action(RefreshTrackedBounds));
+            }
+            catch (InvalidOperationException)
+            {
+            }
+        };
+
+        _browserLocationHook = SetWinEventHook(
+            EventObjectLocationChange,
+            EventObjectLocationChange,
+            IntPtr.Zero,
+            _browserLocationHandler,
+            processId,
+            0,
+            WinEventOutOfContext);
+    }
+
+    private static IntPtr FindTopLevelWindow(AutomationElement element)
+    {
+        var walker = TreeWalker.RawViewWalker;
+        var current = element;
+
+        while (current is not null)
+        {
+            try
+            {
+                var hwnd = new IntPtr(current.Current.NativeWindowHandle);
+                if (hwnd != IntPtr.Zero)
+                    return GetAncestor(hwnd, GaRoot);
+
+                var parent = walker.GetParent(current);
+                if (parent is null || parent == AutomationElement.RootElement) break;
+                current = parent;
+            }
+            catch (ElementNotAvailableException)
+            {
+                break;
+            }
+        }
+
+        return IntPtr.Zero;
+    }
+
     private void StopEventTracking()
     {
         if (_trackedElement is not null)
@@ -264,6 +329,14 @@ internal sealed class PocForm : Forms.Form
             }
         }
 
+        if (_browserLocationHook != IntPtr.Zero)
+        {
+            UnhookWinEvent(_browserLocationHook);
+            _browserLocationHook = IntPtr.Zero;
+        }
+
+        _trackedBrowserWindow = IntPtr.Zero;
+        _browserLocationHandler = null;
         _trackedElement = null;
         _trackedPropertyHandler = null;
         _trackedStructureHandler = null;
@@ -376,8 +449,42 @@ internal sealed class PocForm : Forms.Form
 
     private static bool IsLeftDown() => (GetAsyncKeyState(0x01) & 0x8000) != 0;
 
+    private const uint EventObjectLocationChange = 0x800B;
+    private const int ObjIdWindow = 0;
+    private const uint WinEventOutOfContext = 0x0000;
+    private const uint GaRoot = 2;
+
+    private delegate void WinEventDelegate(
+        IntPtr hWinEventHook,
+        uint eventType,
+        IntPtr hwnd,
+        int idObject,
+        int idChild,
+        uint idEventThread,
+        uint eventTime);
+
     [DllImport("user32.dll")]
     private static extern short GetAsyncKeyState(int vKey);
+
+    [DllImport("user32.dll")]
+    private static extern IntPtr SetWinEventHook(
+        uint eventMin,
+        uint eventMax,
+        IntPtr hmodWinEventProc,
+        WinEventDelegate lpfnWinEventProc,
+        uint idProcess,
+        uint idThread,
+        uint flags);
+
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool UnhookWinEvent(IntPtr hWinEventHook);
+
+    [DllImport("user32.dll")]
+    private static extern uint GetWindowThreadProcessId(IntPtr hwnd, out uint processId);
+
+    [DllImport("user32.dll")]
+    private static extern IntPtr GetAncestor(IntPtr hwnd, uint flags);
 }
 
 internal sealed record BrowserDescriptor(
