@@ -45,7 +45,7 @@
                 </UniformGrid>
             </Grid>
 
-            <Grid x:Name="StepPositionRow" HorizontalAlignment="Stretch" Margin="0,0,0,6">
+            <Grid x:Name="StepPositionRow" Width="308" HorizontalAlignment="Left" Margin="0,0,0,6">
                 <TextBlock x:Name="StepPositionText"
                            Width="308"
                            HorizontalAlignment="Stretch"
@@ -55,7 +55,7 @@
                            Text="Step 1 of 1" />
             </Grid>
 
-            <Grid x:Name="InstructionRow" HorizontalAlignment="Stretch">
+            <Grid x:Name="InstructionRow" Width="308" HorizontalAlignment="Left">
                 <TextBlock x:Name="InstructionText"
                            Width="308"
                            HorizontalAlignment="Stretch"
@@ -66,7 +66,7 @@
                            Text="Follow the highlighted step." />
             </Grid>
 
-            <Grid x:Name="ValidationRow" HorizontalAlignment="Stretch" Margin="0,10,0,0">
+            <Grid x:Name="ValidationRow" Width="308" HorizontalAlignment="Left" Margin="0,10,0,0">
                 <TextBlock x:Name="ValidationMessage"
                            Width="308"
                            HorizontalAlignment="Stretch"

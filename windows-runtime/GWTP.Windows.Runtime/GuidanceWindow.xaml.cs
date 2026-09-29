@@ -81,21 +81,31 @@ public partial class GuidanceWindow : Window
         InstructionText.FlowDirection = flowDirection;
         ValidationMessage.FlowDirection = flowDirection;
 
-        StepPositionText.Width = 308;
-        InstructionText.Width = 308;
-        ValidationMessage.Width = 308;
-        StepPositionText.HorizontalAlignment = System.Windows.HorizontalAlignment.Stretch;
-        InstructionText.HorizontalAlignment = System.Windows.HorizontalAlignment.Stretch;
-        ValidationMessage.HorizontalAlignment = System.Windows.HorizontalAlignment.Stretch;
-        StepPositionText.TextAlignment = textAlignment;
-        InstructionText.TextAlignment = textAlignment;
-        ValidationMessage.TextAlignment = textAlignment;
-
-        // WPF bidi flow can mirror layout coordinates. Keep the physical content
-        // rows LTR and apply RTL only inside the text glyph layout.
+        // Keep the physical layout fixed and move the text block itself to the
+        // requested edge. This avoids relying on WPF TextAlignment inside a
+        // bidi-inherited StackPanel.
+        ContentPanel.FlowDirection = System.Windows.FlowDirection.LeftToRight;
+        ContentStack.FlowDirection = System.Windows.FlowDirection.LeftToRight;
         StepPositionRow.FlowDirection = System.Windows.FlowDirection.LeftToRight;
         InstructionRow.FlowDirection = System.Windows.FlowDirection.LeftToRight;
         ValidationRow.FlowDirection = System.Windows.FlowDirection.LeftToRight;
+
+        var physicalAlignment = rtl
+            ? System.Windows.HorizontalAlignment.Right
+            : System.Windows.HorizontalAlignment.Left;
+
+        StepPositionText.Width = double.NaN;
+        InstructionText.Width = double.NaN;
+        ValidationMessage.Width = double.NaN;
+        StepPositionText.MaxWidth = 308;
+        InstructionText.MaxWidth = 308;
+        ValidationMessage.MaxWidth = 308;
+        StepPositionText.HorizontalAlignment = physicalAlignment;
+        InstructionText.HorizontalAlignment = physicalAlignment;
+        ValidationMessage.HorizontalAlignment = physicalAlignment;
+        StepPositionText.TextAlignment = textAlignment;
+        InstructionText.TextAlignment = textAlignment;
+        ValidationMessage.TextAlignment = textAlignment;
 
         PreviousButton.FlowDirection = flowDirection;
         NextButton.FlowDirection = flowDirection;
