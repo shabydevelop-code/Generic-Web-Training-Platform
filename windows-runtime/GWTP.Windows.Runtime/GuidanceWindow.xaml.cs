@@ -81,9 +81,21 @@ public partial class GuidanceWindow : Window
         InstructionText.FlowDirection = flowDirection;
         ValidationMessage.FlowDirection = flowDirection;
 
+        StepPositionText.Width = 308;
+        InstructionText.Width = 308;
+        ValidationMessage.Width = 308;
+        StepPositionText.HorizontalAlignment = System.Windows.HorizontalAlignment.Stretch;
+        InstructionText.HorizontalAlignment = System.Windows.HorizontalAlignment.Stretch;
+        ValidationMessage.HorizontalAlignment = System.Windows.HorizontalAlignment.Stretch;
         StepPositionText.TextAlignment = textAlignment;
         InstructionText.TextAlignment = textAlignment;
         ValidationMessage.TextAlignment = textAlignment;
+
+        // WPF bidi flow can mirror layout coordinates. Keep the physical content
+        // rows LTR and apply RTL only inside the text glyph layout.
+        StepPositionRow.FlowDirection = System.Windows.FlowDirection.LeftToRight;
+        InstructionRow.FlowDirection = System.Windows.FlowDirection.LeftToRight;
+        ValidationRow.FlowDirection = System.Windows.FlowDirection.LeftToRight;
 
         PreviousButton.FlowDirection = flowDirection;
         NextButton.FlowDirection = flowDirection;

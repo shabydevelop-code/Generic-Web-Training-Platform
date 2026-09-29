@@ -374,11 +374,22 @@ async function moveWindowsLearner(direction) {
   if (direction > 0 && isLastStep) {
     const response = await chrome.runtime.sendMessage({ type: "GWTP_TRAINING_COMPLETE" });
     if (!response?.success) return;
-    await window.windowsBridgeService.clearStep();
+    await window.windowsBridgeService.clearStep({ restorePreviousForeground: true });
     learnerSessionActive = false;
+
+    const guideId = Number(response.result?.guideId);
+    const topic = learnerCatalog.find((item) => item.guides?.some((guide) => guide.id === guideId));
+    const guide = topic?.guides?.find((item) => item.id === guideId);
+    if (guide) {
+      guide.progressStatus = "Completed";
+      if (Number(learnerGuideSelect.value) === guideId) {
+        refreshSelectedLearnerGuideUi();
+      }
+    }
+
     chrome.runtime.sendMessage({
       type: "GWTP_TRAINING_COMPLETED",
-      guideId: response.result?.guideId
+      guideId
     }).catch(() => {});
     return;
   }
@@ -391,7 +402,23 @@ async function moveWindowsLearner(direction) {
 
   const moveResponse = await chrome.runtime.sendMessage({ type: moveType });
   if (!moveResponse?.success || !moveResponse.current?.step) return;
-  await window.guideRunner.showCurrentStep(moveResponse.current);
+
+  const previousRuntime = current.step?.runtime || "web";
+  const nextRuntime = moveResponse.current.step?.runtime || "web";
+  if (previousRuntime === "windows" && nextRuntime === "web") {
+    try {
+      const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      if (activeTab?.windowId != null) {
+        await chrome.windows.update(activeTab.windowId, { focused: true });
+      }
+    } catch (error) {
+      console.info("GWTP learner browser focus handoff skipped:", error);
+    }
+  }
+
+  await window.guideRunner.showCurrentStep(moveResponse.current, {
+    restorePreviousForeground: previousRuntime === "windows" && nextRuntime === "web"
+  });
 }
 
 window.addEventListener("gwtp-windows-preview-navigation", (event) => {
