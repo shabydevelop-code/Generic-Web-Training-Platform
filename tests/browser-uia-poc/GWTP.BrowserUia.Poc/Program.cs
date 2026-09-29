@@ -42,6 +42,7 @@ internal sealed class PocForm : Forms.Form
     private WinEventDelegate? _browserLocationHandler;
     private IntPtr _browserLocationHook;
     private IntPtr _trackedBrowserWindow;
+    private Rectangle _trackedBrowserBounds;
 
     public PocForm()
     {
@@ -230,6 +231,7 @@ internal sealed class PocForm : Forms.Form
         StopEventTracking();
         _trackedElement = element;
         _trackedBrowserWindow = FindTopLevelWindow(_trackedElement);
+        _trackedBrowserBounds = TryGetWindowBounds(_trackedBrowserWindow, out var browserBounds) ? browserBounds : Rectangle.Empty;
         ShowOverlay(_trackedElement);
         _status.Text = status;
 
@@ -296,7 +298,7 @@ internal sealed class PocForm : Forms.Form
 
             try
             {
-                BeginInvoke(new Action(RefreshTrackedBounds));
+                BeginInvoke(new Action(ApplyBrowserWindowDelta));
             }
             catch (InvalidOperationException)
             {
@@ -311,6 +313,27 @@ internal sealed class PocForm : Forms.Form
             processId,
             0,
             WinEventOutOfContext);
+    }
+
+    private void ApplyBrowserWindowDelta()
+    {
+        if (!_tracking || _trackedBrowserWindow == IntPtr.Zero) return;
+        if (!TryGetWindowBounds(_trackedBrowserWindow, out var currentBounds)) return;
+        if (!_trackedBrowserBounds.IsEmpty && _overlay.Visible)
+        {
+            var dx = currentBounds.Left - _trackedBrowserBounds.Left;
+            var dy = currentBounds.Top - _trackedBrowserBounds.Top;
+            if (dx != 0 || dy != 0) _overlay.MoveBy(dx, dy);
+        }
+        _trackedBrowserBounds = currentBounds;
+    }
+
+    private static bool TryGetWindowBounds(IntPtr hwnd, out Rectangle bounds)
+    {
+        bounds = Rectangle.Empty;
+        if (hwnd == IntPtr.Zero || !GetWindowRect(hwnd, out var rect)) return false;
+        bounds = Rectangle.FromLTRB(rect.Left, rect.Top, rect.Right, rect.Bottom);
+        return true;
     }
 
     private static IntPtr FindTopLevelWindow(AutomationElement element)
@@ -362,6 +385,7 @@ internal sealed class PocForm : Forms.Form
         }
 
         _trackedBrowserWindow = IntPtr.Zero;
+        _trackedBrowserBounds = Rectangle.Empty;
         _browserLocationHandler = null;
         _trackedElement = null;
         _trackedPropertyHandler = null;
@@ -480,6 +504,15 @@ internal sealed class PocForm : Forms.Form
     private const uint WinEventOutOfContext = 0x0000;
     private const uint GaRoot = 2;
 
+    [StructLayout(LayoutKind.Sequential)]
+    private struct NativeRect
+    {
+        public int Left;
+        public int Top;
+        public int Right;
+        public int Bottom;
+    }
+
     private delegate void WinEventDelegate(
         IntPtr hWinEventHook,
         uint eventType,
@@ -511,6 +544,10 @@ internal sealed class PocForm : Forms.Form
 
     [DllImport("user32.dll")]
     private static extern IntPtr GetAncestor(IntPtr hwnd, uint flags);
+
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool GetWindowRect(IntPtr hwnd, out NativeRect rect);
 }
 
 internal sealed record BrowserDescriptor(
@@ -661,6 +698,12 @@ internal sealed class OverlayForm : Forms.Form
         Bounds = bounds;
         if (!Visible) Show();
         Invalidate();
+    }
+
+    public void MoveBy(int dx, int dy)
+    {
+        if (!Visible) return;
+        Location = new Point(Left + dx, Top + dy);
     }
 
     protected override Forms.CreateParams CreateParams
