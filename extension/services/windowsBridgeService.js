@@ -111,7 +111,8 @@
       stepPosition: step?.navigation?.stepPosition || "Step {current} of {total}",
       previousLabel: step?.navigation?.previousLabel || "Previous",
       nextLabel: step?.navigation?.nextLabel || "Next",
-      finishLabel: step?.navigation?.finishLabel || "Finish"
+      finishLabel: step?.navigation?.finishLabel || "Finish",
+      direction: step?.navigation?.direction || "ltr"
     }, "stepShown");
     return response;
   }

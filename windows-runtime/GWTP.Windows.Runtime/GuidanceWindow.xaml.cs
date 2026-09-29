@@ -73,6 +73,15 @@ public partial class GuidanceWindow : Window
             SwpNoActivate | SwpShowWindow);
     }
 
+    public void SetDirection(string? direction)
+    {
+        var rtl = string.Equals(direction, "rtl", StringComparison.OrdinalIgnoreCase);
+        FlowDirection = rtl ? FlowDirection.RightToLeft : FlowDirection.LeftToRight;
+        StepPositionText.TextAlignment = rtl ? TextAlignment.Right : TextAlignment.Left;
+        InstructionText.TextAlignment = rtl ? TextAlignment.Right : TextAlignment.Left;
+        ValidationMessage.TextAlignment = rtl ? TextAlignment.Right : TextAlignment.Left;
+    }
+
     public void SetStepPosition(int stepIndex, int totalSteps, string? template)
     {
         var safeTotal = Math.Max(1, totalSteps);

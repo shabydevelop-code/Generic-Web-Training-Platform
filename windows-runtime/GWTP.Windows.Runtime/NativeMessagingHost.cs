@@ -141,9 +141,10 @@ internal sealed class NativeMessagingHost : IDisposable
                 var previousLabel = message.RootElement.TryGetProperty("previousLabel", out var previousLabelElement) ? previousLabelElement.GetString() : null;
                 var nextLabel = message.RootElement.TryGetProperty("nextLabel", out var nextLabelElement) ? nextLabelElement.GetString() : null;
                 var finishLabel = message.RootElement.TryGetProperty("finishLabel", out var finishLabelElement) ? finishLabelElement.GetString() : null;
+                var direction = message.RootElement.TryGetProperty("direction", out var directionElement) ? directionElement.GetString() : null;
 
                 var shown = await _pickerWindow.Dispatcher.InvokeAsync(
-                    () => _pickerWindow.ShowAuthoredStep(target, instruction, canPrevious, canNext, stepIndex, totalSteps, stepPositionTemplate, previousLabel, nextLabel, finishLabel));
+                    () => _pickerWindow.ShowAuthoredStep(target, instruction, canPrevious, canNext, stepIndex, totalSteps, stepPositionTemplate, previousLabel, nextLabel, finishLabel, direction));
                 await WriteMessageAsync(new
                 {
                     type = "stepShown",

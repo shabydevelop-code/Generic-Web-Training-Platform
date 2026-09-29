@@ -371,7 +371,11 @@
           canNext: current.stepIndex < (current.totalSteps || 1) - 1,
           stepIndex: current.stepIndex,
           totalSteps: current.totalSteps || 1,
-          stepPosition: window.i18nService.translate("stepPosition", window.i18nService.getLanguage())
+          stepPosition: window.i18nService.translate("stepPosition", window.i18nService.getLanguage()),
+          previousLabel: window.i18nService.translate("previousButton", window.i18nService.getLanguage()),
+          nextLabel: window.i18nService.translate("nextButton", window.i18nService.getLanguage()),
+          finishLabel: window.i18nService.translate("finishButton", window.i18nService.getLanguage()),
+          direction: window.i18nService.getLanguage() === "he" ? "rtl" : "ltr"
         }
       });
       return response?.success === true;
