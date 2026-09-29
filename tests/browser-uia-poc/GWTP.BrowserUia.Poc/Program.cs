@@ -31,6 +31,7 @@ internal sealed class PocForm : Forms.Form
 
     private BrowserDescriptor? _descriptor;
     private AutomationElement? _hovered;
+    private AutomationElement? _selectedElement;
     private bool _picking;
     private bool _mouseWasDown;
     private bool _armed;
@@ -143,7 +144,8 @@ internal sealed class PocForm : Forms.Form
     {
         try
         {
-            _descriptor = BrowserDescriptor.FromElement(_hovered!);
+            _selectedElement = _hovered!;
+            _descriptor = BrowserDescriptor.FromElement(_selectedElement);
             _details.Text = JsonSerializer.Serialize(_descriptor, new JsonSerializerOptions { WriteIndented = true });
             _find.Enabled = true;
             _read.Enabled = true;
@@ -170,7 +172,8 @@ internal sealed class PocForm : Forms.Form
             _find.Enabled = false;
             _read.Enabled = false;
             _status.Text = "Tracking selected target. Scroll, resize, refresh, or change the page.";
-            ResolveAndAttachTracking();
+            if (!TryAttachSelectedElement())
+                ResolveAndAttachTracking();
         }
         else
         {
@@ -185,6 +188,23 @@ internal sealed class PocForm : Forms.Form
     private void TrackTick()
     {
         // Picker sampling uses the timer. Active target tracking is UIA event-driven.
+    }
+
+    private bool TryAttachSelectedElement()
+    {
+        if (_selectedElement is null) return false;
+
+        try
+        {
+            _ = _selectedElement.Current.ProcessId;
+            AttachTracking(_selectedElement, "Tracking: original selected target attached; listening for UIA and browser-window changes.");
+            return true;
+        }
+        catch (ElementNotAvailableException)
+        {
+            _selectedElement = null;
+            return false;
+        }
     }
 
     private void ResolveAndAttachTracking()
@@ -202,10 +222,16 @@ internal sealed class PocForm : Forms.Form
             return;
         }
 
-        _trackedElement = matches[0];
+        AttachTracking(matches[0], "Tracking: target rediscovered; listening for UIA and browser-window changes.");
+    }
+
+    private void AttachTracking(AutomationElement element, string status)
+    {
+        StopEventTracking();
+        _trackedElement = element;
         _trackedBrowserWindow = FindTopLevelWindow(_trackedElement);
         ShowOverlay(_trackedElement);
-        _status.Text = "Tracking: unique target found; listening for UIA and browser-window changes.";
+        _status.Text = status;
 
         _trackedPropertyHandler = (_, _) => BeginInvoke(new Action(RefreshTrackedBounds));
         _trackedStructureHandler = (_, _) => BeginInvoke(new Action(ResolveAndAttachTracking));
