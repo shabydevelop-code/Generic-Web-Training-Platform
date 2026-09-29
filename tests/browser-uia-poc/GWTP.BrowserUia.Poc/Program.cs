@@ -12,7 +12,8 @@ internal static class Program
     [STAThread]
     private static void Main()
     {
-        Forms.ApplicationConfiguration.Initialize();
+        Forms.Application.EnableVisualStyles();
+        Forms.Application.SetCompatibleTextRenderingDefault(false);
         Forms.Application.Run(new PocForm());
     }
 }
