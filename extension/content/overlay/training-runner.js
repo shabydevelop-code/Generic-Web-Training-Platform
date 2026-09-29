@@ -283,7 +283,7 @@ async function showTrainingStep(step, navigation = {}) {
     .replace("{total}", String(navigation.totalSteps || 1));
   stepPosition.style.marginBottom = "6px";
   stepPosition.style.color = "#667085";
-  stepPosition.style.fontSize = "12px";
+  stepPosition.style.fontSize = "14px";
   stepPosition.style.fontWeight = "600";
   stepPosition.style.direction = navigation.direction || "ltr";
   overlay.appendChild(stepPosition);

@@ -46,7 +46,7 @@
 
             <TextBlock x:Name="StepPositionText"
                        Margin="0,0,0,6"
-                       FontSize="12"
+                       FontSize="14"
                        FontWeight="SemiBold"
                        Foreground="#667085"
                        Text="Step 1 of 1" />
